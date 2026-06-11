@@ -1,6 +1,10 @@
 /* Othello game controller — wires the board UI to OthelloAI.
  * Each color (black/white) is configured before the game as human or CPU,
  * and a CPU has its own strength level.
+ *
+ * Online play (PeerJS): when an online session is active, both colors are
+ * human, the local player only controls their own color, and each local move
+ * is sent to the peer. See js/online.js, which drives this via window.OthelloGame.
  */
 (function () {
   const AI = window.OthelloAI;
@@ -40,15 +44,28 @@
     [WHITE]: { type: "cpu", level: "3" },
   };
 
+  // Online session: null for local play, else { myColor, send(msg) }.
+  let online = null;
+
   let board, current, busy, gameOver;
   let history = []; // snapshots { board, current } captured before each move
   const cells = [];
 
   const colorName = (p) => (p === BLACK ? "黒" : "白");
-  const isCpu = (p) => players[p].type === "cpu";
+  const isCpu = (p) => !online && players[p].type === "cpu";
   function isCpuTurn() { return !gameOver && isCpu(current); }
+  // Can the local human act right now?
+  function myTurn() {
+    if (gameOver || busy) return false;
+    if (online) return current === online.myColor;
+    return !isCpu(current);
+  }
 
   function playerLabel(p) {
+    if (online) {
+      const mine = p === online.myColor ? "あなた" : "相手";
+      return `${colorName(p)}（${mine}）`;
+    }
     if (players[p].type === "human") return `${colorName(p)}（人間）`;
     const lv = LEVEL_NAMES[players[p].level] || players[p].level;
     return `${colorName(p)}（CPU・Lv${players[p].level} ${lv}）`;
@@ -79,13 +96,23 @@
     setupEl.hidden = false;
   }
 
-  startBtn.addEventListener("click", () => {
-    readConfig();
+  function enterGameScreen() {
     setupEl.hidden = true;
     gameEl.hidden = false;
     labelBlackEl.textContent = playerLabel(BLACK);
     labelWhiteEl.textContent = playerLabel(WHITE);
+    // Online play hides single-device-only controls.
+    undoBtn.style.display = online ? "none" : "";
+    backBtn.style.display = online ? "none" : "";
+    resetBtn.style.display = online ? "none" : "";
+    assistEl.parentElement.style.display = online ? "none" : "";
     newGame();
+  }
+
+  startBtn.addEventListener("click", () => {
+    online = null;
+    readConfig();
+    enterGameScreen();
   });
 
   /* ---------- Board ---------- */
@@ -127,12 +154,11 @@
   function render() {
     const moves = gameOver ? [] : AI.legalMoves(board, current);
     const moveSet = new Set(moves.map((m) => m.row * SIZE + m.col));
-    const humanToMove = !busy && !isCpuTurn() && !gameOver;
+    const humanToMove = myTurn();
 
-    // AI-assistant evaluation overlay (only for a human's turn).
-    // Deep search; ranked by value so ties share a color.
+    // AI-assistant evaluation overlay (only for a human's turn, local play).
     let scoreMap = null, rankOf = null;
-    if (assistEl.checked && humanToMove && moves.length) {
+    if (!online && assistEl.checked && humanToMove && moves.length) {
       scoreMap = new Map();
       for (const m of AI.evaluateMoves(board, current)) {
         scoreMap.set(m.row * SIZE + m.col, m.score);
@@ -152,7 +178,7 @@
         piece.classList.toggle("show", v !== 0);
         cell.classList.toggle("has-piece", v !== 0);
 
-        // Only show hints when a human is on the move.
+        // Only show hints when the local human is on the move.
         const key = r * SIZE + c;
         const showHint = humanToMove && moveSet.has(key);
         cell.classList.toggle("playable", showHint);
@@ -176,23 +202,26 @@
 
     if (gameOver) {
       turnEl.textContent = "終了";
+    } else if (online) {
+      turnEl.textContent = current === online.myColor ? "あなたの番" : "相手の番";
     } else if (isCpuTurn()) {
       turnEl.textContent = `${colorName(current)}の番（CPU思考中…）`;
     } else {
       turnEl.textContent = `${colorName(current)}の番`;
     }
 
-    // Pass is offered only when a human is to move and has no legal move.
+    // Pass is offered only when the local human is to move and has no legal move.
     const noMoves = !gameOver && moves.length === 0;
-    passBtn.disabled = !(noMoves && !isCpuTurn());
+    passBtn.disabled = !(noMoves && humanToMove);
 
-    undoBtn.disabled = busy || history.length === 0;
+    undoBtn.disabled = busy || online || history.length === 0;
   }
 
   function onCellClick(r, c) {
-    if (busy || gameOver || isCpuTurn()) return;
+    if (!myTurn()) return;
     const flips = AI.flipsFor(board, r, c, current);
     if (!flips.length) return;
+    if (online) online.send({ t: "move", row: r, col: c });
     play({ row: r, col: c, flips });
   }
 
@@ -207,7 +236,7 @@
   // Step back to the most recent position where a human is to move.
   // In human-vs-CPU this rewinds both the CPU reply and the player's move.
   function undo() {
-    if (busy || history.length === 0) return;
+    if (busy || online || history.length === 0) return;
     let snap = history.pop();
     while (isCpu(snap.current) && history.length > 0) {
       snap = history.pop();
@@ -262,11 +291,19 @@
     if (black > white) result = "黒の勝ち！";
     else if (white > black) result = "白の勝ち！";
     else result = "引き分け";
-    messageEl.textContent = `ゲーム終了 — ${result}（黒 ${black} : ${white} 白）`;
+    if (online) {
+      const won = (black > white && online.myColor === BLACK) ||
+                  (white > black && online.myColor === WHITE);
+      const tag = black === white ? "引き分け" : (won ? "あなたの勝ち！🎉" : "相手の勝ち…");
+      messageEl.textContent = `ゲーム終了 — ${tag}（黒 ${black} : ${white} 白）`;
+    } else {
+      messageEl.textContent = `ゲーム終了 — ${result}（黒 ${black} : ${white} 白）`;
+    }
   }
 
   passBtn.addEventListener("click", () => {
     if (passBtn.disabled) return;
+    if (online) online.send({ t: "pass" });
     messageEl.textContent = "";
     current = AI.opponent(current);
     advanceTurn();
@@ -279,4 +316,32 @@
 
   buildGrid();
   syncLevelEnabled();
+
+  /* ---------- Online API (called by js/online.js) ---------- */
+  window.OthelloGame = {
+    // Begin an online match. myColor: 1 (host=black) or 2 (guest=white).
+    startOnline(myColor, sendFn) {
+      online = { myColor, send: sendFn };
+      enterGameScreen();
+    },
+    // Apply a move received from the peer.
+    remoteMove(row, col) {
+      if (!online) return;
+      const flips = AI.flipsFor(board, row, col, current);
+      if (!flips.length) return; // out of sync / illegal — ignore
+      play({ row, col, flips });
+    },
+    remotePass() {
+      if (!online) return;
+      current = AI.opponent(current);
+      advanceTurn();
+    },
+    // The peer disconnected.
+    peerLeft() {
+      if (!online) return;
+      gameOver = true;
+      messageEl.textContent = "相手の接続が切れました。";
+      render();
+    },
+  };
 })();
