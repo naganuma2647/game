@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ボードゲーム・コレクション</title>
+<style>
+:root{
+  --bg:#14110E;
+  --card:#1F1A14;
+  --card-hov:#28211A;
+  --txt:#EDE6D6;
+  --sub:#9A8F7B;
+  --gold:#C9A227;
+  --line:#352C20;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;
+}
+/* ---- menu ---- */
+#menu{
+  min-height:100%;display:flex;flex-direction:column;align-items:center;
+  padding:34px 14px 50px;
+}
+#menu h1{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:30px;font-weight:600;letter-spacing:.4em;text-indent:.4em;
+  margin-bottom:4px;
+}
+#menu .sub{
+  font-size:11px;color:var(--sub);letter-spacing:.3em;margin-bottom:8px;
+}
+#menu .rule{
+  width:46px;height:2px;background:var(--gold);margin:10px 0 30px;border-radius:1px;
+}
+.grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));
+  gap:12px;width:min(94vw,720px);
+}
+.gcard{
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:18px 14px 15px;cursor:pointer;text-align:left;
+  transition:all .18s ease;font-family:inherit;color:var(--txt);
+  display:flex;flex-direction:column;gap:6px;
+}
+.gcard:hover{background:var(--card-hov);border-color:var(--gold);transform:translateY(-2px)}
+.gcard:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.gcard .ic{font-size:27px;line-height:1}
+.gcard .nm{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:16.5px;font-weight:600;letter-spacing:.08em;
+}
+.gcard .en{font-size:9px;color:var(--gold);letter-spacing:.25em}
+.gcard .ds{font-size:11px;color:var(--sub);line-height:1.6}
+#menu .foot{margin-top:34px;font-size:10.5px;color:var(--sub);letter-spacing:.15em}
+
+/* ---- player ---- */
+#player{
+  position:fixed;inset:0;display:none;flex-direction:column;background:var(--bg);z-index:10;
+}
+#player.show{display:flex}
+#topbar{
+  flex:none;display:flex;align-items:center;gap:12px;
+  padding:9px 14px;border-bottom:1px solid var(--line);background:#191510;
+}
+#backbtn{
+  background:transparent;border:1px solid var(--line);color:var(--txt);
+  padding:6px 16px;border-radius:18px;font-size:13px;cursor:pointer;font-family:inherit;
+  transition:border-color .2s;
+}
+#backbtn:hover{border-color:var(--gold)}
+#ptitle{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:15px;letter-spacing:.2em;
+}
+#pen{font-size:9px;color:var(--gold);letter-spacing:.25em;margin-left:auto}
+#frame{flex:1;border:none;width:100%;background:var(--bg)}
+</style>
+</head>
+<body>
+
+<div id="menu">
+  <h1>遊技盤</h1>
+  <div class="sub">BOARD GAME COLLECTION — 10 GAMES</div>
+  <div class="rule"></div>
+  <div class="grid" id="grid"></div>
+  <div class="foot">全ゲーム CPU対戦(弱/強)・2人対戦 対応</div>
+</div>
+
+<div id="player">
+  <div id="topbar">
+    <button id="backbtn">← 一覧へ</button>
+    <span id="ptitle"></span>
+    <span id="pen"></span>
+  </div>
+  <iframe id="frame"></iframe>
+</div>
+
+<script>
+const GAMES=[{"id":"othello","name":"オセロ","en":"REVERSI","icon":"⚫","desc":"挟んでひっくり返す定番。αβ探索CPU搭載"},{"id":"shogi","name":"将棋","en":"SHOGI","icon":"☗","desc":"持ち駒・成り・打ち歩詰めまで完全ルール"},{"id":"go","name":"囲碁","en":"GO","icon":"◉","desc":"9/13/19路。コウ・地計算・死石指定対応"},{"id":"chess","name":"チェス","en":"CHESS","icon":"♞","desc":"キャスリング・アンパッサン・PST評価CPU"},{"id":"backgammon","name":"バックギャモン","en":"BACKGAMMON","icon":"🎲","desc":"ヒット・ベアオフ・ギャモン判定"},{"id":"checkers","name":"チェッカー","en":"CHECKERS","icon":"🔴","desc":"強制ジャンプ・連続取り・キング昇格"},{"id":"geister","name":"ガイスター","en":"GEISTER","icon":"👻","desc":"青と赤の正体非公開。ノーチートCPU"},{"id":"mancala","name":"マンカラ","en":"MANCALA","icon":"🪨","desc":"種まきアニメ付きカラハ。連続手番の妙"},{"id":"hex","name":"ヘックス","en":"HEX","icon":"⬡","desc":"六角盤の接続ゲーム。引き分けなし"},{"id":"connect4","name":"コネクトフォー","en":"CONNECT FOUR","icon":"🟡","desc":"重力落下で4連。深さ9のαβ探索CPU"}];
+const SRC={};
+const PLACEHOLDER="<!DOCTYPE html><html lang=\"ja\"><head><meta charset=\"UTF-8\"></head><body style=\"background:#14110E;color:#EDE6D6;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0\"><div style=\"text-align:center\"><div style=\"font-size:48px\">🎮</div><p>このゲームの実装はまだ読み込まれていません。</p></div></body></html>";
+
+const grid=document.getElementById('grid');
+for(const g of GAMES){
+  const b=document.createElement('button');
+  b.className='gcard';
+  b.innerHTML='<span class="ic">'+g.icon+'</span>'+
+    '<span class="nm">'+g.name+'</span>'+
+    '<span class="en">'+g.en+'</span>'+
+    '<span class="ds">'+g.desc+'</span>';
+  b.addEventListener('click',()=>open(g));
+  grid.appendChild(b);
+}
+
+const player=document.getElementById('player');
+const frame=document.getElementById('frame');
+function open(g){
+  document.getElementById('ptitle').textContent=g.name;
+  document.getElementById('pen').textContent=g.en;
+  frame.srcdoc=SRC[g.id]||PLACEHOLDER;
+  player.classList.add('show');
+  history.pushState({game:g.id},'','#'+g.id);
+}
+function closeGame(){
+  player.classList.remove('show');
+  frame.srcdoc='';
+}
+document.getElementById('backbtn').addEventListener('click',()=>{
+  closeGame();
+  if(location.hash)history.pushState({},'','#');
+});
+window.addEventListener('popstate',e=>{
+  if(!e.state||!e.state.game)closeGame();
+  else{
+    const g=GAMES.find(x=>x.id===e.state.game);
+    if(g)open(g);
+  }
+});
+// 直リンク (#shogi など)
+if(location.hash){
+  const g=GAMES.find(x=>'#'+x.id===location.hash);
+  if(g)open(g);
+}
+</script>
+</body>
+</html>

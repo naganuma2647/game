@@ -30,16 +30,28 @@
     [WHITE]: { type: "cpu", level: "3" },
   };
 
+  // Online session: null for local play, else { myColor, send(msg) }.
+  let online = null;
+
   let board, current, busy, gameOver, lastMove;
   let history = [];
   const cells = [];
 
   const colorName = (p) => (p === BLACK ? "黒" : "白");
-  const isCpu = (p) => players[p].type === "cpu";
+  const isCpu = (p) => !online && players[p].type === "cpu";
   const isCpuTurn = () => !gameOver && isCpu(current);
-  const isHumanTurn = () => !busy && !gameOver && !isCpu(current);
+  // Can the local human act right now?
+  const isHumanTurn = () => {
+    if (busy || gameOver) return false;
+    if (online) return current === online.myColor;
+    return !isCpu(current);
+  };
 
   function playerLabel(p) {
+    if (online) {
+      const mine = p === online.myColor ? "あなた" : "相手";
+      return `${colorName(p)}（${mine}）`;
+    }
     if (players[p].type === "human") return `${colorName(p)}（人間）`;
     return `${colorName(p)}（CPU・Lv${players[p].level} ${LEVEL_NAMES[players[p].level]}）`;
   }
@@ -54,16 +66,24 @@
   document.querySelectorAll('input[name="black-type"], input[name="white-type"]')
     .forEach((el) => el.addEventListener("change", syncLevels));
 
-  startBtn.addEventListener("click", () => {
-    players[BLACK].type = document.querySelector('input[name="black-type"]:checked').value;
-    players[WHITE].type = document.querySelector('input[name="white-type"]:checked').value;
-    players[BLACK].level = blackLevel.value;
-    players[WHITE].level = whiteLevel.value;
+  function enterGameScreen() {
     setupEl.hidden = true;
     gameEl.hidden = false;
     labelBlackEl.textContent = playerLabel(BLACK);
     labelWhiteEl.textContent = playerLabel(WHITE);
+    undoBtn.style.display = online ? "none" : "";
+    resetBtn.style.display = online ? "none" : "";
+    if (assistEl) assistEl.parentElement.style.display = online ? "none" : "";
     newGame();
+  }
+
+  startBtn.addEventListener("click", () => {
+    online = null;
+    players[BLACK].type = document.querySelector('input[name="black-type"]:checked').value;
+    players[WHITE].type = document.querySelector('input[name="white-type"]:checked').value;
+    players[BLACK].level = blackLevel.value;
+    players[WHITE].level = whiteLevel.value;
+    enterGameScreen();
   });
   backBtn.addEventListener("click", () => { gameEl.hidden = true; setupEl.hidden = false; });
 
@@ -114,7 +134,7 @@
 
   /* assist */
   function computeAssist() {
-    if (!assistEl.checked || !isHumanTurn()) return null;
+    if (online || !assistEl.checked || !isHumanTurn()) return null;
     const evals = AI.evaluateMoves(board, current);
     const map = new Map();
     for (const e of evals) map.set(e.row * SIZE + e.col, e.score);
@@ -163,16 +183,19 @@
     scoreWhiteEl.classList.toggle("active", !gameOver && current === WHITE);
     if (gameOver) {
       // message holds result
+    } else if (online) {
+      turnEl.textContent = current === online.myColor ? "あなたの番" : "相手の番";
     } else if (isCpuTurn()) {
       turnEl.textContent = `${colorName(current)}の番（CPU思考中…）`;
     } else {
       turnEl.textContent = `${colorName(current)}の番`;
     }
-    undoBtn.disabled = busy || history.length === 0;
+    undoBtn.disabled = busy || online || history.length === 0;
   }
 
   function onClick(r, c) {
     if (!isHumanTurn() || board[r][c] !== 0) return;
+    if (online) online.send({ t: "move", row: r, col: c });
     place(r, c);
   }
 
@@ -183,9 +206,12 @@
     if (AI.isWin(board, r, c, current)) {
       gameOver = true;
       render();
-      const who = players[current].type === "human" && !isCpu(current)
-        ? colorName(current) : colorName(current);
-      messageEl.textContent = `${colorName(current)}の勝ち！🎉（五目完成）`;
+      if (online) {
+        const won = current === online.myColor;
+        messageEl.textContent = won ? "あなたの勝ち！🎉（五目完成）" : "相手の勝ち…（五目完成）";
+      } else {
+        messageEl.textContent = `${colorName(current)}の勝ち！🎉（五目完成）`;
+      }
       return;
     }
     if (AI.isFull(board)) {
@@ -230,4 +256,22 @@
 
   buildGrid();
   syncLevels();
+
+  /* ---------- Online API (called by js/online.js) ---------- */
+  window.GomokuGame = {
+    startOnline(myColor, sendFn) {
+      online = { myColor, send: sendFn };
+      enterGameScreen();
+    },
+    remoteMove(r, c) {
+      if (!online || gameOver || board[r][c] !== 0) return;
+      place(r, c);
+    },
+    peerLeft() {
+      if (!online) return;
+      gameOver = true;
+      messageEl.textContent = "相手の接続が切れました。";
+      render();
+    },
+  };
 })();

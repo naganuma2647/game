@@ -15,9 +15,18 @@
     }
     h1 { text-align: center; letter-spacing: 0.15em; margin: 8px 0 6px; }
     .sub { text-align: center; opacity: 0.7; margin: 0 0 36px; font-size: 14px; }
+
+    /* Two columns: game list | online panel (横並び) */
+    .layout {
+      display: flex; gap: 22px; max-width: 1100px; margin: 0 auto;
+      align-items: flex-start;
+    }
+    .col-games { flex: 1 1 auto; }
+    .col-online { flex: 0 0 300px; }
+
     .grid {
-      display: grid; gap: 18px; max-width: 920px; margin: 0 auto;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      display: grid; gap: 18px;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     }
     .card {
       display: flex; flex-direction: column;
@@ -40,71 +49,116 @@
       padding: 4px 10px; border-radius: 999px;
       background: rgba(108,208,138,0.18); color: #8fe3a2;
     }
-    .card-online {
-      border-color: rgba(80, 150, 255, 0.45);
+
+    /* Online panel */
+    .online-panel {
       background: rgba(60, 110, 220, 0.12);
+      border: 1px solid rgba(80, 150, 255, 0.4);
+      border-radius: 16px; padding: 20px 18px;
+      position: sticky; top: 24px;
     }
-    .card-online:hover { background: rgba(60, 110, 220, 0.22); }
-    .card-online .tag { background: rgba(80, 150, 255, 0.2); color: #9cc4ff; }
-    .card.soon { cursor: default; opacity: 0.6; }
-    .card.soon:hover { transform: none; box-shadow: none; background: rgba(255,255,255,0.05); }
-    .card.soon .tag { background: rgba(255,255,255,0.12); color: #cdd6e4; }
+    .online-panel h2 {
+      margin: 0 0 4px; font-size: 18px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .online-panel .pdesc { font-size: 12px; opacity: 0.75; margin: 0 0 16px; line-height: 1.5; }
+    .online-link {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(80, 150, 255, 0.25);
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 10px;
+      text-decoration: none; color: inherit;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .online-link:hover { background: rgba(80, 150, 255, 0.18); transform: translateX(3px); }
+    .online-link .oi { font-size: 24px; }
+    .online-link .on { font-weight: 700; }
+    .online-link .od { font-size: 11px; opacity: 0.7; }
+    .online-note { font-size: 11px; opacity: 0.6; margin: 8px 2px 0; line-height: 1.5; }
+
     footer { text-align: center; margin-top: 40px; font-size: 12px; opacity: 0.5; }
+
+    @media (max-width: 760px) {
+      .layout { flex-direction: column; }
+      .col-online { flex: 1 1 auto; width: 100%; }
+      .online-panel { position: static; }
+    }
   </style>
 </head>
 <body>
   <h1>🎲 ゲーム一覧</h1>
   <p class="sub">遊びたいゲームを選んでください</p>
 
-  <div class="grid">
-    <a class="card" href="カタン/index.html">
-      <div class="icon">🌾</div>
-      <div class="name">カタン</div>
-      <div class="desc">資源を集めて開拓する人気ボードゲーム。</div>
-      <span class="tag">プレイする →</span>
-    </a>
+  <div class="layout">
+    <!-- 左：ゲーム一覧 -->
+    <div class="col-games">
+      <div class="grid">
+        <a class="card" href="カタン/index.html">
+          <div class="icon">🌾</div>
+          <div class="name">カタン</div>
+          <div class="desc">資源を集めて開拓する人気ボードゲーム。</div>
+          <span class="tag">プレイする →</span>
+        </a>
 
-    <a class="card" href="カルカソンヌ/index.html">
-      <div class="icon">🏰</div>
-      <div class="name">カルカソンヌ</div>
-      <div class="desc">タイル配置で街道や都市を作る陣取りゲーム。CPU対戦。</div>
-      <span class="tag">プレイする →</span>
-    </a>
+        <a class="card" href="カルカソンヌ/index.html">
+          <div class="icon">🏰</div>
+          <div class="name">カルカソンヌ</div>
+          <div class="desc">タイル配置で街道や都市を作る陣取りゲーム。CPU対戦。</div>
+          <span class="tag">プレイする →</span>
+        </a>
 
-    <a class="card" href="麻雀ゲーム/index.html">
-      <div class="icon">🀄</div>
-      <div class="name">麻雀</div>
-      <div class="desc">和了判定・点数計算つきの四人打ち麻雀。</div>
-      <span class="tag">プレイする →</span>
-    </a>
+        <a class="card" href="麻雀ゲーム/index.html">
+          <div class="icon">🀄</div>
+          <div class="name">麻雀</div>
+          <div class="desc">和了判定・点数計算つきの四人打ち麻雀。</div>
+          <span class="tag">プレイする →</span>
+        </a>
 
-    <a class="card" href="将棋ゲーム/index.html">
-      <div class="icon">♟️</div>
-      <div class="name">将棋</div>
-      <div class="desc">本将棋。成り・持ち駒・詰み判定。AIアシスタント＆一手戻る。</div>
-      <span class="tag">プレイする →</span>
-    </a>
+        <a class="card" href="将棋ゲーム/index.html">
+          <div class="icon">♟️</div>
+          <div class="name">将棋</div>
+          <div class="desc">本将棋。成り・持ち駒・詰み判定。AIアシスタント＆一手戻る。</div>
+          <span class="tag">プレイする →</span>
+        </a>
 
-    <a class="card" href="オセロ/index.html">
-      <div class="icon">⚫️</div>
-      <div class="name">オセロ</div>
-      <div class="desc">CPU 5段階・AIアシスタント付き。人間／CPUを自由に設定。</div>
-      <span class="tag">プレイする →</span>
-    </a>
+        <a class="card" href="オセロ/index.html">
+          <div class="icon">⚫️</div>
+          <div class="name">オセロ</div>
+          <div class="desc">CPU 5段階・AIアシスタント付き。人間／CPUを自由に設定。</div>
+          <span class="tag">プレイする →</span>
+        </a>
 
-    <a class="card" href="五目並べ/index.html">
-      <div class="icon">⭕️</div>
-      <div class="name">五目並べ</div>
-      <div class="desc">15路盤で先に五つ並べたら勝ち。CPU4段階・AIアシスタント付き。</div>
-      <span class="tag">プレイする →</span>
-    </a>
+        <a class="card" href="五目並べ/index.html">
+          <div class="icon">⭕️</div>
+          <div class="name">五目並べ</div>
+          <div class="desc">15路盤で先に五つ並べたら勝ち。CPU4段階・AIアシスタント付き。</div>
+          <span class="tag">プレイする →</span>
+        </a>
+      </div>
+    </div>
 
-    <a class="card card-online" href="オセロ/index.html?online=1">
-      <div class="icon">🌐</div>
-      <div class="name">オンライン対戦</div>
-      <div class="desc">5桁の部屋番号を共有して、離れた相手とオセロで対戦。</div>
-      <span class="tag">部屋を作る／参加する →</span>
-    </a>
+    <!-- 右：オンライン対戦 -->
+    <div class="col-online">
+      <div class="online-panel">
+        <h2>🌐 オンライン対戦</h2>
+        <p class="pdesc">5桁の部屋番号を共有して、離れた相手と対戦できます。下から対戦したいゲームを選んでください。</p>
+
+        <a class="online-link" href="オセロ/index.html?online=1">
+          <span class="oi">⚫️</span>
+          <span><span class="on">オセロ</span><br><span class="od">部屋を作る／参加する</span></span>
+        </a>
+        <a class="online-link" href="五目並べ/index.html?online=1">
+          <span class="oi">⭕️</span>
+          <span><span class="on">五目並べ</span><br><span class="od">部屋を作る／参加する</span></span>
+        </a>
+        <a class="online-link" href="将棋ゲーム/index.html?online=1">
+          <span class="oi">♟️</span>
+          <span><span class="on">将棋</span><br><span class="od">部屋を作る／参加する</span></span>
+        </a>
+
+        <p class="online-note">※ 2人で同じ部屋番号を使います。部屋を作る側が先手、参加する側が後手です。</p>
+      </div>
+    </div>
   </div>
 
   <footer>クリックで各ゲームが開きます</footer>

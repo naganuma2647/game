@@ -47,7 +47,41 @@
         </div>
       </div>
       <button id="start" class="btn btn-primary">対戦開始</button>
+      <div class="online-entry">
+        <button id="online-btn" class="btn btn-online">🌐 オンラインで対戦（部屋番号）</button>
+      </div>
     </section>
+
+    <!-- オンライン対戦ロビー -->
+    <div id="online-lobby" class="overlay" hidden>
+      <div class="lobby-card">
+        <button id="lobby-close" class="lobby-close" aria-label="閉じる">×</button>
+        <h2>オンライン対戦</h2>
+        <p class="lobby-note">2人で同じ部屋番号を共有して対戦します。<br>部屋を作る側は<b>黒（先手）</b>、参加する側は<b>白（後手）</b>です。</p>
+
+        <div class="lobby-section">
+          <h3>部屋を作る</h3>
+          <button id="create-room" class="btn btn-primary">部屋を作成</button>
+          <div id="room-code-box" class="room-code-box" hidden>
+            <span class="rc-label">部屋番号</span>
+            <span id="room-code" class="room-code">-----</span>
+            <button id="copy-code" class="btn btn-small">コピー</button>
+          </div>
+        </div>
+
+        <div class="lobby-divider">または</div>
+
+        <div class="lobby-section">
+          <h3>部屋に参加する</h3>
+          <div class="join-row">
+            <input id="join-code" class="join-input" maxlength="5" placeholder="5桁の番号" inputmode="numeric" pattern="\d*" autocomplete="off">
+            <button id="join-room" class="btn btn-primary">参加</button>
+          </div>
+        </div>
+
+        <p id="online-status" class="online-status"></p>
+      </div>
+    </div>
 
     <!-- ゲーム -->
     <section id="game" class="game" hidden>
@@ -81,7 +115,9 @@
     </section>
   </div>
 
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/online.js"></script>
 </body>
 </html>

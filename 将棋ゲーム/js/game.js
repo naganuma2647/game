@@ -45,6 +45,9 @@
     [GOTE]: { type: "cpu", level: "2" },
   };
 
+  // Online session: null for local play, else { myColor, send(msg) }.
+  let online = null;
+
   let state, busy, gameOver, lastMove;
   let history = [];
   let sel = null;        // { kind:'board', r, c } | { kind:'hand', type, owner }
@@ -54,9 +57,13 @@
   let bestMove = null;    // recommended move for the side to move
   const cells = [];
 
-  const isHumanTurn = () =>
-    !busy && !gameOver && players[state.turn].type === "human";
-  const isCpu = (o) => players[o].type === "cpu";
+  // Can the local human act now? (online: only on my color's turn)
+  const isHumanTurn = () => {
+    if (busy || gameOver) return false;
+    if (online) return state.turn === online.myColor;
+    return players[state.turn].type === "human";
+  };
+  const isCpu = (o) => !online && players[o].type === "cpu";
 
   /* ---------- setup ---------- */
 
@@ -69,14 +76,23 @@
   document.querySelectorAll('input[name="sente-type"], input[name="gote-type"]')
     .forEach((el) => el.addEventListener("change", syncLevels));
 
+  function enterGameScreen() {
+    setupEl.hidden = true;
+    gameEl.hidden = false;
+    undoBtn.style.display = online ? "none" : "";
+    resetBtn.style.display = online ? "none" : "";
+    backBtn.style.display = online ? "none" : "";
+    if (assistEl) assistEl.parentElement.style.display = online ? "none" : "";
+    newGame();
+  }
+
   startBtn.addEventListener("click", () => {
+    online = null;
     players[SENTE].type = document.querySelector('input[name="sente-type"]:checked').value;
     players[GOTE].type = document.querySelector('input[name="gote-type"]:checked').value;
     players[SENTE].level = senteLevel.value;
     players[GOTE].level = goteLevel.value;
-    setupEl.hidden = true;
-    gameEl.hidden = false;
-    newGame();
+    enterGameScreen();
   });
   backBtn.addEventListener("click", () => {
     gameEl.hidden = true;
@@ -122,7 +138,7 @@
   /* ---------- AI assistant ---------- */
 
   function ensureAssist() {
-    if (!assistEl.checked || !isHumanTurn()) { assistEvals = null; bestMove = null; return; }
+    if (online || !assistEl.checked || !isHumanTurn()) { assistEvals = null; bestMove = null; return; }
     if (assistEvals) return; // cached for this position
     assistEvals = AI.evaluateMoves(state, ASSIST_DEPTH);
     let best = null, bs = -Infinity;
@@ -263,8 +279,13 @@
 
   function renderTurn() {
     if (gameOver) { turnEl.textContent = "対局終了"; return; }
-    let txt = `${sideName(state.turn)}番`;
-    if (isCpu(state.turn) && busy) txt += "（CPU思考中…）";
+    let txt;
+    if (online) {
+      txt = state.turn === online.myColor ? "あなたの番" : "相手の番";
+    } else {
+      txt = `${sideName(state.turn)}番`;
+      if (isCpu(state.turn) && busy) txt += "（CPU思考中…）";
+    }
     if (S.inCheck(state.board, state.turn)) {
       turnEl.innerHTML = `${txt} <span class="check">王手！</span>`;
     } else {
@@ -321,11 +342,15 @@
     let promote = false;
     if (detail.mustPromote) promote = true;
     else if (detail.canPromote) promote = await askPromotion();
-    doMove({ from: [sel.r, sel.c], to: [r, c], promote, drop: null });
+    const move = { from: [sel.r, sel.c], to: [r, c], promote, drop: null };
+    if (online) online.send({ t: "move", move });
+    doMove(move);
   }
 
   function executeDrop(r, c) {
-    doMove({ from: null, to: [r, c], promote: false, drop: sel.type });
+    const move = { from: null, to: [r, c], promote: false, drop: sel.type };
+    if (online) online.send({ t: "move", move });
+    doMove(move);
   }
 
   /* ---------- promotion dialog ---------- */
@@ -358,9 +383,15 @@
       const loser = state.turn;
       const winner = S.opp(loser);
       const checked = S.inCheck(state.board, loser);
-      messageEl.textContent = checked
-        ? `詰み！ ${sideName(winner)}の勝ち`
-        : `${sideName(winner)}の勝ち（${sideName(loser)}は指せる手がありません）`;
+      if (online) {
+        const youWin = winner === online.myColor;
+        const head = checked ? "詰み！ " : "";
+        messageEl.textContent = head + (youWin ? "あなたの勝ち🎉" : "相手の勝ち…");
+      } else {
+        messageEl.textContent = checked
+          ? `詰み！ ${sideName(winner)}の勝ち`
+          : `${sideName(winner)}の勝ち（${sideName(loser)}は指せる手がありません）`;
+      }
     }
     render();
     if (!gameOver) maybeCpu();
@@ -404,4 +435,23 @@
 
   buildGrid();
   syncLevels();
+
+  /* ---------- Online API (called by js/online.js) ---------- */
+  window.ShogiGame = {
+    // myColor: 0 (host=sente) or 1 (guest=gote).
+    startOnline(myColor, sendFn) {
+      online = { myColor, send: sendFn };
+      enterGameScreen();
+    },
+    remoteMove(move) {
+      if (!online || gameOver) return;
+      doMove(move);
+    },
+    peerLeft() {
+      if (!online) return;
+      gameOver = true;
+      messageEl.textContent = "相手の接続が切れました。";
+      render();
+    },
+  };
 })();
