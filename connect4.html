@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>コネクトフォー</title>
+<style>
+:root{
+  --bg:#101321;
+  --frame:#1F3A8F;
+  --frame-dk:#162A6B;
+  --hole:#0B0E1A;
+  --red:#E04A3A;
+  --red-dk:#9C2A1E;
+  --yel:#F0B428;
+  --yel-dk:#B07E10;
+  --txt:#E8EAF2;
+  --sub:#828AA5;
+  --gold:#D9B44A;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:16px 10px 32px;
+}
+h1{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:24px;font-weight:600;letter-spacing:.35em;text-indent:.35em;margin:4px 0 2px;
+}
+.sub{font-size:10.5px;color:var(--sub);letter-spacing:.25em;margin-bottom:12px}
+.modes{display:flex;gap:8px;margin-bottom:12px}
+.modes button{
+  background:transparent;border:1px solid #303a5e;color:var(--sub);
+  padding:7px 13px;border-radius:18px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:all .2s;
+}
+.modes button.on{border-color:var(--gold);color:var(--gold)}
+
+.status{display:flex;align-items:center;gap:9px;margin:2px 0 10px;font-size:14px;min-height:24px}
+.dot{width:17px;height:17px;border-radius:50%}
+.dot.r{background:radial-gradient(circle at 35% 30%,#f08a76,var(--red-dk))}
+.dot.y{background:radial-gradient(circle at 35% 30%,#ffd970,var(--yel-dk))}
+
+.bwrap{
+  padding:6px;border-radius:14px;
+  background:linear-gradient(160deg,#23335f,#121b3a);
+  box-shadow:0 16px 48px rgba(0,0,0,.6);
+}
+svg{display:block;width:min(96vw,440px);height:auto}
+.col{fill:transparent;cursor:pointer}
+.col:hover{fill:rgba(217,180,74,.08)}
+.disc{transition:transform .07s}
+.win-ring{fill:none;stroke:var(--gold);stroke-width:4;pointer-events:none}
+
+.msg{min-height:22px;font-size:13.5px;color:var(--gold);letter-spacing:.06em;margin-top:12px;text-align:center}
+.foot{display:flex;gap:10px;margin-top:10px}
+.foot button{
+  background:transparent;border:1px solid #303a5e;color:var(--txt);
+  padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;
+}
+.foot button:hover{border-color:var(--gold)}
+.foot button:disabled{opacity:.35}
+
+.overlay{
+  position:fixed;inset:0;background:rgba(7,9,16,.84);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .35s;z-index:20;
+}
+.overlay.show{opacity:1;pointer-events:auto}
+.card{
+  background:#171D33;border:1px solid var(--gold);border-radius:10px;
+  padding:28px 42px;text-align:center;
+}
+.card .t{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:27px;letter-spacing:.22em;text-indent:.22em;color:var(--gold);margin-bottom:8px;
+}
+.card .s{font-size:13px;color:var(--sub);margin-bottom:18px}
+.card button{
+  background:var(--gold);border:none;color:#171D33;padding:9px 26px;
+  border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<a href="index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
+<h1>コネクトフォー</h1>
+<div class="sub">CONNECT FOUR — 縦・横・斜めに4つ並べる</div>
+
+<div class="modes" id="modes">
+  <button data-m="cpu1" class="on">CPU 弱</button>
+  <button data-m="cpu2">CPU 強</button>
+  <button data-m="pvp">2人対戦</button>
+</div>
+
+<div class="status"><div class="dot r" id="tdot"></div><span id="tlabel">赤の番です</span></div>
+
+<div class="bwrap"><svg id="bd"></svg></div>
+
+<div class="msg" id="msg"></div>
+<div class="foot">
+  <button id="undo">待った</button>
+  <button id="reset">最初から</button>
+</div>
+
+<div class="overlay" id="gov">
+  <div class="card">
+    <div class="t" id="g-t">勝利</div>
+    <div class="s" id="g-s"></div>
+    <button id="g-again">もう一度</button>
+  </div>
+</div>
+
+<script>
+const COLS=7,ROWS=6;
+let board,turn,mode='cpu1',history=[],over=false,busy=false,winCells=[];
+
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('bd');
+const CELL=58,PAD=10;
+const W=COLS*CELL+PAD*2,H=ROWS*CELL+PAD*2;
+svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+
+const idx=(r,c)=>r*COLS+c;
+const cx=c=>PAD+c*CELL+CELL/2;
+const cy=r=>PAD+r*CELL+CELL/2;
+
+let discLayer,ringLayer;
+(function build(){
+  const defs=document.createElementNS(NS,'defs');
+  defs.innerHTML=`
+  <radialGradient id="dr" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#f08a76"/><stop offset="1" stop-color="var(--red-dk)"/></radialGradient>
+  <radialGradient id="dy" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#ffd970"/><stop offset="1" stop-color="var(--yel-dk)"/></radialGradient>
+  <mask id="holes">
+    <rect width="${W}" height="${H}" fill="#fff"/>
+    ${Array.from({length:ROWS*COLS},(_,i)=>{
+      const r=Math.floor(i/COLS),c=i%COLS;
+      return `<circle cx="${cx(c)}" cy="${cy(r)}" r="${CELL*.40}" fill="#000"/>`;
+    }).join('')}
+  </mask>`;
+  svg.appendChild(defs);
+
+  // 背面(穴の奥)
+  const back=document.createElementNS(NS,'rect');
+  back.setAttribute('width',W);back.setAttribute('height',H);
+  back.setAttribute('fill','var(--hole)');back.setAttribute('rx',12);
+  svg.appendChild(back);
+
+  // ディスク層(フレームの後ろ)
+  discLayer=document.createElementNS(NS,'g');
+  svg.appendChild(discLayer);
+
+  // フレーム(穴あき)
+  const fr=document.createElementNS(NS,'rect');
+  fr.setAttribute('width',W);fr.setAttribute('height',H);
+  fr.setAttribute('fill','var(--frame)');fr.setAttribute('rx',12);
+  fr.setAttribute('mask','url(#holes)');
+  fr.setAttribute('pointer-events','none');
+  svg.appendChild(fr);
+
+  ringLayer=document.createElementNS(NS,'g');
+  svg.appendChild(ringLayer);
+
+  // 列クリック領域
+  for(let c=0;c<COLS;c++){
+    const rc=document.createElementNS(NS,'rect');
+    rc.setAttribute('x',PAD+c*CELL);rc.setAttribute('y',0);
+    rc.setAttribute('width',CELL);rc.setAttribute('height',H);
+    rc.setAttribute('class','col');
+    rc.addEventListener('click',()=>onCol(c));
+    svg.appendChild(rc);
+  }
+})();
+
+function init(){
+  board=new Array(ROWS*COLS).fill(0);
+  turn=1;history=[];over=false;busy=false;winCells=[];
+  discLayer.innerHTML='';ringLayer.innerHTML='';
+  document.getElementById('gov').classList.remove('show');
+  updateStatus();
+  document.getElementById('msg').textContent='';
+  document.getElementById('undo').disabled=true;
+  if(mode!=='pvp'&&Math.random()<.5){turn=2;updateStatus();busy=true;setTimeout(()=>{const c=cpuMove();busy=false;const r=dropRow(board,c);history.push({bd:board.slice(),turn});play(c,r);},420);}
+}
+
+function updateStatus(){
+  document.getElementById('tdot').className='dot '+(turn===1?'r':'y');
+  document.getElementById('tlabel').textContent=(turn===1?'赤':'黄')+'の番です';
+}
+
+function dropRow(bd,c){
+  for(let r=ROWS-1;r>=0;r--)if(bd[idx(r,c)]===0)return r;
+  return -1;
+}
+
+function checkWin(bd,p){
+  const dirs=[[0,1],[1,0],[1,1],[1,-1]];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    if(bd[idx(r,c)]!==p)continue;
+    for(const[dr,dc]of dirs){
+      const cells=[idx(r,c)];
+      let nr=r+dr,nc=c+dc;
+      while(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&bd[idx(nr,nc)]===p){
+        cells.push(idx(nr,nc));
+        if(cells.length===4)return cells;
+        nr+=dr;nc+=dc;
+      }
+    }
+  }
+  return null;
+}
+
+const isHuman=()=>mode==='pvp'||turn===1;
+
+function onCol(c){
+  if(over||busy||!isHuman())return;
+  const r=dropRow(board,c);
+  if(r<0)return;
+  history.push({bd:board.slice(),turn});
+  play(c,r);
+}
+
+function play(c,r){
+  busy=true;
+  const p=turn;
+  board[idx(r,c)]=p;
+  // 落下アニメーション
+  const g=document.createElementNS(NS,'g');
+  g.setAttribute('class','disc');
+  const d=document.createElementNS(NS,'circle');
+  d.setAttribute('cx',cx(c));d.setAttribute('cy',cy(r));
+  d.setAttribute('r',CELL*.40);
+  d.setAttribute('fill',p===1?'url(#dr)':'url(#dy)');
+  g.appendChild(d);
+  g.dataset.cell=idx(r,c);
+  const dist=cy(r)+CELL;
+  g.style.transform=`translateY(${-dist}px)`;
+  discLayer.appendChild(g);
+  const dur=Math.max(.18,.07*(r+1));
+  requestAnimationFrame(()=>{
+    g.style.transition=`transform ${dur}s cubic-bezier(.55,0,1,.85)`;
+    g.style.transform='translateY(0)';
+  });
+  setTimeout(()=>afterDrop(p),dur*1000+60);
+}
+
+function afterDrop(p){
+  const win=checkWin(board,p);
+  if(win){
+    over=true;busy=false;winCells=win;
+    for(const i of win){
+      const r=Math.floor(i/COLS),c=i%COLS;
+      const ring=document.createElementNS(NS,'circle');
+      ring.setAttribute('cx',cx(c));ring.setAttribute('cy',cy(r));
+      ring.setAttribute('r',CELL*.40);
+      ring.setAttribute('class','win-ring');
+      ringLayer.appendChild(ring);
+    }
+    const t=document.getElementById('g-t');
+    if(mode==='pvp')t.textContent=p===1?'赤の勝ち':'黄の勝ち';
+    else t.textContent=p===1?'勝利':'敗北';
+    document.getElementById('g-s').textContent=`${history.length+1}手で決着`;
+    document.getElementById('msg').textContent='対局終了';
+    document.getElementById('undo').disabled=false;
+    setTimeout(()=>document.getElementById('gov').classList.add('show'),650);
+    return;
+  }
+  if(board.every(v=>v!==0)){
+    over=true;busy=false;
+    document.getElementById('g-t').textContent='引き分け';
+    document.getElementById('g-s').textContent='盤面が埋まりました';
+    setTimeout(()=>document.getElementById('gov').classList.add('show'),500);
+    return;
+  }
+  turn=3-turn;busy=false;
+  updateStatus();
+  document.getElementById('undo').disabled=!history.length;
+  if(!isHuman()){
+    busy=true;
+    setTimeout(()=>{
+      const c=cpuMove();
+      busy=false;
+      const r=dropRow(board,c);
+      history.push({bd:board.slice(),turn});
+      play(c,r);
+    },420);
+  }
+}
+
+/* ============ CPU ============ */
+const ORDER=[3,2,4,1,5,0,6];
+
+function winsAt(bd,c,p){
+  const r=dropRow(bd,c);
+  if(r<0)return false;
+  bd[idx(r,c)]=p;
+  const w=checkWin(bd,p);
+  bd[idx(r,c)]=0;
+  return!!w;
+}
+
+function evalBd(bd,me){
+  // 4マス窓の評価
+  const opp=3-me;
+  let s=0;
+  const line=(a,b,c,d)=>{
+    const v=[bd[a],bd[b],bd[c],bd[d]];
+    const m=v.filter(x=>x===me).length,o=v.filter(x=>x===opp).length;
+    if(m&&o)return 0;
+    if(m===3)return 60;if(m===2)return 8;if(m===1)return 1;
+    if(o===3)return -70;if(o===2)return -9;if(o===1)return -1;
+    return 0;
+  };
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    if(c+3<COLS)s+=line(idx(r,c),idx(r,c+1),idx(r,c+2),idx(r,c+3));
+    if(r+3<ROWS)s+=line(idx(r,c),idx(r+1,c),idx(r+2,c),idx(r+3,c));
+    if(r+3<ROWS&&c+3<COLS)s+=line(idx(r,c),idx(r+1,c+1),idx(r+2,c+2),idx(r+3,c+3));
+    if(r+3<ROWS&&c-3>=0)s+=line(idx(r,c),idx(r+1,c-1),idx(r+2,c-2),idx(r+3,c-3));
+  }
+  // 中央列ボーナス
+  for(let r=0;r<ROWS;r++)if(bd[idx(r,3)]===me)s+=4;else if(bd[idx(r,3)]===opp)s-=4;
+  return s;
+}
+
+function negamax(bd,p,depth,a,b,me){
+  for(const c of ORDER){
+    if(winsAt(bd,c,p))return 100000+depth;
+  }
+  if(depth===0)return p===me?evalBd(bd,me):-evalBd(bd,me);
+  let any=false,best=-Infinity;
+  for(const c of ORDER){
+    const r=dropRow(bd,c);
+    if(r<0)continue;
+    any=true;
+    bd[idx(r,c)]=p;
+    const v=-negamax(bd,3-p,depth-1,-b,-a,me);
+    bd[idx(r,c)]=0;
+    if(v>best)best=v;
+    if(best>a)a=best;
+    if(a>=b)break;
+  }
+  if(!any)return 0; // 引き分け
+  return best;
+}
+
+function cpuMove(){
+  const me=turn,opp=3-me;
+  const legal=ORDER.filter(c=>dropRow(board,c)>=0);
+  // 即勝ち / 即ブロックは常に
+  for(const c of legal)if(winsAt(board,c,me))return c;
+  for(const c of legal)if(winsAt(board,c,opp))return c;
+  if(mode==='cpu1'){
+    // 弱: 中央寄りランダム(相手に勝ち筋を渡す手は半分回避)
+    const safe=legal.filter(c=>{
+      const r=dropRow(board,c);
+      board[idx(r,c)]=me;
+      const gives=legal.some(c2=>winsAt(board,c2,opp));
+      board[idx(r,c)]=0;
+      return!gives;
+    });
+    const pool=safe.length?safe:legal;
+    const wts=pool.map(c=>4-Math.abs(c-3)+1);
+    let t=wts.reduce((a,b)=>a+b,0)*Math.random();
+    for(let k=0;k<pool.length;k++){t-=wts[k];if(t<=0)return pool[k];}
+    return pool[0];
+  }
+  // 強: αβ探索 深さ9
+  let best=legal[0],bs=-Infinity;
+  for(const c of legal){
+    const r=dropRow(board,c);
+    board[idx(r,c)]=me;
+    const v=-negamax(board,opp,9,-Infinity,Infinity,me);
+    board[idx(r,c)]=0;
+    if(v>bs){bs=v;best=c;}
+  }
+  return best;
+}
+
+/* ============ controls ============ */
+function redraw(){
+  discLayer.innerHTML='';ringLayer.innerHTML='';
+  for(let i=0;i<ROWS*COLS;i++){
+    if(board[i]===0)continue;
+    const r=Math.floor(i/COLS),c=i%COLS;
+    const g=document.createElementNS(NS,'g');
+    const d=document.createElementNS(NS,'circle');
+    d.setAttribute('cx',cx(c));d.setAttribute('cy',cy(r));
+    d.setAttribute('r',CELL*.40);
+    d.setAttribute('fill',board[i]===1?'url(#dr)':'url(#dy)');
+    g.appendChild(d);
+    discLayer.appendChild(g);
+  }
+}
+
+document.getElementById('undo').addEventListener('click',()=>{
+  if(!history.length||busy)return;
+  let h=history.pop();
+  if(mode!=='pvp'){while(history.length&&h.turn!==1)h=history.pop();}
+  board=h.bd;turn=h.turn;over=false;
+  document.getElementById('gov').classList.remove('show');
+  redraw();updateStatus();
+  document.getElementById('msg').textContent='';
+  document.getElementById('undo').disabled=!history.length;
+});
+document.getElementById('reset').addEventListener('click',init);
+document.getElementById('g-again').addEventListener('click',init);
+document.getElementById('modes').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  mode=b.dataset.m;
+  document.querySelectorAll('#modes button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');init();
+});
+
+init();
+</script>
+</body>
+</html>

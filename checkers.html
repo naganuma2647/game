@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>チェッカー</title>
+<style>
+:root{
+  --bg:#1A1212;
+  --light:#E9D7B2;
+  --dark:#7A4A2B;
+  --frame:#3A241A;
+  --red:#C23B35;
+  --red-dk:#7E1F1B;
+  --blk:#33343C;
+  --blk-dk:#121318;
+  --txt:#EDE4D4;
+  --sub:#A2917D;
+  --gold:#D9A84A;
+  --sel:rgba(217,168,74,.85);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:16px 10px 32px;
+}
+h1{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:25px;font-weight:600;letter-spacing:.4em;text-indent:.4em;margin:4px 0 2px;
+}
+.sub{font-size:10.5px;color:var(--sub);letter-spacing:.22em;margin-bottom:12px}
+.modes{display:flex;gap:8px;margin-bottom:10px}
+.modes button{
+  background:transparent;border:1px solid #4a382c;color:var(--sub);
+  padding:7px 13px;border-radius:18px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:all .2s;
+}
+.modes button.on{border-color:var(--gold);color:var(--gold)}
+
+.status{
+  width:min(96vw,420px);display:flex;justify-content:space-between;align-items:center;
+  font-size:12.5px;color:var(--sub);margin-bottom:8px;padding:0 4px;
+}
+.status b{color:var(--txt);font-variant-numeric:tabular-nums}
+.status .turn{color:var(--gold)}
+
+.bwrap{
+  padding:9px;border-radius:10px;
+  background:linear-gradient(160deg,#42291a,#241409);
+  box-shadow:0 14px 44px rgba(0,0,0,.6);
+}
+svg{display:block;width:min(96vw,420px);height:auto}
+.sq{cursor:pointer}
+.pc{pointer-events:none}
+
+.msg{min-height:22px;font-size:13.5px;color:var(--gold);letter-spacing:.06em;margin-top:12px;text-align:center}
+.foot{display:flex;gap:10px;margin-top:10px}
+.foot button{
+  background:transparent;border:1px solid #4a382c;color:var(--txt);
+  padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;
+}
+.foot button:hover{border-color:var(--gold)}
+.foot button:disabled{opacity:.35}
+
+.overlay{
+  position:fixed;inset:0;background:rgba(12,7,5,.84);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .35s;z-index:20;
+}
+.overlay.show{opacity:1;pointer-events:auto}
+.card{
+  background:#251610;border:1px solid var(--gold);border-radius:10px;
+  padding:28px 42px;text-align:center;
+}
+.card .t{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:27px;letter-spacing:.22em;text-indent:.22em;color:var(--gold);margin-bottom:8px;
+}
+.card .s{font-size:13px;color:var(--sub);margin-bottom:18px}
+.card button{
+  background:var(--gold);border:none;color:#251610;padding:9px 26px;
+  border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<a href="index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
+<h1>チェッカー</h1>
+<div class="sub">CHECKERS — イングリッシュ・ドラフツ / 取れる時は必ず取る</div>
+
+<div class="modes" id="modes">
+  <button data-m="cpu1" class="on">CPU 弱</button>
+  <button data-m="cpu2">CPU 強</button>
+  <button data-m="pvp">2人対戦</button>
+</div>
+
+<div class="status">
+  <span>🔴 赤 残り <b id="n0">12</b></span>
+  <span class="turn" id="tlabel">赤の番です</span>
+  <span>⚫ 黒 残り <b id="n1">12</b></span>
+</div>
+
+<div class="bwrap"><svg id="bd"></svg></div>
+
+<div class="msg" id="msg"></div>
+<div class="foot">
+  <button id="undo">待った</button>
+  <button id="reset">最初から</button>
+</div>
+
+<div class="overlay" id="gov">
+  <div class="card">
+    <div class="t" id="g-t">勝利</div>
+    <div class="s" id="g-s"></div>
+    <button id="g-again">もう一度</button>
+  </div>
+</div>
+
+<script>
+/* ============ core ============ */
+/* board[64]: null | {o:0赤(下)/1黒(上), k:bool} */
+let board,turn,mode='cpu1',history=[],over=false,busy=false;
+let sel=null,chain=null,last=[-1,-1];
+
+const idx=(r,c)=>r*8+c;
+const inB=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
+
+function init(){
+  board=new Array(64).fill(null);
+  for(let r=0;r<3;r++)for(let c=0;c<8;c++)if((r+c)%2===1)board[idx(r,c)]={o:1,k:false};
+  for(let r=5;r<8;r++)for(let c=0;c<8;c++)if((r+c)%2===1)board[idx(r,c)]={o:0,k:false};
+  turn=0;history=[];over=false;busy=false;sel=null;chain=null;last=[-1,-1];
+  document.getElementById('gov').classList.remove('show');
+  render();
+  msg('赤の番です');
+  if(mode!=='pvp'&&Math.random()<.5){turn=1;busy=true;render();msg('黒(CPU)の番です');setTimeout(cpuTurn,520);}
+}
+
+function dirsOf(p){
+  if(p.k)return[[-1,-1],[-1,1],[1,-1],[1,1]];
+  return p.o===0?[[-1,-1],[-1,1]]:[[1,-1],[1,1]];
+}
+
+function jumpsFrom(bd,i){
+  const p=bd[i];if(!p)return[];
+  const r=Math.floor(i/8),c=i%8,out=[];
+  for(const[dr,dc]of dirsOf(p)){
+    const mr=r+dr,mc=c+dc,tr=r+2*dr,tc=c+2*dc;
+    if(!inB(tr,tc))continue;
+    const mid=bd[idx(mr,mc)];
+    if(mid&&mid.o!==p.o&&!bd[idx(tr,tc)])
+      out.push({to:idx(tr,tc),over:idx(mr,mc)});
+  }
+  return out;
+}
+function stepsFrom(bd,i){
+  const p=bd[i];if(!p)return[];
+  const r=Math.floor(i/8),c=i%8,out=[];
+  for(const[dr,dc]of dirsOf(p)){
+    const nr=r+dr,nc=c+dc;
+    if(inB(nr,nc)&&!bd[idx(nr,nc)])out.push({to:idx(nr,nc)});
+  }
+  return out;
+}
+
+function anyJump(bd,o){
+  for(let i=0;i<64;i++)if(bd[i]&&bd[i].o===o&&jumpsFrom(bd,i).length)return true;
+  return false;
+}
+
+/* 着手シーケンス列挙(探索用): {from, path:[to...], overs:[...], bd} */
+function genSeqs(bd,o){
+  const seqs=[];
+  const mustJump=anyJump(bd,o);
+  for(let i=0;i<64;i++){
+    const p=bd[i];
+    if(!p||p.o!==o)continue;
+    if(mustJump){
+      const rec=(b,pos,path,overs)=>{
+        const js=jumpsFrom(b,pos);
+        let ext=false;
+        for(const j of js){
+          const nb=b.map(x=>x?{...x}:null);
+          const pc=nb[pos];
+          nb[pos]=null;nb[j.over]=null;
+          let crowned=false;
+          const tr=Math.floor(j.to/8);
+          if(!pc.k&&((pc.o===0&&tr===0)||(pc.o===1&&tr===7))){nb[j.to]={o:pc.o,k:true};crowned=true;}
+          else nb[j.to]={...pc};
+          if(!crowned){
+            ext=true;
+            rec(nb,j.to,[...path,j.to],[...overs,j.over]);
+          }else{
+            seqs.push({from:i,path:[...path,j.to],overs:[...overs,j.over],bd:nb});
+            ext=true;
+          }
+        }
+        if(!ext&&path.length)seqs.push({from:i,path,overs,bd:b});
+      };
+      // recの末端処理: 上のロジックだと中間で続行可能でも末端だけ拾う形に修正
+      const rec2=(b,pos,path,overs)=>{
+        const js=jumpsFrom(b,pos);
+        if(!js.length){
+          if(path.length)seqs.push({from:i,path,overs,bd:b});
+          return;
+        }
+        for(const j of js){
+          const nb=b.map(x=>x?{...x}:null);
+          const pc=nb[pos];
+          nb[pos]=null;nb[j.over]=null;
+          const tr=Math.floor(j.to/8);
+          const crowned=!pc.k&&((pc.o===0&&tr===0)||(pc.o===1&&tr===7));
+          nb[j.to]={o:pc.o,k:pc.k||crowned};
+          if(crowned)seqs.push({from:i,path:[...path,j.to],overs:[...overs,j.over],bd:nb});
+          else rec2(nb,j.to,[...path,j.to],[...overs,j.over]);
+        }
+      };
+      rec2(bd,i,[],[]);
+    }else{
+      for(const s of stepsFrom(bd,i)){
+        const nb=bd.map(x=>x?{...x}:null);
+        const pc=nb[i];nb[i]=null;
+        const tr=Math.floor(s.to/8);
+        const crowned=!pc.k&&((pc.o===0&&tr===0)||(pc.o===1&&tr===7));
+        nb[s.to]={o:pc.o,k:pc.k||crowned};
+        seqs.push({from:i,path:[s.to],overs:[],bd:nb});
+      }
+    }
+  }
+  return seqs;
+}
+
+/* ============ UI ============ */
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('bd');
+const CELL=50,PAD=5;
+svg.setAttribute('viewBox',`0 0 ${CELL*8+PAD*2} ${CELL*8+PAD*2}`);
+let olEls=[],pcLayer;
+
+(function build(){
+  const defs=document.createElementNS(NS,'defs');
+  defs.innerHTML=`
+  <radialGradient id="pr" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#e9776f"/><stop offset="1" stop-color="var(--red-dk)"/></radialGradient>
+  <radialGradient id="pb" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#565862"/><stop offset="1" stop-color="var(--blk-dk)"/></radialGradient>`;
+  svg.appendChild(defs);
+  for(let i=0;i<64;i++){
+    const r=Math.floor(i/8),c=i%8;
+    const rc=document.createElementNS(NS,'rect');
+    rc.setAttribute('x',PAD+c*CELL);rc.setAttribute('y',PAD+r*CELL);
+    rc.setAttribute('width',CELL);rc.setAttribute('height',CELL);
+    rc.setAttribute('fill',(r+c)%2?'var(--dark)':'var(--light)');
+    rc.setAttribute('class','sq');
+    rc.addEventListener('click',()=>onSquare(i));
+    svg.appendChild(rc);
+  }
+  const ovG=document.createElementNS(NS,'g');
+  ovG.setAttribute('pointer-events','none');
+  svg.appendChild(ovG);
+  for(let i=0;i<64;i++){
+    const r=Math.floor(i/8),c=i%8;
+    const rc=document.createElementNS(NS,'rect');
+    rc.setAttribute('x',PAD+c*CELL);rc.setAttribute('y',PAD+r*CELL);
+    rc.setAttribute('width',CELL);rc.setAttribute('height',CELL);
+    rc.setAttribute('fill','transparent');
+    ovG.appendChild(rc);olEls[i]=rc;
+  }
+  pcLayer=document.createElementNS(NS,'g');
+  pcLayer.setAttribute('pointer-events','none');
+  svg.appendChild(pcLayer);
+})();
+
+function currentOptions(){
+  // chain中はその駒のジャンプのみ / 通常は強制取りを反映
+  if(chain)return jumpsFrom(board,chain).map(j=>({from:chain,...j,jump:true}));
+  const mustJump=anyJump(board,turn);
+  const out=[];
+  for(let i=0;i<64;i++){
+    const p=board[i];
+    if(!p||p.o!==turn)continue;
+    if(mustJump){
+      for(const j of jumpsFrom(board,i))out.push({from:i,...j,jump:true});
+    }else{
+      for(const s of stepsFrom(board,i))out.push({from:i,to:s.to,jump:false});
+    }
+  }
+  return out;
+}
+
+function render(){
+  pcLayer.innerHTML='';
+  const opts=(!over&&!busy&&isHuman())?currentOptions():[];
+  for(let i=0;i<64;i++){
+    let f='transparent';
+    if(i===last[0]||i===last[1])f='rgba(217,168,74,.25)';
+    olEls[i].setAttribute('fill',f);
+  }
+  if(sel!==null){
+    olEls[sel].setAttribute('fill','var(--sel)');
+    for(const o of opts.filter(o=>o.from===sel)){
+      olEls[o.to].setAttribute('fill',o.jump?'rgba(194,59,53,.45)':'rgba(217,168,74,.35)');
+    }
+  }else{
+    // 動かせる駒に印
+    const froms=new Set(opts.map(o=>o.from));
+    for(const i of froms){
+      const r=Math.floor(i/8),c=i%8;
+      const d=document.createElementNS(NS,'circle');
+      d.setAttribute('cx',PAD+c*CELL+CELL/2);
+      d.setAttribute('cy',PAD+r*CELL+8);
+      d.setAttribute('r',2.6);
+      d.setAttribute('fill','var(--gold)');
+      pcLayer.appendChild(d);
+    }
+  }
+  let n0=0,n1=0;
+  for(let i=0;i<64;i++){
+    const p=board[i];if(!p)continue;
+    p.o===0?n0++:n1++;
+    const r=Math.floor(i/8),c=i%8;
+    const cx=PAD+c*CELL+CELL/2,cy=PAD+r*CELL+CELL/2;
+    // 駒(積層感)
+    const base=document.createElementNS(NS,'circle');
+    base.setAttribute('cx',cx);base.setAttribute('cy',cy+2);
+    base.setAttribute('r',CELL*.38);
+    base.setAttribute('fill',p.o===0?'var(--red-dk)':'#000');
+    base.setAttribute('class','pc');
+    pcLayer.appendChild(base);
+    const top=document.createElementNS(NS,'circle');
+    top.setAttribute('cx',cx);top.setAttribute('cy',cy-1);
+    top.setAttribute('r',CELL*.38);
+    top.setAttribute('fill',p.o===0?'url(#pr)':'url(#pb)');
+    top.setAttribute('stroke','rgba(0,0,0,.45)');
+    top.setAttribute('stroke-width',1);
+    top.setAttribute('class','pc');
+    pcLayer.appendChild(top);
+    const ridge=document.createElementNS(NS,'circle');
+    ridge.setAttribute('cx',cx);ridge.setAttribute('cy',cy-1);
+    ridge.setAttribute('r',CELL*.27);
+    ridge.setAttribute('fill','none');
+    ridge.setAttribute('stroke','rgba(255,255,255,.22)');
+    ridge.setAttribute('stroke-width',1.4);
+    ridge.setAttribute('class','pc');
+    pcLayer.appendChild(ridge);
+    if(p.k){
+      const cr=document.createElementNS(NS,'text');
+      cr.setAttribute('x',cx);cr.setAttribute('y',cy+5);
+      cr.setAttribute('text-anchor','middle');
+      cr.setAttribute('font-size',15);
+      cr.setAttribute('fill','var(--gold)');
+      cr.setAttribute('class','pc');
+      cr.textContent='♛';
+      pcLayer.appendChild(cr);
+    }
+  }
+  document.getElementById('n0').textContent=n0;
+  document.getElementById('n1').textContent=n1;
+  document.getElementById('tlabel').textContent=over?'対局終了':(turn===0?'赤の番です':'黒の番です');
+  document.getElementById('undo').disabled=!history.length||busy||over||!!chain;
+}
+
+function msg(s){document.getElementById('msg').textContent=s;}
+const isHuman=()=>mode==='pvp'||turn===0;
+
+function onSquare(i){
+  if(over||busy||!isHuman())return;
+  const opts=currentOptions();
+  if(sel!==null){
+    const mv=opts.find(o=>o.from===sel&&o.to===i);
+    if(mv){
+      if(!chain)pushHistory();
+      execStep(mv);
+      return;
+    }
+  }
+  if(chain)return; // チェーン中は他の駒不可
+  const p=board[i];
+  if(p&&p.o===turn&&opts.some(o=>o.from===i)){sel=i;render();}
+  else{sel=null;render();}
+}
+
+function pushHistory(){
+  history.push({bd:board.map(p=>p?{...p}:null),turn,last:[...last]});
+  if(history.length>200)history.shift();
+}
+
+function execStep(mv){
+  const p=board[mv.from];
+  board[mv.from]=null;
+  if(mv.jump)board[mv.over]=null;
+  const tr=Math.floor(mv.to/8);
+  const crowned=!p.k&&((p.o===0&&tr===0)||(p.o===1&&tr===7));
+  board[mv.to]={o:p.o,k:p.k||crowned};
+  last=[mv.from,mv.to];
+  // 連続ジャンプ?
+  if(mv.jump&&!crowned&&jumpsFrom(board,mv.to).length){
+    chain=mv.to;sel=mv.to;
+    render();
+    msg('連続ジャンプ!続けて取ってください');
+    return;
+  }
+  chain=null;sel=null;
+  endTurnOrContinue(crowned);
+}
+
+function endTurnOrContinue(crowned){
+  turn=1-turn;
+  render();
+  const opts=currentOptions.call(null);
+  // 相手の合法手チェック(currentOptionsはhuman判定を含むため直接生成)
+  const seqs=genSeqs(board,turn);
+  if(seqs.length===0){
+    over=true;render();
+    const w=1-turn;
+    const t=document.getElementById('g-t');
+    if(mode==='pvp')t.textContent=w===0?'赤の勝ち':'黒の勝ち';
+    else t.textContent=w===0?'勝利':'敗北';
+    document.getElementById('g-s').textContent=turn===0?'赤は動けません':'黒は動けません';
+    msg('対局終了');
+    setTimeout(()=>document.getElementById('gov').classList.add('show'),500);
+    return;
+  }
+  msg((turn===0?'赤':'黒')+'の番です'+(crowned?'(キング誕生!)':'')+(anyJump(board,turn)?' — 取る手があります':''));
+  if(!isHuman()){
+    busy=true;render();
+    setTimeout(cpuTurn,520);
+  }
+}
+
+/* ============ CPU ============ */
+function evalBd(bd){
+  // 黒視点プラス
+  let s=0;
+  for(let i=0;i<64;i++){
+    const p=bd[i];if(!p)continue;
+    const r=Math.floor(i/8);
+    let v=p.k?160:100;
+    if(!p.k)v+=p.o===1?r*3:(7-r)*3; // 前進
+    // バックロー防衛
+    if(!p.k&&((p.o===1&&r===0)||(p.o===0&&r===7)))v+=6;
+    s+=p.o===1?v:-v;
+  }
+  return s;
+}
+
+function negamax(bd,o,depth,a,b){
+  const seqs=genSeqs(bd,o);
+  if(!seqs.length)return -50000-depth;
+  if(depth===0)return o===1?evalBd(bd):-evalBd(bd);
+  // ジャンプは延長気味に
+  let best=-Infinity;
+  seqs.sort((x,y)=>y.overs.length-x.overs.length);
+  for(const s of seqs){
+    const v=-negamax(s.bd,1-o,depth-1,-b,-a);
+    if(v>best)best=v;
+    if(best>a)a=best;
+    if(a>=b)break;
+  }
+  return best;
+}
+
+function cpuTurn(){
+  const seqs=genSeqs(board,turn);
+  let pick;
+  if(mode==='cpu1'){
+    seqs.sort((x,y)=>y.overs.length-x.overs.length);
+    const maxCap=seqs[0].overs.length;
+    const pool=maxCap>0?seqs.filter(s=>s.overs.length===maxCap):seqs;
+    pick=pool[Math.floor(Math.random()*pool.length)];
+  }else{
+    let bs=-Infinity;
+    for(const s of seqs){
+      const v=-negamax(s.bd,1-turn,7,-Infinity,Infinity)+Math.random()*4;
+      if(v>bs){bs=v;pick=s;}
+    }
+  }
+  // シーケンスを1ステップずつ再生
+  pushHistory();
+  let pos=pick.from,k=0;
+  function step(){
+    if(k>=pick.path.length){
+      busy=false;chain=null;sel=null;
+      endTurnOrContinue(false);
+      return;
+    }
+    const to=pick.path[k],over_=pick.overs[k];
+    const p=board[pos];
+    board[pos]=null;
+    if(over_!==undefined&&over_!==null&&pick.overs.length>k)board[pick.overs[k]]=null;
+    const tr=Math.floor(to/8);
+    const crowned=!p.k&&((p.o===0&&tr===0)||(p.o===1&&tr===7));
+    board[to]={o:p.o,k:p.k||crowned};
+    last=[pos,to];
+    pos=to;k++;
+    render();
+    setTimeout(step,380);
+  }
+  step();
+}
+
+/* ============ controls ============ */
+document.getElementById('undo').addEventListener('click',()=>{
+  if(!history.length||busy||chain)return;
+  let h=history.pop();
+  if(mode!=='pvp'){while(history.length&&h.turn!==0)h=history.pop();}
+  board=h.bd;turn=h.turn;last=h.last;over=false;sel=null;chain=null;
+  document.getElementById('gov').classList.remove('show');
+  render();
+  msg((turn===0?'赤':'黒')+'の番です');
+});
+document.getElementById('reset').addEventListener('click',init);
+document.getElementById('g-again').addEventListener('click',init);
+document.getElementById('modes').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  mode=b.dataset.m;
+  document.querySelectorAll('#modes button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');init();
+});
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>囲碁</title>
+<style>
+:root{
+  --bg:#191511;
+  --board:#E3B765;
+  --grid:#4A381E;
+  --txt:#EAE3D4;
+  --sub:#9C927E;
+  --gold:#C9A227;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:14px 8px 30px;
+}
+h1{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:26px;font-weight:600;letter-spacing:.5em;text-indent:.5em;margin:2px 0;
+}
+.sub{font-size:10.5px;color:var(--sub);letter-spacing:.25em;margin-bottom:10px}
+.row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;justify-content:center}
+.row button{
+  background:transparent;border:1px solid #44392a;color:var(--sub);
+  padding:6px 12px;border-radius:18px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .2s;
+}
+.row button.on{border-color:var(--gold);color:var(--gold)}
+
+.score{
+  width:min(96vw,440px);display:flex;justify-content:space-between;align-items:center;
+  font-size:12.5px;color:var(--sub);margin:4px 0 8px;padding:0 4px;
+}
+.score b{color:var(--txt);font-variant-numeric:tabular-nums}
+.score .turnmark{color:var(--gold)}
+
+.bwrap{
+  padding:8px;border-radius:8px;
+  background:linear-gradient(160deg,#3a2c16,#231807);
+  box-shadow:0 14px 44px rgba(0,0,0,.6);
+}
+svg{display:block;width:min(96vw,440px);height:auto}
+.cell{fill:transparent;cursor:pointer}
+.stone{pointer-events:none}
+.stone.dead{opacity:.35}
+.terr{pointer-events:none}
+
+.msg{min-height:22px;font-size:13.5px;color:var(--gold);letter-spacing:.06em;margin:10px 0 0;text-align:center}
+.foot{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;justify-content:center}
+.foot button{
+  background:transparent;border:1px solid #44392a;color:var(--txt);
+  padding:8px 15px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;
+}
+.foot button:hover{border-color:var(--gold)}
+.foot button:disabled{opacity:.35}
+.foot button.primary{background:var(--gold);color:#231807;border-color:var(--gold);font-weight:600}
+
+.overlay{
+  position:fixed;inset:0;background:rgba(12,9,4,.84);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .35s;z-index:20;
+}
+.overlay.show{opacity:1;pointer-events:auto}
+.card{
+  background:#241B0E;border:1px solid var(--gold);border-radius:10px;
+  padding:28px 42px;text-align:center;
+}
+.card .t{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:26px;letter-spacing:.2em;text-indent:.2em;color:var(--gold);margin-bottom:8px;
+}
+.card .s{font-size:13.5px;color:var(--txt);margin-bottom:18px;line-height:1.8;font-variant-numeric:tabular-nums}
+.card button{
+  background:var(--gold);border:none;color:#241B0E;padding:9px 26px;
+  border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<a href="index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
+<h1>囲碁</h1>
+<div class="sub">GO — あなたは黒(先番)・中国ルール コミ7目半</div>
+
+<div class="row" id="modes">
+  <button data-m="cpu1" class="on">CPU 弱</button>
+  <button data-m="cpu2">CPU 強</button>
+  <button data-m="pvp">2人対戦</button>
+</div>
+<div class="row" id="sizes">
+  <button data-s="9" class="on">9路</button>
+  <button data-s="13">13路</button>
+  <button data-s="19">19路</button>
+</div>
+
+<div class="score">
+  <span>● 黒 アゲハマ <b id="cap0">0</b></span>
+  <span id="tm" class="turnmark">● 黒番</span>
+  <span>○ 白 アゲハマ <b id="cap1">0</b></span>
+</div>
+
+<div class="bwrap"><svg id="bd"></svg></div>
+
+<div class="msg" id="msg">黒の番です</div>
+<div class="foot" id="foot">
+  <button id="pass">パス</button>
+  <button id="undo">待った</button>
+  <button id="reset">最初から</button>
+</div>
+<div class="foot" id="scorefoot" style="display:none">
+  <button id="sc-done" class="primary">これで終局</button>
+  <button id="sc-resume">対局に戻る</button>
+</div>
+
+<div class="overlay" id="gov">
+  <div class="card">
+    <div class="t" id="g-t">終局</div>
+    <div class="s" id="g-s"></div>
+    <button id="g-again">もう一度</button>
+  </div>
+</div>
+
+<script>
+/* ============ state ============ */
+let N=9,mode='cpu1';
+let board,turn,capt,history,posSet,passes,moveCount,lastIdx,over,busy,scoring,deadSet;
+const KOMI=7.5;
+
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('bd');
+let stoneLayer,terrLayer,cellEls=[];
+let CELL,PAD;
+
+const idx=(r,c)=>r*N+c;
+function nbrs(i){
+  const r=Math.floor(i/N),c=i%N,o=[];
+  if(r>0)o.push(i-N);if(r<N-1)o.push(i+N);
+  if(c>0)o.push(i-1);if(c<N-1)o.push(i+1);
+  return o;
+}
+
+/* ============ rules ============ */
+function group(bd,i){
+  const col=bd[i],st=[i],seen=new Set([i]),libs=new Set();
+  while(st.length){
+    const j=st.pop();
+    for(const k of nbrs(j)){
+      if(bd[k]===0)libs.add(k);
+      else if(bd[k]===col&&!seen.has(k)){seen.add(k);st.push(k);}
+    }
+  }
+  return{stones:[...seen],libs};
+}
+
+// 着手を試す: {ok, bd, caps}
+function tryPlay(bd,i,col){
+  if(bd[i]!==0)return{ok:false};
+  const nb=bd.slice();
+  nb[i]=col;
+  const opp=3-col;
+  let caps=0;
+  for(const k of nbrs(i)){
+    if(nb[k]===opp){
+      const g=group(nb,k);
+      if(g.libs.size===0){
+        for(const s of g.stones)nb[s]=0;
+        caps+=g.stones.length;
+      }
+    }
+  }
+  const my=group(nb,i);
+  if(my.libs.size===0)return{ok:false}; // 自殺手
+  return{ok:true,bd:nb,caps};
+}
+
+function legalAt(i,col){
+  const r=tryPlay(board,i,col);
+  if(!r.ok)return null;
+  const key=r.bd.join('');
+  if(posSet.has(key))return null; // コウ(positional superko)
+  return r;
+}
+
+/* ============ init / render ============ */
+function starPoints(){
+  if(N===9)return[[2,2],[2,6],[6,2],[6,6],[4,4]];
+  if(N===13)return[[3,3],[3,9],[9,3],[9,9],[6,6]];
+  return[[3,3],[3,9],[3,15],[9,3],[9,9],[9,15],[15,3],[15,9],[15,15]];
+}
+
+function buildBoard(){
+  svg.innerHTML='';cellEls=[];
+  CELL=N===9?46:N===13?32:22;
+  PAD=CELL*.75;
+  const S=CELL*(N-1)+PAD*2;
+  svg.setAttribute('viewBox',`0 0 ${S} ${S}`);
+  const bg=document.createElementNS(NS,'rect');
+  bg.setAttribute('width',S);bg.setAttribute('height',S);
+  bg.setAttribute('fill','var(--board)');bg.setAttribute('rx',4);
+  svg.appendChild(bg);
+  for(let k=0;k<N;k++){
+    for(const[x1,y1,x2,y2]of[
+      [PAD+k*CELL,PAD,PAD+k*CELL,PAD+(N-1)*CELL],
+      [PAD,PAD+k*CELL,PAD+(N-1)*CELL,PAD+k*CELL]]){
+      const l=document.createElementNS(NS,'line');
+      l.setAttribute('x1',x1);l.setAttribute('y1',y1);
+      l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+      l.setAttribute('stroke','var(--grid)');
+      l.setAttribute('stroke-width',k===0||k===N-1?1.6:1);
+      svg.appendChild(l);
+    }
+  }
+  for(const[r,c]of starPoints()){
+    const d=document.createElementNS(NS,'circle');
+    d.setAttribute('cx',PAD+c*CELL);d.setAttribute('cy',PAD+r*CELL);
+    d.setAttribute('r',N===19?2.2:3);d.setAttribute('fill','var(--grid)');
+    svg.appendChild(d);
+  }
+  terrLayer=document.createElementNS(NS,'g');svg.appendChild(terrLayer);
+  stoneLayer=document.createElementNS(NS,'g');svg.appendChild(stoneLayer);
+  const click=document.createElementNS(NS,'g');svg.appendChild(click);
+  for(let i=0;i<N*N;i++){
+    const r=Math.floor(i/N),c=i%N;
+    const rc=document.createElementNS(NS,'rect');
+    rc.setAttribute('x',PAD+c*CELL-CELL/2);rc.setAttribute('y',PAD+r*CELL-CELL/2);
+    rc.setAttribute('width',CELL);rc.setAttribute('height',CELL);
+    rc.setAttribute('class','cell');
+    rc.addEventListener('click',()=>onPoint(i));
+    click.appendChild(rc);
+    cellEls[i]=rc;
+  }
+}
+
+function init(){
+  board=new Array(N*N).fill(0);
+  turn=1;capt=[0,0];history=[];posSet=new Set([board.join('')]);
+  passes=0;moveCount=0;lastIdx=-1;over=false;busy=false;scoring=false;deadSet=new Set();
+  document.getElementById('gov').classList.remove('show');
+  document.getElementById('foot').style.display='flex';
+  document.getElementById('scorefoot').style.display='none';
+  buildBoard();render();
+  msg('黒の番です');
+  if(mode!=='pvp'&&Math.random()<.5){turn=2;render();msg('白(CPU)の番です');maybeCpu();}
+}
+
+function render(){
+  stoneLayer.innerHTML='';terrLayer.innerHTML='';
+  for(let i=0;i<N*N;i++){
+    if(board[i]===0)continue;
+    const r=Math.floor(i/N),c=i%N;
+    const cx=PAD+c*CELL,cy=PAD+r*CELL;
+    const s=document.createElementNS(NS,'circle');
+    s.setAttribute('cx',cx);s.setAttribute('cy',cy);
+    s.setAttribute('r',CELL*.46);
+    s.setAttribute('class','stone'+(scoring&&deadSet.has(rootOf(i))?' dead':''));
+    s.setAttribute('fill',board[i]===1?'url(#gb)':'url(#gw)');
+    s.setAttribute('stroke',board[i]===1?'#000':'#999');
+    s.setAttribute('stroke-width',.7);
+    stoneLayer.appendChild(s);
+    if(i===lastIdx&&!scoring){
+      const m=document.createElementNS(NS,'circle');
+      m.setAttribute('cx',cx);m.setAttribute('cy',cy);
+      m.setAttribute('r',CELL*.17);
+      m.setAttribute('fill','none');
+      m.setAttribute('stroke',board[i]===1?'#fff':'#333');
+      m.setAttribute('stroke-width',1.6);
+      stoneLayer.appendChild(m);
+    }
+  }
+  if(!svg.querySelector('defs')){
+    const defs=document.createElementNS(NS,'defs');
+    defs.innerHTML=`
+    <radialGradient id="gb" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#555"/><stop offset="1" stop-color="#050505"/></radialGradient>
+    <radialGradient id="gw" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#cfc9ba"/></radialGradient>`;
+    svg.appendChild(defs);
+  }
+  if(scoring)renderTerritory();
+  document.getElementById('cap0').textContent=capt[0];
+  document.getElementById('cap1').textContent=capt[1];
+  document.getElementById('tm').textContent=scoring?'整地中':(turn===1?'● 黒番':'○ 白番');
+  document.getElementById('undo').disabled=!history.length||busy||over||scoring;
+  document.getElementById('pass').disabled=busy||over||scoring||!isHumanTurn();
+}
+
+function msg(s){document.getElementById('msg').textContent=s;}
+const isHumanTurn=()=>mode==='pvp'||turn===1;
+
+/* ============ play flow ============ */
+function onPoint(i){
+  if(over||busy)return;
+  if(scoring){toggleDead(i);return;}
+  if(!isHumanTurn())return;
+  const r=legalAt(i,turn);
+  if(!r)return;
+  pushHistory();
+  commit(r,i);
+}
+
+function pushHistory(){
+  history.push({bd:board.slice(),turn,capt:[...capt],last:lastIdx,passes,mc:moveCount});
+  if(history.length>400)history.shift();
+}
+
+function commit(r,i){
+  board=r.bd;
+  capt[turn-1]+=r.caps;
+  posSet.add(board.join(''));
+  lastIdx=i;passes=0;moveCount++;
+  turn=3-turn;
+  render();
+  msg((turn===1?'黒':'白')+'の番です');
+  maybeCpu();
+}
+
+function doPass(){
+  if(over||busy||scoring)return;
+  pushHistory();
+  passes++;lastIdx=-1;
+  turn=3-turn;
+  if(passes>=2){enterScoring();return;}
+  render();
+  msg('パス — '+(turn===1?'黒':'白')+'の番です');
+  maybeCpu();
+}
+
+function maybeCpu(){
+  if(over||scoring||isHumanTurn())return;
+  busy=true;render();
+  setTimeout(()=>{
+    const m=cpuMove();
+    busy=false;
+    if(m===-1){
+      pushHistory();passes++;lastIdx=-1;turn=3-turn;
+      if(passes>=2){enterScoring();return;}
+      render();msg('白はパス — 黒の番です');
+      return;
+    }
+    pushHistory();
+    commit(legalAt(m,turn),m);
+  },N===19?600:450);
+}
+
+/* ============ scoring ============ */
+function rootOf(i){
+  // グループ代表点(最小index)
+  const g=group(board,i);
+  return Math.min(...g.stones);
+}
+function toggleDead(i){
+  if(board[i]===0)return;
+  const r=rootOf(i);
+  if(deadSet.has(r))deadSet.delete(r);else deadSet.add(r);
+  render();updateScoreMsg();
+}
+
+function computeScore(){
+  // 死石を除去した盤で中国ルール(石+地)
+  const bd=board.slice();
+  let deadB=0,deadW=0;
+  for(const r of deadSet){
+    if(bd[r]===0)continue;
+    const g=group(board,r);
+    for(const s of g.stones){
+      if(bd[s]===1)deadB++;else if(bd[s]===2)deadW++;
+      bd[s]=0;
+    }
+  }
+  let sb=0,sw=0;
+  for(let i=0;i<N*N;i++){if(bd[i]===1)sb++;else if(bd[i]===2)sw++;}
+  // 地: 空点領域の接触色
+  const seen=new Array(N*N).fill(false);
+  let tb=0,tw=0;
+  const terr=[];
+  for(let i=0;i<N*N;i++){
+    if(bd[i]!==0||seen[i])continue;
+    const st=[i],reg=[i];seen[i]=true;
+    let tb_=false,tw_=false;
+    while(st.length){
+      const j=st.pop();
+      for(const k of nbrs(j)){
+        if(bd[k]===0&&!seen[k]){seen[k]=true;st.push(k);reg.push(k);}
+        else if(bd[k]===1)tb_=true;
+        else if(bd[k]===2)tw_=true;
+      }
+    }
+    let owner=0;
+    if(tb_&&!tw_){tb+=reg.length;owner=1;}
+    if(tw_&&!tb_){tw+=reg.length;owner=2;}
+    terr.push({reg,owner});
+  }
+  return{black:sb+tb,white:sw+tw+KOMI,terr,deadB,deadW};
+}
+
+function renderTerritory(){
+  const{terr}=computeScore();
+  for(const{reg,owner}of terr){
+    if(!owner)continue;
+    for(const i of reg){
+      const r=Math.floor(i/N),c=i%N;
+      const q=document.createElementNS(NS,'rect');
+      const sz=CELL*.26;
+      q.setAttribute('x',PAD+c*CELL-sz/2);q.setAttribute('y',PAD+r*CELL-sz/2);
+      q.setAttribute('width',sz);q.setAttribute('height',sz);
+      q.setAttribute('class','terr');
+      q.setAttribute('fill',owner===1?'#111':'#fafafa');
+      q.setAttribute('stroke',owner===1?'#fff':'#555');
+      q.setAttribute('stroke-width',.6);
+      terrLayer.appendChild(q);
+    }
+  }
+}
+
+function updateScoreMsg(){
+  const s=computeScore();
+  msg(`黒 ${s.black} − 白 ${s.white}(コミ込)— 死石をタップで指定`);
+}
+
+function enterScoring(){
+  scoring=true;
+  document.getElementById('foot').style.display='none';
+  document.getElementById('scorefoot').style.display='flex';
+  render();updateScoreMsg();
+}
+
+document.getElementById('sc-resume').addEventListener('click',()=>{
+  scoring=false;deadSet.clear();passes=0;
+  document.getElementById('foot').style.display='flex';
+  document.getElementById('scorefoot').style.display='none';
+  render();
+  msg((turn===1?'黒':'白')+'の番です');
+});
+document.getElementById('sc-done').addEventListener('click',()=>{
+  const s=computeScore();
+  over=true;scoring=false;
+  const diff=Math.abs(s.black-s.white);
+  const t=document.getElementById('g-t');
+  let who;
+  if(s.black>s.white){who='黒';t.textContent=mode==='pvp'?'黒の勝ち':'勝利';}
+  else{who='白';t.textContent=mode==='pvp'?'白の勝ち':'敗北';}
+  document.getElementById('g-s').innerHTML=
+    `黒 ${s.black} − 白 ${s.white}<br>${who} ${diff}目${diff%1?'半':''}勝ち`;
+  msg('終局');render();
+  document.getElementById('scorefoot').style.display='none';
+  document.getElementById('foot').style.display='flex';
+  setTimeout(()=>document.getElementById('gov').classList.add('show'),400);
+});
+
+/* ============ CPU ============ */
+function isTrueEye(bd,i,col){
+  // 簡易眼判定
+  for(const k of nbrs(i))if(bd[k]!==col)return false;
+  const r=Math.floor(i/N),c=i%N;
+  let bad=0,tot=0;
+  for(const[dr,dc]of[[-1,-1],[-1,1],[1,-1],[1,1]]){
+    const nr=r+dr,nc=c+dc;
+    if(nr<0||nr>=N||nc<0||nc>=N)continue;
+    tot++;
+    if(bd[idx(nr,nc)]===3-col)bad++;
+  }
+  const edge=r===0||r===N-1||c===0||c===N-1;
+  return edge?bad===0:bad<=tot-3?bad<1:false||bad===0;
+}
+
+function cpuMove(){
+  const col=turn,opp=3-col;
+  const cands=[];
+  for(let i=0;i<N*N;i++){
+    if(board[i]!==0)continue;
+    const r=legalAt(i,col);
+    if(!r)continue;
+    if(isTrueEye(board,i,col))continue; // 自分の眼は埋めない
+    let sc=Math.random()*4;
+    sc+=r.caps*40;
+    const myG=group(r.bd,i);
+    const libs=myG.libs.size;
+    if(libs===1&&r.caps===0)sc-=60;       // 自己アタリ
+    else sc+=Math.min(libs,5)*3;
+    // 自軍アタリ救出
+    for(const k of nbrs(i)){
+      if(board[k]===col){
+        const g0=group(board,k);
+        if(g0.libs.size===1&&libs>1)sc+=20+g0.stones.length*8;
+      }
+    }
+    // 相手をアタリに
+    for(const k of nbrs(i)){
+      if(r.bd[k]===opp){
+        const g1=group(r.bd,k);
+        if(g1.libs.size===1)sc+=10+g1.stones.length*4;
+      }
+    }
+    // 近接ボーナス
+    const rr=Math.floor(i/N),cc=i%N;
+    let near=0;
+    for(let j=0;j<N*N;j++){
+      if(board[j]===0)continue;
+      const d=Math.max(Math.abs(Math.floor(j/N)-rr),Math.abs(j%N-cc));
+      if(d<=2)near+=board[j]===col?2:3;
+    }
+    sc+=Math.min(near,18);
+    // 序盤は3線・4線
+    const edge=Math.min(rr,cc,N-1-rr,N-1-cc);
+    if(moveCount<N*2){
+      if(edge===2||edge===3)sc+=8;
+      else if(edge===0)sc-=10;
+      else if(edge===1)sc-=3;
+    }
+    cands.push([sc,i]);
+  }
+  if(!cands.length)return -1;
+  cands.sort((a,b)=>b[0]-a[0]);
+  // 打つ価値がなければパス
+  if(moveCount>N*N*.55&&cands[0][0]<6)return -1;
+  if(mode==='cpu1'){
+    const top=cands.slice(0,Math.min(8,cands.length));
+    return top[Math.floor(Math.random()*top.length)][1];
+  }
+  return cands[0][1];
+}
+
+/* ============ controls ============ */
+document.getElementById('pass').addEventListener('click',doPass);
+document.getElementById('undo').addEventListener('click',()=>{
+  if(!history.length||busy)return;
+  let h=history.pop();
+  if(mode!=='pvp'){while(history.length&&h.turn!==1)h=history.pop();}
+  board=h.bd;turn=h.turn;capt=h.capt;lastIdx=h.last;passes=h.passes;moveCount=h.mc;
+  over=false;scoring=false;deadSet.clear();
+  posSet=new Set();posSet.add(board.join(''));
+  for(const x of history)posSet.add(x.bd.join(''));
+  document.getElementById('gov').classList.remove('show');
+  render();
+  msg((turn===1?'黒':'白')+'の番です');
+});
+document.getElementById('reset').addEventListener('click',init);
+document.getElementById('g-again').addEventListener('click',init);
+document.getElementById('modes').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  mode=b.dataset.m;
+  document.querySelectorAll('#modes button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');init();
+});
+document.getElementById('sizes').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  N=+b.dataset.s;
+  document.querySelectorAll('#sizes button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');init();
+});
+
+init();
+</script>
+</body>
+</html>

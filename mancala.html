@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>マンカラ</title>
+<style>
+:root{
+  --bg:#221511;
+  --wood:#8C5A33;
+  --wood-dk:#6E4426;
+  --pit:#3B2415;
+  --pit-edge:#2A1810;
+  --txt:#F0E4D4;
+  --sub:#A8917A;
+  --gold:#D9A84A;
+  --hl:rgba(217,168,74,.5);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:16px 8px 32px;
+}
+h1{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:26px;font-weight:600;letter-spacing:.5em;text-indent:.5em;margin:4px 0 2px;
+}
+.sub{font-size:10.5px;color:var(--sub);letter-spacing:.25em;margin-bottom:12px}
+.modes{display:flex;gap:8px;margin-bottom:12px}
+.modes button{
+  background:transparent;border:1px solid #4a3526;color:var(--sub);
+  padding:7px 13px;border-radius:18px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:all .2s;
+}
+.modes button.on{border-color:var(--gold);color:var(--gold)}
+
+.msg{min-height:22px;font-size:14px;color:var(--gold);letter-spacing:.06em;margin:4px 0 10px;text-align:center}
+
+.bwrap{
+  padding:10px;border-radius:18px;
+  background:linear-gradient(160deg,#4a2f1a,#2c1a0c);
+  box-shadow:0 16px 48px rgba(0,0,0,.6);
+}
+svg{display:block;width:min(96vw,480px);height:auto}
+.pit-c{cursor:default}
+.pit-c.legal{cursor:pointer}
+.pit-bg{fill:var(--pit);stroke:var(--pit-edge);stroke-width:2}
+.pit-c.legal .pit-bg{stroke:var(--gold);stroke-width:2.4}
+.pit-c.sown .pit-bg{fill:#4d2f1c}
+.cnt{
+  text-anchor:middle;fill:var(--txt);font-size:13px;font-weight:600;
+  pointer-events:none;font-variant-numeric:tabular-nums;
+}
+.storecnt{font-size:18px}
+.lab{text-anchor:middle;fill:var(--sub);font-size:9px;letter-spacing:.15em;pointer-events:none}
+.bead{pointer-events:none}
+
+.foot{display:flex;gap:10px;margin-top:14px}
+.foot button{
+  background:transparent;border:1px solid #4a3526;color:var(--txt);
+  padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;
+}
+.foot button:hover{border-color:var(--gold)}
+.foot button:disabled{opacity:.35}
+
+.rule{
+  width:min(96vw,480px);margin-top:14px;font-size:11.5px;line-height:1.7;color:var(--sub);
+  border-top:1px solid #3a2818;padding-top:10px;
+}
+
+.overlay{
+  position:fixed;inset:0;background:rgba(14,9,5,.84);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .35s;z-index:20;
+}
+.overlay.show{opacity:1;pointer-events:auto}
+.card{
+  background:#2A1A0E;border:1px solid var(--gold);border-radius:10px;
+  padding:28px 42px;text-align:center;
+}
+.card .t{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:27px;letter-spacing:.22em;text-indent:.22em;color:var(--gold);margin-bottom:8px;
+}
+.card .s{font-size:14px;color:var(--txt);margin-bottom:18px;font-variant-numeric:tabular-nums}
+.card button{
+  background:var(--gold);border:none;color:#2A1A0E;padding:9px 26px;
+  border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<a href="index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
+<h1>マンカラ</h1>
+<div class="sub">MANCALA — KALAH RULES</div>
+
+<div class="modes" id="modes">
+  <button data-m="cpu1" class="on">CPU 弱</button>
+  <button data-m="cpu2">CPU 強</button>
+  <button data-m="pvp">2人対戦</button>
+</div>
+
+<div class="msg" id="msg">あなたの番です</div>
+
+<div class="bwrap"><svg id="bd"></svg></div>
+
+<div class="foot">
+  <button id="undo">待った</button>
+  <button id="reset">最初から</button>
+</div>
+
+<div class="rule">
+<b style="color:var(--txt)">ルール(カラハ)</b>:自分側(下段)の穴を選び、石を反時計回りに1個ずつまく。最後の1個が<b>自分のゴール</b>に入ればもう一度自分の番。最後の1個が<b>自分側の空の穴</b>に入れば、その石と向かいの穴の石を全部もらえる。片側の穴が全て空になったら終了、残りは持ち主のゴールへ。多い方の勝ち。
+</div>
+
+<div class="overlay" id="gov">
+  <div class="card">
+    <div class="t" id="g-t">勝利</div>
+    <div class="s" id="g-s"></div>
+    <button id="g-again">もう一度</button>
+  </div>
+</div>
+
+<script>
+/* index: 0-5 あなたの穴(左→右), 6 あなたのゴール(右端), 7-12 相手の穴, 13 相手のゴール(左端) */
+let pits,turn,mode='cpu1',history=[],over=false,busy=false;
+
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('bd');
+const W=480,H=230;
+svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+
+const BEADCOL=['#D94F3D','#3E9BD6','#E8C44A','#5BAE6B','#B07ACF','#E08A3C'];
+
+// 配置座標
+const POS=[];
+(function(){
+  const px0=78,gap=56,rTop=62,rBot=168;
+  for(let i=0;i<6;i++)POS[i]=[px0+i*gap,rBot];        // 自分 下段 左→右
+  POS[6]=[W-36,H/2];                                   // 自分ゴール 右
+  for(let i=0;i<6;i++)POS[7+i]=[px0+(5-i)*gap,rTop];   // 相手 上段 右→左
+  POS[13]=[36,H/2];                                    // 相手ゴール 左
+})();
+
+let groups=[];
+(function build(){
+  // 盤面ベース
+  const base=document.createElementNS(NS,'rect');
+  base.setAttribute('x',8);base.setAttribute('y',8);
+  base.setAttribute('width',W-16);base.setAttribute('height',H-16);
+  base.setAttribute('rx',26);
+  base.setAttribute('fill','url(#wd)');
+  const defs=document.createElementNS(NS,'defs');
+  defs.innerHTML=`<linearGradient id="wd" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#9A6638"/><stop offset="1" stop-color="#6E4426"/>
+  </linearGradient>`;
+  svg.appendChild(defs);svg.appendChild(base);
+
+  for(let i=0;i<14;i++){
+    const g=document.createElementNS(NS,'g');
+    g.setAttribute('class','pit-c');
+    const[cx,cy]=POS[i];
+    const isStore=i===6||i===13;
+    if(isStore){
+      const e=document.createElementNS(NS,'rect');
+      e.setAttribute('x',cx-22);e.setAttribute('y',cy-78);
+      e.setAttribute('width',44);e.setAttribute('height',156);e.setAttribute('rx',22);
+      e.setAttribute('class','pit-bg');
+      g.appendChild(e);
+    }else{
+      const e=document.createElementNS(NS,'circle');
+      e.setAttribute('cx',cx);e.setAttribute('cy',cy);e.setAttribute('r',24);
+      e.setAttribute('class','pit-bg');
+      g.appendChild(e);
+    }
+    const beads=document.createElementNS(NS,'g');
+    beads.setAttribute('class','bead');
+    g.appendChild(beads);
+    const t=document.createElementNS(NS,'text');
+    t.setAttribute('x',cx);
+    t.setAttribute('y',isStore?cy+95:(i<6?cy+40:cy-34));
+    t.setAttribute('class','cnt'+(isStore?' storecnt':''));
+    if(isStore){t.setAttribute('y',cy+5);t.setAttribute('opacity',0);}
+    g.appendChild(t);
+    if(i<6){const c=i;g.addEventListener('click',()=>onPit(c));}
+    if(mode==='pvp'&&i>=7&&i<13){/* handled dynamically below */}
+    g.addEventListener('click',()=>{if(i>=7&&i<13)onPit(i);});
+    svg.appendChild(g);
+    groups[i]=g;
+  }
+  // ラベル
+  const l1=document.createElementNS(NS,'text');
+  l1.setAttribute('x',W-36);l1.setAttribute('y',H-12);
+  l1.setAttribute('class','lab');l1.textContent='YOU';
+  svg.appendChild(l1);
+  const l2=document.createElementNS(NS,'text');
+  l2.setAttribute('x',36);l2.setAttribute('y',20);
+  l2.setAttribute('class','lab');l2.textContent='OPP';
+  svg.appendChild(l2);
+})();
+
+// 疑似乱数(座席固定)で石を散らす
+function seedXY(pi,k){
+  const h=(pi*73+k*131)%997;
+  const a=(h%360)*Math.PI/180,rr=4+((h>>3)%14);
+  const isStore=pi===6||pi===13;
+  const[cx,cy]=POS[pi];
+  if(isStore){
+    const yy=cy-60+((h*7)%120);
+    const xx=cx-12+((h*13)%24);
+    return[xx,yy];
+  }
+  return[cx+Math.cos(a)*rr*1.0,cy+Math.sin(a)*rr*0.9];
+}
+
+function render(sownIdx=-1){
+  const legal=legalPits(turn);
+  for(let i=0;i<14;i++){
+    const g=groups[i];
+    const isStore=i===6||i===13;
+    const clickable=!over&&!busy&&legal.includes(i)&&isHumanSide(i);
+    g.classList.toggle('legal',clickable);
+    g.classList.toggle('sown',i===sownIdx);
+    const beads=g.querySelector('.bead');
+    beads.innerHTML='';
+    const n=pits[i],show=Math.min(n,isStore?24:12);
+    for(let k=0;k<show;k++){
+      const[x,y]=seedXY(i,k);
+      const c=document.createElementNS(NS,'circle');
+      c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',4.4);
+      c.setAttribute('fill',BEADCOL[(i+k)%6]);
+      c.setAttribute('stroke','rgba(0,0,0,.35)');
+      c.setAttribute('stroke-width',.8);
+      beads.appendChild(c);
+    }
+    const t=g.querySelector('.cnt');
+    t.textContent=n;
+    if(isStore)t.setAttribute('opacity',1);
+  }
+  document.getElementById('undo').disabled=!history.length||busy||over;
+}
+
+function isHumanSide(i){
+  if(busy||over)return false;
+  if(turn===0)return i>=0&&i<6;
+  return mode==='pvp'&&i>=7&&i<13;
+}
+
+function legalPits(p){
+  const s=p===0?0:7,out=[];
+  for(let k=0;k<6;k++)if(pits[s+k]>0)out.push(s+k);
+  return out;
+}
+
+function init(){
+  pits=new Array(14).fill(4);
+  pits[6]=0;pits[13]=0;
+  turn=0;history=[];over=false;busy=false;
+  document.getElementById('gov').classList.remove('show');
+  render();
+  msg('あなたの番です');
+  if(mode!=='pvp'&&Math.random()<.5){turn=1;busy=true;render();msg('CPUの番です');setTimeout(()=>{const m=cpuMove();busy=false;history.push({p:pits.slice(),turn});playAnimated(m);},650);}
+}
+function msg(s){document.getElementById('msg').textContent=s;}
+
+function onPit(i){
+  if(!isHumanSide(i)||pits[i]===0)return;
+  history.push({p:pits.slice(),turn});
+  playAnimated(i);
+}
+
+/* ---- 着手(アニメーション付き) ---- */
+function playAnimated(start){
+  busy=true;render();
+  let hand=pits[start];
+  pits[start]=0;
+  let pos=start;
+  const skip=turn===0?13:6;
+  function step(){
+    pos=(pos+1)%14;
+    if(pos===skip){step();return;}
+    pits[pos]++;hand--;
+    render(pos);
+    if(hand>0){setTimeout(step,150);}
+    else setTimeout(()=>finish(pos),200);
+  }
+  setTimeout(step,150);
+}
+
+function finish(lastPos){
+  const myStore=turn===0?6:13;
+  const myStart=turn===0?0:7;
+  // 横取り
+  if(lastPos>=myStart&&lastPos<myStart+6&&pits[lastPos]===1){
+    const opp=12-lastPos;
+    if(pits[opp]>0){
+      pits[myStore]+=pits[opp]+1;
+      pits[opp]=0;pits[lastPos]=0;
+    }
+  }
+  // 終了判定
+  const s0=pits.slice(0,6).reduce((a,b)=>a+b,0);
+  const s1=pits.slice(7,13).reduce((a,b)=>a+b,0);
+  if(s0===0||s1===0){
+    pits[6]+=s0;pits[13]+=s1;
+    for(let k=0;k<6;k++){pits[k]=0;pits[7+k]=0;}
+    busy=false;over=true;render();
+    endGame();return;
+  }
+  // 追加手番
+  const extra=lastPos===myStore;
+  if(!extra)turn=1-turn;
+  busy=false;render();
+  if(extra){
+    msg((turn===0?(mode==='pvp'?'下側':'あなた'):(mode==='pvp'?'上側':'CPU'))+'はもう一度!');
+  }else{
+    msg(turn===0?(mode==='pvp'?'下側の番です':'あなたの番です'):(mode==='pvp'?'上側の番です':'CPUの番です'));
+  }
+  if(turn===1&&mode!=='pvp'){
+    busy=true;render();
+    setTimeout(()=>{
+      const m=cpuMove();
+      busy=false;
+      history.push({p:pits.slice(),turn});
+      playAnimated(m);
+    },650);
+  }
+}
+
+function endGame(){
+  const a=pits[6],b=pits[13];
+  const t=document.getElementById('g-t');
+  if(mode==='pvp'){
+    t.textContent=a>b?'下側の勝ち':b>a?'上側の勝ち':'引き分け';
+  }else{
+    t.textContent=a>b?'勝利':b>a?'敗北':'引き分け';
+  }
+  document.getElementById('g-s').textContent=`あなた ${a} − 相手 ${b}`;
+  msg('対局終了');
+  setTimeout(()=>document.getElementById('gov').classList.add('show'),500);
+}
+
+/* ---- CPU ---- */
+function simulate(bd,p,i){
+  // 戻り値: [newBoard, extraTurn]
+  const nb=bd.slice();
+  let hand=nb[i];nb[i]=0;
+  let pos=i;
+  const skip=p===0?13:6,store=p===0?6:13,start=p===0?0:7;
+  while(hand>0){
+    pos=(pos+1)%14;
+    if(pos===skip)continue;
+    nb[pos]++;hand--;
+  }
+  if(pos>=start&&pos<start+6&&nb[pos]===1){
+    const opp=12-pos;
+    if(nb[opp]>0){nb[store]+=nb[opp]+1;nb[opp]=0;nb[pos]=0;}
+  }
+  const s0=nb.slice(0,6).reduce((a,b)=>a+b,0);
+  const s1=nb.slice(7,13).reduce((a,b)=>a+b,0);
+  if(s0===0||s1===0){
+    nb[6]+=s0;nb[13]+=s1;
+    for(let k=0;k<6;k++){nb[k]=0;nb[7+k]=0;}
+    return[nb,false,true];
+  }
+  return[nb,pos===store,false];
+}
+
+function legalOf(bd,p){
+  const s=p===0?0:7,out=[];
+  for(let k=0;k<6;k++)if(bd[s+k]>0)out.push(s+k);
+  return out;
+}
+
+function evalBd(bd){return (bd[13]-bd[6])+ (bd.slice(7,13).reduce((a,b)=>a+b,0)-bd.slice(0,6).reduce((a,b)=>a+b,0))*.2;}
+
+function minimax(bd,p,depth,a,b){
+  // CPU(p=1)最大化
+  const moves=legalOf(bd,p);
+  if(depth===0||!moves.length)return evalBd(bd);
+  if(p===1){
+    let best=-Infinity;
+    for(const m of moves){
+      const[nb,extra,end]=simulate(bd,p,m);
+      const v=end?evalBd(nb)*10:minimax(nb,extra?1:0,extra?depth:depth-1,a,b);
+      if(v>best)best=v;
+      if(best>a)a=best;
+      if(a>=b)break;
+    }
+    return best;
+  }else{
+    let best=Infinity;
+    for(const m of moves){
+      const[nb,extra,end]=simulate(bd,p,m);
+      const v=end?evalBd(nb)*10:minimax(nb,extra?0:1,extra?depth:depth-1,a,b);
+      if(v<best)best=v;
+      if(best<b)b=best;
+      if(a>=b)break;
+    }
+    return best;
+  }
+}
+
+function cpuMove(){
+  const moves=legalOf(pits,1);
+  if(mode==='cpu1'){
+    // 弱: 追加手番だけ少し好む
+    const ext=moves.filter(m=>{const[,e]=simulate(pits,1,m);return e;});
+    if(ext.length&&Math.random()<.6)return ext[Math.floor(Math.random()*ext.length)];
+    return moves[Math.floor(Math.random()*moves.length)];
+  }
+  let best=moves[0],bs=-Infinity;
+  for(const m of moves){
+    const[nb,extra,end]=simulate(pits,1,m);
+    const v=end?evalBd(nb)*10:minimax(nb,extra?1:0,extra?8:7,-Infinity,Infinity);
+    if(v>bs){bs=v;best=m;}
+  }
+  return best;
+}
+
+/* ---- controls ---- */
+document.getElementById('undo').addEventListener('click',()=>{
+  if(!history.length||busy)return;
+  let h=history.pop();
+  if(mode!=='pvp'){while(history.length&&h.turn!==0)h=history.pop();}
+  pits=h.p;turn=h.turn;over=false;
+  document.getElementById('gov').classList.remove('show');
+  render();
+  msg(turn===0?'あなたの番です':'CPUの番です');
+});
+document.getElementById('reset').addEventListener('click',init);
+document.getElementById('g-again').addEventListener('click',init);
+document.getElementById('modes').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  mode=b.dataset.m;
+  document.querySelectorAll('#modes button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');init();
+});
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ヘックス</title>
+<style>
+:root{
+  --bg:#10131C;
+  --panel:#1A1F2E;
+  --red:#E2543E;
+  --red-dk:#A53322;
+  --blue:#3E9BD6;
+  --blue-dk:#1F6CA0;
+  --cell:#222A3D;
+  --cell-line:#0C0F18;
+  --txt:#DDE3EE;
+  --sub:#7C8499;
+  --gold:#D9B44A;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:16px 10px 32px;
+}
+h1{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:26px;font-weight:600;letter-spacing:.5em;text-indent:.5em;margin:4px 0 2px;
+}
+.sub{font-size:11px;color:var(--sub);letter-spacing:.25em;margin-bottom:12px}
+
+.row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;justify-content:center}
+.row button{
+  background:transparent;border:1px solid #333b52;color:var(--sub);
+  padding:7px 13px;border-radius:18px;font-size:12.5px;cursor:pointer;font-family:inherit;
+  transition:all .2s;
+}
+.row button.on{border-color:var(--gold);color:var(--gold)}
+.row button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.status{
+  display:flex;align-items:center;gap:10px;margin:6px 0 10px;font-size:14px;
+  letter-spacing:.06em;min-height:26px;
+}
+.dot{width:16px;height:16px;border-radius:50%;flex:none}
+.dot.r{background:radial-gradient(circle at 35% 30%,#f08a76,var(--red-dk))}
+.dot.b{background:radial-gradient(circle at 35% 30%,#8cc8ec,var(--blue-dk))}
+
+.wrap{
+  background:var(--panel);border-radius:12px;padding:8px;
+  box-shadow:0 14px 44px rgba(0,0,0,.55);
+  width:min(96vw,460px);
+}
+svg{display:block;width:100%;height:auto}
+.hex{fill:var(--cell);stroke:var(--cell-line);stroke-width:1.4;cursor:pointer;transition:fill .15s}
+.hex:hover{fill:#2C3650}
+.hex.r{fill:var(--red);cursor:default}
+.hex.b{fill:var(--blue);cursor:default}
+.hex.win{stroke:var(--gold);stroke-width:2.6}
+.hex.last{stroke:#fff;stroke-width:2}
+.edge{pointer-events:none;opacity:.85}
+
+.legend{
+  display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--sub);
+}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+.foot{display:flex;gap:10px;margin-top:14px}
+.foot button{
+  background:transparent;border:1px solid #333b52;color:var(--txt);
+  padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;
+  transition:border-color .2s;
+}
+.foot button:hover{border-color:var(--gold)}
+.foot button:disabled{opacity:.35;cursor:default}
+
+.overlay{
+  position:fixed;inset:0;background:rgba(8,10,16,.8);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .4s;z-index:10;
+}
+.overlay.show{opacity:1;pointer-events:auto}
+.card{
+  background:#161B28;border:1px solid var(--gold);border-radius:10px;
+  padding:30px 44px;text-align:center;
+}
+.card .t{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:28px;letter-spacing:.25em;text-indent:.25em;margin-bottom:8px;
+}
+.card .s{font-size:13px;color:var(--sub);margin-bottom:20px}
+.card button{
+  background:var(--gold);border:none;color:#161B28;padding:10px 28px;
+  border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<a href="index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
+<h1>ヘックス</h1>
+<div class="sub">HEX — CONNECTION GAME</div>
+
+<div class="row" id="modes">
+  <button data-m="cpu1" class="on">CPU 弱</button>
+  <button data-m="cpu2">CPU 強</button>
+  <button data-m="pvp">2人対戦</button>
+</div>
+<div class="row" id="sizes">
+  <button data-s="7">7×7</button>
+  <button data-s="9" class="on">9×9</button>
+  <button data-s="11">11×11</button>
+</div>
+
+<div class="status"><div class="dot r" id="tdot"></div><span id="msg">赤の番です</span></div>
+
+<div class="wrap"><svg id="svg"></svg></div>
+
+<div class="legend">
+  <span><i style="background:var(--red)"></i>赤:上下を繋ぐ</span>
+  <span><i style="background:var(--blue)"></i>青:左右を繋ぐ</span>
+</div>
+
+<div class="foot">
+  <button id="undo">待った</button>
+  <button id="reset">最初から</button>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="card">
+    <div class="t" id="ov-t">赤の勝ち</div>
+    <div class="s" id="ov-s"></div>
+    <button id="again">もう一度</button>
+  </div>
+</div>
+
+<script>
+const R=1,Bp=2,E=0;
+let N=9,mode='cpu1',board,turn,history=[],lastIdx=-1,over=false,busy=false;
+const svg=document.getElementById('svg');
+const msg=document.getElementById('msg');
+let hexEls=[];
+
+const NB=[[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0]];
+const idx=(r,c)=>r*N+c;
+
+/* ---------- geometry ---------- */
+function hexPath(cx,cy,s){
+  let p='';
+  for(let k=0;k<6;k++){
+    const a=Math.PI/180*(60*k-30);
+    p+=(k?'L':'M')+(cx+s*Math.cos(a)).toFixed(2)+','+(cy+s*Math.sin(a)).toFixed(2);
+  }
+  return p+'Z';
+}
+
+function buildBoard(){
+  svg.innerHTML='';hexEls=[];
+  const s=20,w=Math.sqrt(3)*s,h=1.5*s;
+  const W=w*N+w*(N-1)/2+40,H=h*(N-1)+2*s+40;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const ox=20+w/2,oy=20+s;
+
+  const pos=(r,c)=>[ox+c*w+r*w/2,oy+r*h];
+
+  // edge guides
+  const eg=document.createElementNS('http://www.w3.org/2000/svg','g');
+  eg.setAttribute('class','edge');
+  function edgeLine(pts,col,wd){
+    const e=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    e.setAttribute('points',pts.map(p=>p.join(',')).join(' '));
+    e.setAttribute('stroke',col);e.setAttribute('stroke-width',wd);
+    e.setAttribute('fill','none');e.setAttribute('stroke-linecap','round');
+    eg.appendChild(e);
+  }
+  const [x0,y0]=pos(0,0),[x1,y1]=pos(0,N-1),[x2,y2]=pos(N-1,0),[x3,y3]=pos(N-1,N-1);
+  edgeLine([[x0-w/2,y0-s-4],[x1+w/2,y1-s-4]],'var(--red)',5);
+  edgeLine([[x2-w/2,y2+s+4],[x3+w/2,y3+s+4]],'var(--red)',5);
+  edgeLine([[x0-w/2-4,y0-s],[x2-w/2-4,y2+s]],'var(--blue)',5);
+  edgeLine([[x1+w/2+4,y1-s],[x3+w/2+4,y3+s]],'var(--blue)',5);
+  svg.appendChild(eg);
+
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const [cx,cy]=pos(r,c);
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d',hexPath(cx,cy,s-1));
+    p.setAttribute('class','hex');
+    p.addEventListener('click',()=>onCell(idx(r,c)));
+    svg.appendChild(p);
+    hexEls[idx(r,c)]=p;
+  }
+}
+
+/* ---------- game ---------- */
+function init(){
+  board=new Array(N*N).fill(E);
+  turn=R;history=[];lastIdx=-1;over=false;busy=false;
+  document.getElementById('overlay').classList.remove('show');
+  buildBoard();render();
+  msg.textContent='赤の番です';
+  if(mode!=='pvp'&&Math.random()<.5){turn=Bp;busy=true;render();msg.textContent='青(CPU)の番です';setTimeout(()=>{const m=cpuMove();busy=false;history.push({bd:board.slice(),turn,last:lastIdx});place(m);},450);}
+}
+
+function render(){
+  for(let i=0;i<N*N;i++){
+    const el=hexEls[i];
+    el.classList.toggle('r',board[i]===R);
+    el.classList.toggle('b',board[i]===Bp);
+    el.classList.toggle('last',i===lastIdx);
+  }
+  document.getElementById('tdot').className='dot '+(turn===R?'r':'b');
+  document.getElementById('undo').disabled=!history.length||busy||over;
+}
+
+function onCell(i){
+  if(over||busy||board[i]!==E)return;
+  if(mode!=='pvp'&&turn!==R)return;
+  history.push({bd:board.slice(),turn,last:lastIdx});
+  place(i);
+}
+
+function place(i){
+  board[i]=turn;lastIdx=i;
+  const path=winPath(turn);
+  if(path){
+    over=true;render();
+    for(const j of path)hexEls[j].classList.add('win');
+    const t=document.getElementById('ov-t');
+    const winRed=turn===R;
+    t.textContent=mode==='pvp'?(winRed?'赤の勝ち':'青の勝ち'):(winRed?'勝利':'敗北');
+    t.style.color=winRed?'var(--red)':'var(--blue)';
+    document.getElementById('ov-s').textContent=`${history.length+1}手で決着`;
+    msg.textContent='対局終了';
+    setTimeout(()=>document.getElementById('overlay').classList.add('show'),700);
+    return;
+  }
+  turn=turn===R?Bp:R;
+  render();
+  msg.textContent=(turn===R?'赤':'青')+'の番です';
+  if(mode!=='pvp'&&turn===Bp){
+    busy=true;render();
+    setTimeout(()=>{
+      const m=cpuMove();
+      busy=false;
+      history.push({bd:board.slice(),turn,last:lastIdx});
+      place(m);
+    },420);
+  }
+}
+
+function winPath(p){
+  // BFS with parent tracking
+  const seen=new Array(N*N).fill(false),par=new Array(N*N).fill(-1),q=[];
+  if(p===R){for(let c=0;c<N;c++)if(board[idx(0,c)]===R){q.push(idx(0,c));seen[idx(0,c)]=true;}}
+  else{for(let r=0;r<N;r++)if(board[idx(r,0)]===Bp){q.push(idx(r,0));seen[idx(r,0)]=true;}}
+  while(q.length){
+    const i=q.shift(),r=Math.floor(i/N),c=i%N;
+    if((p===R&&r===N-1)||(p===Bp&&c===N-1)){
+      const path=[];let j=i;
+      while(j!==-1){path.push(j);j=par[j];}
+      return path;
+    }
+    for(const[dr,dc]of NB){
+      const nr=r+dr,nc=c+dc;
+      if(nr<0||nr>=N||nc<0||nc>=N)continue;
+      const ni=idx(nr,nc);
+      if(!seen[ni]&&board[ni]===p){seen[ni]=true;par[ni]=i;q.push(ni);}
+    }
+  }
+  return null;
+}
+
+/* ---------- CPU ---------- */
+// Dijkstra: own=0, empty=1, opp=blocked → 最短接続コスト
+function dist(bd,p){
+  const INF=1e9,d=new Array(N*N).fill(INF);
+  const pq=[];
+  const push=(i,v)=>{if(v<d[i]){d[i]=v;pq.push([v,i]);}};
+  if(p===R){for(let c=0;c<N;c++){const i=idx(0,c);if(bd[i]!==(p===R?Bp:R))push(i,bd[i]===p?0:1);}}
+  else{for(let r=0;r<N;r++){const i=idx(r,0);if(bd[i]!==R)push(i,bd[i]===p?0:1);}}
+  while(pq.length){
+    pq.sort((a,b)=>a[0]-b[0]);
+    const[v,i]=pq.shift();
+    if(v>d[i])continue;
+    const r=Math.floor(i/N),c=i%N;
+    for(const[dr,dc]of NB){
+      const nr=r+dr,nc=c+dc;
+      if(nr<0||nr>=N||nc<0||nc>=N)continue;
+      const ni=idx(nr,nc);
+      if(bd[ni]===(p===R?Bp:R))continue;
+      push(ni,v+(bd[ni]===p?0:1));
+    }
+  }
+  let best=INF;
+  if(p===R){for(let c=0;c<N;c++)best=Math.min(best,d[idx(N-1,c)]);}
+  else{for(let r=0;r<N;r++)best=Math.min(best,d[idx(r,N-1)]);}
+  return best;
+}
+
+function cpuMove(){
+  const empties=[];
+  for(let i=0;i<N*N;i++)if(board[i]===E)empties.push(i);
+  // 初手付近は中央寄り
+  if(empties.length>=N*N-1){
+    const c=Math.floor(N/2);
+    const cand=idx(c,c);
+    return board[cand]===E?cand:empties[0];
+  }
+  let scored=[];
+  for(const i of empties){
+    board[i]=Bp;
+    const my=dist(board,Bp),op=dist(board,R);
+    board[i]=E;
+    if(my===0)return i; // 即勝ち
+    scored.push([op-my,i,op]);
+  }
+  // 相手の即勝ちブロック
+  for(const[,i]of scored){
+    board[i]=R;
+    if(dist(board,R)===0){board[i]=E;
+      // ブロックしつつ自分にも良い手を優先
+      return i;
+    }
+    board[i]=E;
+  }
+  scored.sort((a,b)=>b[0]-a[0]);
+  if(mode==='cpu1'){
+    const top=scored.slice(0,Math.min(6,scored.length));
+    return top[Math.floor(Math.random()*top.length)][1];
+  }
+  return scored[0][1];
+}
+
+/* ---------- UI ---------- */
+document.getElementById('undo').addEventListener('click',()=>{
+  if(!history.length||busy)return;
+  let h=history.pop();
+  if(mode!=='pvp'){while(history.length&&h.turn!==R)h=history.pop();}
+  board=h.bd;turn=h.turn;lastIdx=h.last;over=false;
+  document.getElementById('overlay').classList.remove('show');
+  render();
+  msg.textContent=(turn===R?'赤':'青')+'の番です';
+});
+document.getElementById('reset').addEventListener('click',init);
+document.getElementById('again').addEventListener('click',init);
+
+document.getElementById('modes').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  mode=b.dataset.m;
+  document.querySelectorAll('#modes button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');init();
+});
+document.getElementById('sizes').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  N=+b.dataset.s;
+  document.querySelectorAll('#sizes button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');init();
+});
+
+init();
+</script>
+</body>
+</html>

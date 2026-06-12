@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ガイスター</title>
+<style>
+:root{
+  --bg:#14101A;
+  --board:#241D33;
+  --cell:#2E2545;
+  --cell-b:#1C1530;
+  --blue:#4D8FE0;
+  --blue-dk:#2A5FA8;
+  --red:#D6454E;
+  --red-dk:#992730;
+  --gray:#787E92;
+  --gray-dk:#4C5163;
+  --txt:#E9E4F2;
+  --sub:#9A93AD;
+  --gold:#D9B44A;
+  --sel:rgba(217,180,74,.85);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:16px 10px 32px;
+}
+h1{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:25px;font-weight:600;letter-spacing:.45em;text-indent:.45em;margin:4px 0 2px;
+}
+.sub{font-size:10.5px;color:var(--sub);letter-spacing:.22em;margin-bottom:10px}
+.modes{display:flex;gap:8px;margin-bottom:10px}
+.modes button{
+  background:transparent;border:1px solid #3c3454;color:var(--sub);
+  padding:6px 12px;border-radius:18px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .2s;
+}
+.modes button.on{border-color:var(--gold);color:var(--gold)}
+
+.trays{
+  width:min(96vw,420px);display:flex;justify-content:space-between;
+  font-size:11.5px;color:var(--sub);margin-bottom:8px;
+}
+.trays .t{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.mini{width:14px;height:15px;display:inline-block}
+
+.bwrap{
+  padding:9px;border-radius:12px;
+  background:linear-gradient(160deg,#2c2342,#181226);
+  box-shadow:0 16px 48px rgba(0,0,0,.6);
+}
+svg{display:block;width:min(96vw,420px);height:auto}
+.cell{cursor:pointer}
+.gh{pointer-events:none}
+.exit-mark{pointer-events:none;opacity:.8}
+
+.msg{min-height:38px;font-size:13.5px;color:var(--gold);letter-spacing:.05em;margin-top:10px;text-align:center;line-height:1.5}
+.foot{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:center}
+.foot button{
+  background:transparent;border:1px solid #3c3454;color:var(--txt);
+  padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;
+}
+.foot button:hover{border-color:var(--gold)}
+.foot button:disabled{opacity:.35}
+.foot button.primary{background:var(--gold);color:#181226;border-color:var(--gold);font-weight:600}
+
+.overlay{
+  position:fixed;inset:0;background:rgba(10,7,16,.92);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .3s;z-index:20;
+}
+.overlay.show{opacity:1;pointer-events:auto}
+.card{
+  background:#1E1730;border:1px solid var(--gold);border-radius:10px;
+  padding:28px 40px;text-align:center;max-width:88vw;
+}
+.card .t{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:25px;letter-spacing:.2em;text-indent:.2em;color:var(--gold);margin-bottom:8px;
+}
+.card .s{font-size:13.5px;color:var(--txt);margin-bottom:18px;line-height:1.8}
+.card button{
+  background:var(--gold);border:none;color:#1E1730;padding:10px 28px;
+  border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<a href="index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
+<h1>ガイスター</h1>
+<div class="sub">GEISTER — 良いおばけ(青)と悪いおばけ(赤)</div>
+
+<div class="modes" id="modes">
+  <button data-m="cpu1" class="on">CPU 弱</button>
+  <button data-m="cpu2">CPU 強</button>
+  <button data-m="pvp">2人対戦</button>
+</div>
+
+<div class="trays">
+  <div class="t" id="tray0"><span>あなたが取った:</span></div>
+  <div class="t" id="tray1"><span>相手が取った:</span></div>
+</div>
+
+<div class="bwrap"><svg id="bd"></svg></div>
+
+<div class="msg" id="msg"></div>
+<div class="foot" id="foot">
+  <button id="setup-ok" class="primary" style="display:none">この配置で開始</button>
+  <button id="setup-rnd" style="display:none">ランダム配置</button>
+  <button id="exitbtn" class="primary" style="display:none">脱出する!</button>
+  <button id="undo">待った</button>
+  <button id="reset">最初から</button>
+</div>
+
+<div class="overlay" id="hov">
+  <div class="card">
+    <div class="t" id="h-t">交代</div>
+    <div class="s" id="h-s">端末を渡してください</div>
+    <button id="h-ok">準備OK</button>
+  </div>
+</div>
+
+<div class="overlay" id="gov">
+  <div class="card">
+    <div class="t" id="g-t">勝利</div>
+    <div class="s" id="g-s"></div>
+    <button id="g-again">もう一度</button>
+  </div>
+</div>
+
+<script>
+/* =============== state =============== */
+const N=6;
+let mode='cpu1';
+let pieces;          // {id,r,c,o,col:'B'|'R',cap:false}
+let turn,phase;      // phase: 'setup'|'play'|'over'
+let setupPlayer;     // pvp用
+let sel=null,busy=false,history=[],lastMove=null;
+let viewer=0;        // pvp: 今色が見えているプレイヤー
+
+const EXITS=o=>o===0?[[0,0],[0,N-1]]:[[N-1,0],[N-1,N-1]];
+
+function at(r,c){return pieces.find(p=>!p.cap&&p.r===r&&p.c===c)||null;}
+function capturedBy(taker){ // takerが取った相手駒
+  return pieces.filter(p=>p.cap&&p.o!==taker);
+}
+
+function init(){
+  pieces=[];
+  let id=0;
+  // 上側(o=1): rows0-1 cols1-4 / 下側(o=0): rows4-5 cols1-4
+  for(const o of[1,0]){
+    const rows=o===1?[0,1]:[4,5];
+    let k=0;
+    for(const r of rows)for(let c=1;c<=4;c++){
+      pieces.push({id:id++,r,c,o,col:k%2===0?'B':'R',cap:false});
+      k++;
+    }
+  }
+  // CPU側はランダム配置
+  if(mode!=='pvp')assignRandom(1);
+  turn=0;sel=null;busy=false;history=[];lastMove=null;
+  phase='setup';setupPlayer=0;viewer=0;
+  document.getElementById('gov').classList.remove('show');
+  document.getElementById('hov').classList.remove('show');
+  uiPhase();
+  render();
+}
+
+function assignRandom(o){
+  const mine=pieces.filter(p=>p.o===o);
+  const cols=['B','B','B','B','R','R','R','R'];
+  for(let i=cols.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [cols[i],cols[j]]=[cols[j],cols[i]];
+  }
+  mine.forEach((p,k)=>p.col=cols[k]);
+}
+
+function uiPhase(){
+  const isSetup=phase==='setup';
+  document.getElementById('setup-ok').style.display=isSetup?'':'none';
+  document.getElementById('setup-rnd').style.display=isSetup?'':'none';
+  document.getElementById('undo').style.display=isSetup?'none':'';
+  if(isSetup){
+    const who=mode==='pvp'?(setupPlayer===0?'下側':'上側'):'あなた';
+    msg(`【配置】${who}の駒をタップして青↔赤を切替(青4・赤4)。青は相手陣の角から脱出させると勝ち。`);
+  }
+}
+
+/* =============== rules =============== */
+function legalMovesOf(p){
+  const out=[];
+  for(const[dr,dc]of[[-1,0],[1,0],[0,-1],[0,1]]){
+    const r=p.r+dr,c=p.c+dc;
+    if(r<0||r>=N||c<0||c>=N)continue;
+    const q=at(r,c);
+    if(q&&q.o===p.o)continue;
+    out.push({r,c,cap:!!q});
+  }
+  return out;
+}
+function canExit(p){
+  if(p.col!=='B')return false;
+  return EXITS(p.o).some(([r,c])=>p.r===r&&p.c===c);
+}
+
+function checkWin(){
+  // 1. 相手の青4つ捕獲 → 捕獲者勝ち
+  // 2. 自分の赤4つ全部取られた → 自分の勝ち
+  for(const o of[0,1]){
+    const taken=capturedBy(o);
+    const blues=taken.filter(p=>p.col==='B').length;
+    const reds=taken.filter(p=>p.col==='R').length;
+    if(blues>=4)return{winner:o,how:'相手の青おばけを4つ捕獲'};
+    if(reds>=4)return{winner:1-o,how:'赤おばけを4つ全て取らせた(罠成立)'};
+  }
+  return null;
+}
+
+/* =============== render =============== */
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('bd');
+const CELL=64,PAD=10;
+const S=CELL*N+PAD*2;
+svg.setAttribute('viewBox',`0 0 ${S} ${S}`);
+let cellEls=[],ghLayer,hlLayer;
+
+(function build(){
+  const bg=document.createElementNS(NS,'rect');
+  bg.setAttribute('width',S);bg.setAttribute('height',S);
+  bg.setAttribute('fill','var(--board)');bg.setAttribute('rx',8);
+  svg.appendChild(bg);
+  for(let i=0;i<N*N;i++){
+    const r=Math.floor(i/N),c=i%N;
+    const rc=document.createElementNS(NS,'rect');
+    rc.setAttribute('x',PAD+c*CELL+2);rc.setAttribute('y',PAD+r*CELL+2);
+    rc.setAttribute('width',CELL-4);rc.setAttribute('height',CELL-4);
+    rc.setAttribute('rx',6);
+    rc.setAttribute('fill',(r+c)%2?'var(--cell)':'var(--cell-b)');
+    rc.setAttribute('class','cell');
+    rc.addEventListener('click',()=>onCell(r,c));
+    svg.appendChild(rc);
+    cellEls[i]=rc;
+  }
+  // 脱出口マーク(矢印)
+  for(const o of[0,1]){
+    for(const[r,c]of EXITS(o)){
+      const t=document.createElementNS(NS,'text');
+      t.setAttribute('x',PAD+c*CELL+CELL/2);
+      t.setAttribute('y',o===0?PAD+r*CELL+13:PAD+r*CELL+CELL-5);
+      t.setAttribute('text-anchor','middle');
+      t.setAttribute('font-size',11);
+      t.setAttribute('fill','var(--gold)');
+      t.setAttribute('class','exit-mark');
+      t.textContent=o===0?'⬆出口':'⬇出口';
+      svg.appendChild(t);
+    }
+  }
+  hlLayer=document.createElementNS(NS,'g');svg.appendChild(hlLayer);
+  ghLayer=document.createElementNS(NS,'g');svg.appendChild(ghLayer);
+})();
+
+function ghostPath(cx,cy,s){
+  const w=s*.62,h=s*.66;
+  const x0=cx-w/2,y0=cy-h/2+2;
+  return `M${x0},${cy+h/2-4}
+    L${x0},${y0+w/2}
+    A${w/2},${w/2} 0 0 1 ${x0+w},${y0+w/2}
+    L${x0+w},${cy+h/2-4}
+    L${x0+w*5/6},${cy+h/2-10}
+    L${x0+w*4/6},${cy+h/2-4}
+    L${x0+w*3/6},${cy+h/2-10}
+    L${x0+w*2/6},${cy+h/2-4}
+    L${x0+w*1/6},${cy+h/2-10}
+    Z`;
+}
+
+function visibleColor(p){
+  // 観戦者(viewer)に見える色
+  if(p.cap)return p.col;                      // 捕獲駒は公開
+  if(mode==='pvp')return p.o===viewer?p.col:null;
+  return p.o===0?p.col:null;                  // CPU戦: 自分の駒のみ
+}
+
+function drawGhost(g,cx,cy,size,col,o,selected){
+  const body=document.createElementNS(NS,'path');
+  body.setAttribute('d',ghostPath(cx,cy,size));
+  const fill=col==='B'?'url(#gB)':col==='R'?'url(#gR)':'url(#gG)';
+  body.setAttribute('fill',fill);
+  body.setAttribute('stroke',selected?'var(--sel)':'rgba(0,0,0,.5)');
+  body.setAttribute('stroke-width',selected?2.6:1.2);
+  g.appendChild(body);
+  // 目
+  for(const dx of[-6,6]){
+    const e=document.createElementNS(NS,'circle');
+    e.setAttribute('cx',cx+dx);e.setAttribute('cy',cy-4);
+    e.setAttribute('r',3.4);e.setAttribute('fill','#fff');
+    g.appendChild(e);
+    const pu=document.createElementNS(NS,'circle');
+    pu.setAttribute('cx',cx+dx);
+    pu.setAttribute('cy',cy-4+(o===1?1.4:-0.6));
+    pu.setAttribute('r',1.6);pu.setAttribute('fill','#1a1a22');
+    g.appendChild(pu);
+  }
+  if(!col){
+    const q=document.createElementNS(NS,'text');
+    q.setAttribute('x',cx);q.setAttribute('y',cy+12);
+    q.setAttribute('text-anchor','middle');
+    q.setAttribute('font-size',11);q.setAttribute('font-weight','700');
+    q.setAttribute('fill','#cfd3e0');
+    q.textContent='?';
+    g.appendChild(q);
+  }
+}
+
+function render(){
+  if(!svg.querySelector('defs')){
+    const defs=document.createElementNS(NS,'defs');
+    defs.innerHTML=`
+    <radialGradient id="gB" cx=".35" cy=".3" r=".95"><stop offset="0" stop-color="#7fb3f0"/><stop offset="1" stop-color="var(--blue-dk)"/></radialGradient>
+    <radialGradient id="gR" cx=".35" cy=".3" r=".95"><stop offset="0" stop-color="#ef8086"/><stop offset="1" stop-color="var(--red-dk)"/></radialGradient>
+    <radialGradient id="gG" cx=".35" cy=".3" r=".95"><stop offset="0" stop-color="#9aa0b5"/><stop offset="1" stop-color="var(--gray-dk)"/></radialGradient>`;
+    svg.appendChild(defs);
+  }
+  ghLayer.innerHTML='';hlLayer.innerHTML='';
+  // 移動先ハイライト
+  if(sel&&phase==='play'){
+    for(const m of legalMovesOf(sel)){
+      const rc=document.createElementNS(NS,'rect');
+      rc.setAttribute('x',PAD+m.c*CELL+4);rc.setAttribute('y',PAD+m.r*CELL+4);
+      rc.setAttribute('width',CELL-8);rc.setAttribute('height',CELL-8);
+      rc.setAttribute('rx',6);
+      rc.setAttribute('fill',m.cap?'rgba(214,69,78,.3)':'rgba(217,180,74,.22)');
+      rc.setAttribute('stroke','var(--sel)');rc.setAttribute('stroke-width',2);
+      hlLayer.appendChild(rc);
+    }
+  }
+  if(lastMove){
+    const rc=document.createElementNS(NS,'rect');
+    rc.setAttribute('x',PAD+lastMove.c*CELL+2);rc.setAttribute('y',PAD+lastMove.r*CELL+2);
+    rc.setAttribute('width',CELL-4);rc.setAttribute('height',CELL-4);
+    rc.setAttribute('rx',6);rc.setAttribute('fill','none');
+    rc.setAttribute('stroke','rgba(217,180,74,.45)');rc.setAttribute('stroke-width',2);
+    hlLayer.appendChild(rc);
+  }
+  // 駒
+  for(const p of pieces){
+    if(p.cap)continue;
+    const g=document.createElementNS(NS,'g');
+    g.setAttribute('class','gh');
+    const cx=PAD+p.c*CELL+CELL/2,cy=PAD+p.r*CELL+CELL/2;
+    drawGhost(g,cx,cy,CELL,visibleColor(p),p.o,sel===p);
+    ghLayer.appendChild(g);
+  }
+  // トレー
+  for(const taker of[0,1]){
+    const el=document.getElementById('tray'+taker);
+    el.querySelectorAll('svg').forEach(x=>x.remove());
+    for(const p of capturedBy(taker)){
+      const mini=document.createElementNS(NS,'svg');
+      mini.setAttribute('viewBox','0 0 30 32');
+      mini.setAttribute('class','mini');
+      const g=document.createElementNS(NS,'g');
+      drawGhost(g,15,16,30,p.col,p.o,false);
+      mini.appendChild(g);
+      el.appendChild(mini);
+    }
+  }
+  // 脱出ボタン
+  const eb=document.getElementById('exitbtn');
+  eb.style.display=(phase==='play'&&sel&&canExit(sel)&&isHumanSide(sel.o))?'':'none';
+  document.getElementById('undo').disabled=!history.length||busy||phase!=='play';
+}
+
+function msg(s){document.getElementById('msg').textContent=s;}
+function isHumanSide(o){return mode==='pvp'||o===0;}
+
+/* =============== input =============== */
+function onCell(r,c){
+  if(busy)return;
+  if(phase==='setup'){
+    const p=at(r,c);
+    const o=mode==='pvp'?setupPlayer:0;
+    if(p&&p.o===o){
+      p.col=p.col==='B'?'R':'B';
+      render();
+    }
+    return;
+  }
+  if(phase!=='play')return;
+  if(!isHumanSide(turn))return;
+  if(mode==='pvp'&&viewer!==turn)return;
+  const p=at(r,c);
+  if(sel){
+    const m=legalMovesOf(sel).find(m=>m.r===r&&m.c===c);
+    if(m){
+      pushHistory();
+      execMove(sel,m);
+      return;
+    }
+  }
+  if(p&&p.o===turn){sel=p;render();}
+  else{sel=null;render();}
+}
+
+document.getElementById('setup-rnd').addEventListener('click',()=>{
+  if(phase!=='setup')return;
+  assignRandom(mode==='pvp'?setupPlayer:0);
+  render();
+});
+
+document.getElementById('setup-ok').addEventListener('click',()=>{
+  if(phase!=='setup')return;
+  const o=mode==='pvp'?setupPlayer:0;
+  const mine=pieces.filter(p=>p.o===o);
+  const b=mine.filter(p=>p.col==='B').length;
+  if(b!==4){msg(`青4・赤4にしてください(現在 青${b})`);return;}
+  if(mode==='pvp'&&setupPlayer===0){
+    setupPlayer=1;viewer=1;
+    handoff('上側の配置','端末を上側プレイヤーに渡してください',()=>{render();uiPhase();});
+    return;
+  }
+  phase='play';turn=0;viewer=0;
+  uiPhase();
+  if(mode==='pvp'){
+    handoff('対局開始','下側プレイヤーの番です',()=>{render();msg('下側の番です');});
+  }else{
+    render();msg('あなたの番です。青を上の角まで運ぶか、相手の青を4つ取れば勝ち。');
+    if(Math.random()<.5){turn=1;busy=true;render();msg('CPUの番です');setTimeout(cpuTurn,650);}
+  }
+});
+
+document.getElementById('exitbtn').addEventListener('click',()=>{
+  if(!sel||!canExit(sel))return;
+  pushHistory();
+  finish(sel.o,'青おばけが脱出に成功');
+});
+
+/* =============== move / flow =============== */
+function pushHistory(){
+  history.push({pieces:pieces.map(p=>({...p})),turn,last:lastMove?{...lastMove}:null});
+  if(history.length>100)history.shift();
+}
+
+function execMove(p,m){
+  const q=at(m.r,m.c);
+  let capMsg='';
+  if(q){
+    q.cap=true;
+    capMsg=q.col==='B'?'捕獲 — 青でした!':'捕獲 — 赤でした…';
+  }
+  p.r=m.r;p.c=m.c;
+  lastMove={r:m.r,c:m.c};
+  sel=null;
+  const w=checkWin();
+  if(w){render();finish(w.winner,w.how);return;}
+  turn=1-turn;
+  render();
+  if(mode==='pvp'){
+    viewer=-1;render(); // 受け渡し中は両者非公開
+    handoff((turn===0?'下側':'上側')+'の番',capMsg||'端末を渡してください',()=>{
+      viewer=turn;render();
+      msg((turn===0?'下側':'上側')+'の番です'+(capMsg?' / '+capMsg:''));
+    });
+    return;
+  }
+  msg(capMsg?capMsg+' — CPUの番です':'CPUの番です');
+  busy=true;render();
+  setTimeout(cpuTurn,650);
+}
+
+function handoff(title,sub,cb){
+  document.getElementById('h-t').textContent=title;
+  document.getElementById('h-s').textContent=sub;
+  document.getElementById('hov').classList.add('show');
+  const ok=document.getElementById('h-ok');
+  const fn=()=>{
+    document.getElementById('hov').classList.remove('show');
+    ok.removeEventListener('click',fn);
+    cb();
+  };
+  ok.addEventListener('click',fn);
+}
+
+function finish(winner,how){
+  phase='over';busy=false;
+  const t=document.getElementById('g-t');
+  if(mode==='pvp')t.textContent=winner===0?'下側の勝ち':'上側の勝ち';
+  else t.textContent=winner===0?'勝利':'敗北';
+  // 全駒公開
+  viewer=-2;
+  document.getElementById('g-s').textContent=how;
+  msg('対局終了 — 全ての正体を公開');
+  // 公開レンダリング
+  const origVisible=visibleColor;
+  render();
+  ghLayer.innerHTML='';
+  for(const p of pieces){
+    if(p.cap)continue;
+    const g=document.createElementNS(NS,'g');
+    drawGhost(g,PAD+p.c*CELL+CELL/2,PAD+p.r*CELL+CELL/2,CELL,p.col,p.o,false);
+    ghLayer.appendChild(g);
+  }
+  setTimeout(()=>document.getElementById('gov').classList.add('show'),700);
+}
+
+/* =============== CPU(非チート:人間の駒色は捕獲済み以外参照しない) =============== */
+function humanBlueProb(){
+  const unknown=pieces.filter(p=>p.o===0&&!p.cap);
+  const capturedHuman=pieces.filter(p=>p.o===0&&p.cap);
+  const bluesTaken=capturedHuman.filter(p=>p.col==='B').length;
+  const bluesLeft=4-bluesTaken;
+  return unknown.length?bluesLeft/unknown.length:0;
+}
+
+function cpuTurn(){
+  if(phase!=='play'){busy=false;return;}
+  const mine=pieces.filter(p=>p.o===1&&!p.cap);
+  // 即脱出
+  for(const p of mine){
+    if(canExit(p)){busy=false;finish(1,'CPUの青おばけが脱出');return;}
+  }
+  const cand=[];
+  const pBlue=humanBlueProb();
+  const takenReds=capturedBy(1).filter(p=>p.col==='R').length;
+  const takenBlues=capturedBy(1).filter(p=>p.col==='B').length;
+  for(const p of mine){
+    for(const m of legalMovesOf(p)){
+      let sc=Math.random()*3;
+      const q=at(m.r,m.c);
+      if(q){
+        // 期待値: 青なら+、赤なら−(4個目の赤=即敗北)
+        let capEV=pBlue*30-(1-pBlue)*22;
+        if(takenBlues===3)capEV+=pBlue*200;       // 青4個目なら勝ち
+        if(takenReds===3)capEV-=(1-pBlue)*400;    // 赤4個目なら負け
+        // 自陣出口に迫る駒は色に関係なく排除価値が高い
+        const nearExit=EXITS(1).some(([er,ec])=>Math.abs(q.r-er)+Math.abs(q.c-ec)<=1);
+        if(nearExit)capEV+=45;
+        sc+=capEV;
+      }
+      if(p.col==='B'){
+        // 青は出口へ前進(最寄りの下角)
+        const d0=Math.min(...EXITS(1).map(([er,ec])=>Math.abs(p.r-er)+Math.abs(p.c-ec)));
+        const d1=Math.min(...EXITS(1).map(([er,ec])=>Math.abs(m.r-er)+Math.abs(m.c-ec)));
+        sc+=(d0-d1)*9;
+        // 移動先が人間駒の隣 = 取られるリスク
+        let adj=0;
+        for(const[dr,dc]of[[-1,0],[1,0],[0,-1],[0,1]]){
+          const q2=at(m.r+dr,m.c+dc);
+          if(q2&&q2.o===0)adj++;
+        }
+        sc-=adj*8;
+        if(takenReds===3)sc-=adj*10; // 取られたら相手は躊躇しない状況等は簡略化
+      }else{
+        // 赤は囮: 人間駒に隣接すると取られチャンス(取られたら自分に有利)
+        let adj=0;
+        for(const[dr,dc]of[[-1,0],[1,0],[0,-1],[0,1]]){
+          const q2=at(m.r+dr,m.c+dc);
+          if(q2&&q2.o===0)adj++;
+        }
+        const myRedsTaken=capturedBy(0).filter(x=>x.col==='R').length;
+        sc+=adj*(myRedsTaken===3?60:6); // 赤4個目を取らせれば勝ち
+        sc+=(m.r-p.r)*2; // 前進で青っぽく見せる
+      }
+      // 自陣出口の防衛: 人間駒が角にいるなら最優先で対処
+      for(const[er,ec]of EXITS(1)){
+        const onCorner=at(er,ec);
+        if(onCorner&&onCorner.o===0&&m.r===er&&m.c===ec)sc+=150;
+      }
+      cand.push([sc,p,m]);
+    }
+  }
+  if(!cand.length){busy=false;finish(0,'CPUが動けません');return;}
+  cand.sort((a,b)=>b[0]-a[0]);
+  let pick;
+  if(mode==='cpu1'){
+    const top=cand.slice(0,Math.min(10,cand.length));
+    pick=top[Math.floor(Math.random()*top.length)];
+  }else pick=cand[0];
+  const[,p,m]=pick;
+  busy=false;
+  pushHistory();
+  // execMoveはturn=1のまま処理
+  const q=at(m.r,m.c);
+  let capMsg='';
+  if(q){q.cap=true;capMsg=q.col==='B'?'CPUがあなたの青を捕獲!':'CPUがあなたの赤を捕獲(しめしめ)';}
+  p.r=m.r;p.c=m.c;
+  lastMove={r:m.r,c:m.c};
+  const w=checkWin();
+  if(w){render();finish(w.winner,w.how);return;}
+  turn=0;
+  render();
+  msg((capMsg?capMsg+' — ':'')+'あなたの番です');
+}
+
+/* =============== controls =============== */
+document.getElementById('undo').addEventListener('click',()=>{
+  if(!history.length||busy||phase!=='play')return;
+  let h=history.pop();
+  if(mode!=='pvp'){while(history.length&&h.turn!==0)h=history.pop();}
+  pieces=h.pieces.map(p=>({...p}));
+  turn=h.turn;lastMove=h.last;sel=null;
+  document.getElementById('gov').classList.remove('show');
+  phase='play';
+  render();
+  msg('あなたの番です');
+});
+document.getElementById('reset').addEventListener('click',init);
+document.getElementById('g-again').addEventListener('click',init);
+document.getElementById('modes').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  mode=b.dataset.m;
+  document.querySelectorAll('#modes button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');init();
+});
+
+init();
+</script>
+</body>
+</html>
