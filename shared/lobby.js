@@ -34,6 +34,12 @@
     geister: "games/geister.html",
     dots: "games/dots.html",
     chinese: "games/chinese.html",
+    yacht: "games/yacht.html",
+    chinchiro: "games/chinchiro.html",
+    blackjack: "games/blackjack.html",
+    hitblow: "games/hitblow.html",
+    sevens: "games/sevens.html",
+    daifugo: "games/daifugo.html",
   };
 
   function randomCode() {

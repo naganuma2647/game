@@ -82,25 +82,34 @@ function nKind(d,n){return Object.values(counts(d)).some(v=>v>=n);}
 function isFull(d){const v=Object.values(counts(d)).sort();return v.length===2&&v[0]===2&&v[1]===3;}
 function straight(d,len){const s=[...new Set(d)].sort((a,b)=>a-b);let run=1,best=1;for(let i=1;i<s.length;i++){if(s[i]===s[i-1]+1){run++;best=Math.max(best,run);}else run=1;}return best>=len;}
 let dice,keep,rolls,allScores,turn,over,np=1,curPlayer;
+let ONLINE=false,MYSEAT=0,roomSend=null;
+function myTurn(){return !ONLINE||curPlayer===MYSEAT;}
+// online: route every input through the relay so all clients apply in one order
+function emit(a){if(ONLINE){if(!myTurn()||over)return;roomSend(a);}else doAction(a);}
+function doAction(a){if(a.k==='roll')_roll();else if(a.k==='keep')_toggleKeep(a.i);else if(a.k==='record')_record(a.id);}
 function init(){dice=[1,1,1,1,1];keep=[false,false,false,false,false];rolls=0;
   allScores=Array.from({length:np},()=>({}));turn=0;curPlayer=0;over=false;
   document.getElementById('over').classList.remove('show');
   document.getElementById('curp').style.display=np>1?'block':'none';
   updateCurP();renderDice();renderSheet();updateRollBtn();}
 function scores(){return allScores[curPlayer];}
-function updateCurP(){if(np>1)document.getElementById('curp').textContent='プレイヤー '+(curPlayer+1)+' の番（'+turn+'/13問目）';}
+function updateCurP(){if(np<=1)return;
+  const me=ONLINE&&curPlayer===MYSEAT;
+  document.getElementById('curp').textContent=(me?'★ あなた（P'+(curPlayer+1)+'）':'プレイヤー '+(curPlayer+1))+' の番（'+turn+'/13問目）';}
 function renderDice(){const el=document.getElementById('dice');el.innerHTML='';dice.forEach((v,i)=>{
   const d=document.createElement('div');d.className='die'+(keep[i]?' keep':'');
   d.innerHTML=PIPS[v].map(([x,y])=>`<span class="pip" style="left:${x}%;top:${y}%"></span>`).join('');
-  if(rolls>0)d.addEventListener('click',()=>{keep[i]=!keep[i];renderDice();});
+  if(rolls>0&&myTurn())d.addEventListener('click',()=>emit({k:'keep',i}));
   el.appendChild(d);});}
-function updateRollBtn(){document.getElementById('roll').disabled=rolls>=3||over;
+function updateRollBtn(){document.getElementById('roll').disabled=rolls>=3||over||!myTurn();
   document.getElementById('left').textContent=over?'—':'残り'+(3-rolls)+'回';}
-function roll(){if(rolls>=3||over)return;rolls++;
+function _toggleKeep(i){if(rolls===0||over)return;keep[i]=!keep[i];renderDice();}
+function _roll(){if(rolls>=3||over)return;rolls++;
   for(let i=0;i<5;i++)if(!keep[i])dice[i]=1+Math.floor(Math.random()*6);
   const el=document.getElementById('dice');renderDice();
   el.querySelectorAll('.die').forEach((d,i)=>{if(!keep[i])d.classList.add('roll');});
   updateRollBtn();renderSheet();}
+function roll(){emit({k:'roll'});}
 function upperSum(p){const sc=p!==undefined?allScores[p]:scores();return CATS.filter(c=>c.up&&sc[c.id]!==undefined).reduce((s,c)=>s+sc[c.id],0);}
 function bonus(p){return upperSum(p)>=63?35:0;}
 function grandTotal(p){const sc=p!==undefined?allScores[p]:scores();return CATS.reduce((s,c)=>s+(sc[c.id]||0),0)+bonus(p);}
@@ -118,11 +127,12 @@ function renderSheet(){const sh=document.getElementById('sheet');sh.innerHTML=''
 function catRow(sh,c){const r=document.createElement('div');
   const used=scores()[c.id]!==undefined;
   const preview=(!used&&rolls>0)?c.fn(dice):null;
-  r.className='srow'+(used?' used':(rolls>0?' open':''));
+  const canRec=!used&&rolls>0&&myTurn();
+  r.className='srow'+(used?' used':(canRec?' open':''));
   r.innerHTML=`<span class="nm">${c.name}</span><span class="pt">${used?scores()[c.id]:(preview!==null?preview:'')}</span>`;
-  if(!used&&rolls>0)r.addEventListener('click',()=>record(c));
+  if(canRec)r.addEventListener('click',()=>emit({k:'record',id:c.id}));
   sh.appendChild(r);}
-function record(c){if(scores()[c.id]!==undefined||rolls===0||over)return;
+function _record(id){const c=CATS.find(x=>x.id===id);if(!c||scores()[c.id]!==undefined||rolls===0||over)return;
   scores()[c.id]=c.fn(dice);
   keep=[false,false,false,false,false];rolls=0;
   if(np>1){
@@ -139,9 +149,21 @@ function finish(){over=true;updateRollBtn();
   else{const totals=allScores.map((_,p)=>grandTotal(p));const max=Math.max(...totals);const winners=totals.map((v,i)=>v===max?i+1:null).filter(x=>x);const r=winners.length>1?'引き分け（P'+winners.join(', P')+'）':'プレイヤー'+winners[0]+'の勝ち！';const det=totals.map((v,i)=>'P'+(i+1)+': '+v+'点').join(' / ');document.getElementById('ov-s').innerHTML=r+'<br><span style="font-size:13px">'+det+'</span>';}
   document.getElementById('over').classList.add('show');}
 document.getElementById('roll').addEventListener('click',roll);
-document.getElementById('again').addEventListener('click',init);
+document.getElementById('again').addEventListener('click',()=>{if(ONLINE)return;init();});
 document.getElementById('np').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;np=+b.dataset.np;document.querySelectorAll('#np button').forEach(x=>{x.classList.remove('on');x.style.borderColor='#3a3326';x.style.color='var(--sub)';});b.classList.add('on');b.style.borderColor='var(--gold)';b.style.color='var(--gold)';init();});
 init();
+function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
+  document.getElementById('np').style.display='none';
+  document.getElementById('again').style.display='none';
+  init();}
+</script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="../shared/lobby.js?v=2"></script>
+<script src="../shared/online-room.js?v=1"></script>
+<script>
+OnlineRoom.init({gameId:'yacht',minPlayers:2,maxPlayers:4,note:'全員で同じ問題を解いてスコアを競います。',
+  onStart:(seat,n,send)=>startOnline(seat,n,send),
+  onMessage:(from,msg)=>doAction(msg)});
 </script>
 </body>
 </html>
