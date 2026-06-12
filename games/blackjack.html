@@ -6,6 +6,10 @@
 body{background:radial-gradient(ellipse at 50% 30%,#164a30,#0E2A1C);color:var(--txt);font-family:"Hiragino Sans","Yu Gothic UI",sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:14px 10px 28px;user-select:none}
 h1{font-family:"Hiragino Mincho ProN",serif;font-size:25px;letter-spacing:.15em;margin:2px 0}
 .sub{font-size:10px;color:var(--sub);letter-spacing:.2em;margin-bottom:10px}
+.row{display:flex;gap:7px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.row .lab{font-size:11px;color:var(--sub);margin-right:2px}
+.row button{background:transparent;border:1px solid #2c5a40;color:var(--sub);padding:6px 13px;border-radius:18px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .2s}
+.row button.on{border-color:var(--gold);color:var(--gold)}
 .chips{display:flex;gap:14px;align-items:center;margin-bottom:8px;font-size:14px}
 .chips .b{background:rgba(0,0,0,.28);border-radius:7px;padding:5px 14px}
 .chips b{color:var(--gold)}
@@ -18,60 +22,95 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:25px;letter-spacing:.15em;
 .card .big{position:absolute;bottom:4px;right:7px;font-size:24px;opacity:.85}
 .card.red{color:var(--red)}.card.blk{color:var(--blk)}
 .card.down{background:repeating-linear-gradient(45deg,#1F5A3C,#1F5A3C 6px,#184a31 6px,#184a31 12px);border-color:#0d3320}
+.card.sm{width:42px;height:60px}.card.sm .crn{font-size:11px;top:3px;left:4px}.card.sm .big{font-size:15px;bottom:2px;right:4px}
 .tot{font-size:13px;color:var(--gold);margin-top:4px;min-height:18px}
 .msg{min-height:24px;font-size:16px;font-weight:700;color:var(--gold);margin:10px 0;text-align:center;letter-spacing:.05em}
-.bet{display:flex;gap:8px;align-items:center;margin:6px 0}
+.bet{display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap;justify-content:center}
 .bet button{background:#13402A;border:1px solid #2c5a40;color:var(--txt);padding:8px 14px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px}
 .bet button:hover{border-color:var(--gold)}
-.actions{display:flex;gap:10px;margin-top:8px}
+.actions{display:flex;gap:10px;margin-top:8px;justify-content:center}
 .actions button{background:var(--gold);border:none;color:#13402A;font-weight:700;padding:11px 26px;border-radius:8px;cursor:pointer;font-size:15px;font-family:inherit}
 .actions button.alt{background:transparent;border:1px solid #3a6a4c;color:var(--txt)}
 .actions button:disabled{opacity:.4;cursor:default}
+.pseats{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;width:min(98vw,560px);margin:4px 0}
+.seat{background:rgba(0,0,0,.22);border:1px solid #1c5e3c;border-radius:10px;padding:7px 9px;min-width:120px;flex:0 0 auto}
+.seat.active{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,162,39,.4)}
+.seat.me .snm{color:#7fd6a0}
+.seat .snm{font-size:12px;margin-bottom:3px;display:flex;justify-content:space-between;gap:6px}
+.seat .snm .sc{color:var(--gold)}
+.seat .shand{display:flex;gap:3px;flex-wrap:wrap;min-height:62px}
+.seat .stot{font-size:11px;color:var(--gold);margin-top:2px;min-height:15px}
+.seat .sres{font-size:11px;font-weight:700;min-height:15px}
+.hidden{display:none!important}
 </style></head><body>
 <a href="../index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
 <h1>ブラックジャック</h1><div class="sub">BLACKJACK — 21を目指せ</div>
-<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px" id="np">
-<span style="font-size:11px;color:var(--sub);align-self:center;margin-right:2px">人数:</span>
-<button data-np="1" class="on" style="background:transparent;border:1px solid #3a6a4c;color:var(--sub);padding:5px 12px;border-radius:16px;font-size:12px;cursor:pointer;font-family:inherit">1人</button>
-<button data-np="2" style="background:transparent;border:1px solid #3a6a4c;color:var(--sub);padding:5px 12px;border-radius:16px;font-size:12px;cursor:pointer;font-family:inherit">2人</button>
-<button data-np="3" style="background:transparent;border:1px solid #3a6a4c;color:var(--sub);padding:5px 12px;border-radius:16px;font-size:12px;cursor:pointer;font-family:inherit">3人</button>
-<button data-np="4" style="background:transparent;border:1px solid #3a6a4c;color:var(--sub);padding:5px 12px;border-radius:16px;font-size:12px;cursor:pointer;font-family:inherit">4人</button>
+
+<div class="row" id="mode"><span class="lab">対戦:</span>
+  <button data-m="solo" class="on">1人（ディーラー）</button>
+  <button data-m="multi">複数人</button>
 </div>
-<div id="curp" style="font-size:13px;color:var(--gold);min-height:18px;margin-bottom:4px;display:none"></div>
-<div class="chips"><span class="b">チップ <b id="chips">1000</b></span><span class="b">ベット <b id="betv">0</b></span></div>
-<div class="area"><div class="lab">ディーラー <span id="dtot"></span></div><div class="hand" id="dhand"></div></div>
-<div class="area"><div class="lab">あなた <span id="ptot"></span></div><div class="hand" id="phand"></div></div>
+<div class="row hidden" id="nprow"><span class="lab">人数:</span>
+  <button data-np="2" class="on">2人</button><button data-np="3">3人</button><button data-np="4">4人</button>
+</div>
+
+<!-- SOLO -->
+<div id="solo-area">
+  <div class="chips"><span class="b">チップ <b id="chips">1000</b></span><span class="b">ベット <b id="betv">0</b></span></div>
+  <div class="area"><div class="lab">ディーラー <span id="dtot"></span></div><div class="hand" id="dhand"></div></div>
+  <div class="area"><div class="lab">あなた <span id="ptot"></span></div><div class="hand" id="phand"></div></div>
+  <div class="bet" id="betrow">
+    <button data-b="50">+50</button><button data-b="100">+100</button><button data-b="500">+500</button>
+    <button data-b="max">MAX</button><button data-b="clear" class="alt2">クリア</button>
+    <button id="deal" style="margin-left:auto;background:var(--gold);border:none;color:#13402A;font-weight:700;padding:8px 18px;border-radius:8px;cursor:pointer;font-family:inherit">配る</button>
+  </div>
+  <div class="actions" id="actions" style="display:none">
+    <button id="hit">ヒット</button>
+    <button id="stand" class="alt">スタンド</button>
+  </div>
+</div>
+
+<!-- MULTI -->
+<div id="multi-area" class="hidden">
+  <div class="area" style="text-align:center"><div class="lab">ディーラー <span id="m-dtot"></span></div><div class="hand" id="m-dhand" style="justify-content:center"></div></div>
+  <div class="pseats" id="pseats"></div>
+  <div class="bet" id="m-betrow">
+    <button data-b="-50">−50</button><span style="color:var(--gold);font-weight:700;min-width:80px;text-align:center">ベット <span id="m-betv">100</span></span>
+    <button data-b="50">+50</button><button data-b="100">+100</button><button data-b="max">MAX</button>
+    <button id="m-confirm" style="background:var(--gold);border:none;color:#13402A;font-weight:700;padding:8px 18px;border-radius:8px;cursor:pointer;font-family:inherit">ベット確定</button>
+  </div>
+  <div class="actions" id="m-actions" style="display:none">
+    <button id="m-hit">ヒット</button><button id="m-stand" class="alt">スタンド</button>
+  </div>
+  <div class="actions" id="m-nextrow" style="display:none">
+    <button id="m-next">次のゲーム</button>
+  </div>
+</div>
+
 <div class="msg" id="msg">ベットしてください</div>
-<div class="bet" id="betrow">
-  <button data-b="50">+50</button><button data-b="100">+100</button><button data-b="500">+500</button>
-  <button data-b="max">MAX</button><button data-b="clear" class="alt2">クリア</button>
-  <button id="deal" style="margin-left:auto;background:var(--gold);border:none;color:#13402A;font-weight:700;padding:8px 18px;border-radius:8px;cursor:pointer;font-family:inherit">配る</button>
-</div>
-<div class="actions" id="actions" style="display:none">
-  <button id="hit">ヒット</button>
-  <button id="stand" class="alt">スタンド</button>
-</div>
 <script>
 const SUITS=['♠','♥','♦','♣'],RED={'♥':1,'♦':1};
 const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-let deck,pl,dl,bet=0,phase='bet',np=1,cur=0;
-let allChips=[1,2,3,4].map(i=>+(localStorage.getItem('bjchips'+i)||1000));
-function chips(){return allChips[cur];}
-function setChips(v){allChips[cur]=v;}
-function saveChips(){allChips.forEach((v,i)=>localStorage.setItem('bjchips'+(i+1),v));}
-function updateCurP(){const el=document.getElementById('curp');if(np>1){el.style.display='block';el.textContent='プレイヤー '+(cur+1)+' の番';}else el.style.display='none';}
-function newDeck(){deck=[];for(let s=0;s<4;s++)for(let r=0;r<13;r++)deck.push({s,r});for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}}
 function val(h){let t=0,a=0;for(const c of h){let v=Math.min(c.r+1,10);if(c.r===0){v=11;a++;}t+=v;}while(t>21&&a){t-=10;a--;}return t;}
-function cardHtml(c,down){if(down)return '<div class="card down"></div>';const cls=RED[SUITS[c.s]]?'red':'blk';return '<div class="card '+cls+'"><span class="crn">'+RANKS[c.r]+'<br>'+SUITS[c.s]+'</span><span class="big">'+SUITS[c.s]+'</span></div>';}
-function render(hideHole){document.getElementById('chips').textContent=chips();document.getElementById('betv').textContent=bet;
+function cardHtml(c,down,sm){if(down)return '<div class="card down'+(sm?' sm':'')+'"></div>';const cls=RED[SUITS[c.s]]?'red':'blk';return '<div class="card '+cls+(sm?' sm':'')+'"><span class="crn">'+RANKS[c.r]+'<br>'+SUITS[c.s]+'</span><span class="big">'+SUITS[c.s]+'</span></div>';}
+function freshDeck(){const d=[];for(let s=0;s<4;s++)for(let r=0;r<13;r++)d.push({s,r});for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}return d;}
+function msg(t){document.getElementById('msg').textContent=t;}
+
+let mode='solo',np=2;
+let ONLINE=false,MYSEAT=0,roomSend=null;
+
+/* ============ SOLO ============ */
+let deck,pl,dl,chips=+(localStorage.getItem('bjchips')||1000),bet=0,phase='bet';
+function saveChips(){localStorage.setItem('bjchips',chips);}
+function renderSolo(hideHole){document.getElementById('chips').textContent=chips;document.getElementById('betv').textContent=bet;
   document.getElementById('phand').innerHTML=pl.map(c=>cardHtml(c)).join('');
   document.getElementById('dhand').innerHTML=dl.map((c,i)=>cardHtml(c,hideHole&&i===1)).join('');
   document.getElementById('ptot').textContent=pl.length?'('+val(pl)+')':'';
   document.getElementById('dtot').textContent=dl.length?(hideHole?'('+Math.min(dl[0].r+1,dl[0].r===0?11:10)+'+?)':'('+val(dl)+')'):'';}
-function startRound(){if(bet<=0){msg('ベットしてください');return;}newDeck();pl=[deck.pop(),deck.pop()];dl=[deck.pop(),deck.pop()];phase='play';document.getElementById('betrow').style.display='none';document.getElementById('actions').style.display='flex';render(true);
+function startRound(){if(bet<=0){msg('ベットしてください');return;}deck=freshDeck();pl=[deck.pop(),deck.pop()];dl=[deck.pop(),deck.pop()];phase='play';document.getElementById('betrow').style.display='none';document.getElementById('actions').style.display='flex';renderSolo(true);
   if(val(pl)===21){stand();}else msg('ヒット or スタンド');}
-function hit(){if(phase!=='play')return;pl.push(deck.pop());render(true);if(val(pl)>21){render(false);finish('バスト！ あなたの負け',-1);}else if(val(pl)===21)stand();}
-function stand(){if(phase!=='play')return;phase='dealer';while(val(dl)<17)dl.push(deck.pop());render(false);const pv=val(pl),dv=val(dl);
+function hit(){if(phase!=='play')return;pl.push(deck.pop());renderSolo(true);if(val(pl)>21){renderSolo(false);finishSolo('バスト！ あなたの負け',-1);}else if(val(pl)===21)stand();}
+function stand(){if(phase!=='play')return;phase='dealer';while(val(dl)<17)dl.push(deck.pop());renderSolo(false);const pv=val(pl),dv=val(dl);
   let r,m;const bj=pl.length===2&&pv===21;
   if(pv>21){m='バスト！ あなたの負け';r=-1;}
   else if(dv>21){m='ディーラーがバスト！ あなたの勝ち';r=1;}
@@ -79,18 +118,149 @@ function stand(){if(phase!=='play')return;phase='dealer';while(val(dl)<17)dl.pus
   else if(pv<dv){m='ディーラーの勝ち';r=-1;}
   else{m='引き分け';r=0;}
   if(bj&&r===1){m='ブラックジャック！ 🎉';r=1.5;}
-  finish(m,r);}
-function finish(m,r){phase='over';if(r>0)setChips(chips()+Math.floor(bet*r));else if(r<0)setChips(chips()-bet);saveChips();
-  msg(m+'　('+(r>0?'+':'')+Math.floor(bet*r)+')');render(false);
-  setTimeout(()=>{document.getElementById('actions').style.display='none';document.getElementById('betrow').style.display='flex';bet=0;phase='bet';
-    if(chips()<=0){setChips(1000);saveChips();msg('チップが尽きたので1000補充しました');}
-    if(np>1){cur=(cur+1)%np;updateCurP();msg('プレイヤー'+(cur+1)+'のベットをどうぞ');}
-    else msg('次のベットをどうぞ');render(false);},1400);}
-function msg(t){document.getElementById('msg').textContent=t;}
-document.getElementById('betrow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!b.dataset.b)return;if(phase!=='bet')return;const v=b.dataset.b;if(v==='clear')bet=0;else if(v==='max')bet=chips();else bet=Math.min(chips(),bet+ +v);render(false);if(bet>0&&document.getElementById('msg').textContent.includes('ベット'))msg('「配る」でスタート');});
+  finishSolo(m,r);}
+function finishSolo(m,r){phase='over';if(r>0)chips+=Math.floor(bet*r);else if(r<0)chips-=bet;saveChips();
+  msg(m+'　('+(r>0?'+':'')+Math.floor(bet*r)+')');renderSolo(false);
+  setTimeout(()=>{document.getElementById('actions').style.display='none';document.getElementById('betrow').style.display='flex';bet=0;phase='bet';if(chips<=0){chips=1000;saveChips();msg('チップが尽きたので1000補充しました');}else msg('次のベットをどうぞ');renderSolo(false);},1400);}
+
+/* ============ MULTI (各自 vs ディーラー) ============ */
+let mDeck,players=[],dealer=[],mPhase='bet',curPlayer=0,pendBet=100;
+function myTurn(){return !ONLINE||curPlayer===MYSEAT;}
+function emit(a){if(ONLINE){if(!myTurn())return;roomSend(a);}else doAction(a);}
+function doAction(a){
+  if(a.k==='bet')_placeBet(a.amt);
+  else if(a.k==='hit')_hit();
+  else if(a.k==='stand')_stand();
+  else if(a.k==='next')_next();
+}
+function initMulti(){
+  players=[];for(let i=0;i<np;i++)players.push({chips:1000,bet:0,hand:[],done:false,res:null});
+  dealer=[];mPhase='bet';curPlayer=0;pendBet=100;
+  renderMulti();updateMultiControls();
+  msg(turnName(curPlayer)+'：ベットを決めて「ベット確定」');
+}
+function pname(i){return (ONLINE&&i===MYSEAT)?'あなた(P'+(i+1)+')':'P'+(i+1);}
+function turnName(i){return ONLINE?(i===MYSEAT?'★あなた':'相手(P'+(i+1)+')'):'プレイヤー'+(i+1);}
+function renderMulti(){
+  const hideHole=mPhase==='bet'||mPhase==='play';
+  document.getElementById('m-dhand').innerHTML=dealer.map((c,i)=>cardHtml(c,hideHole&&i===1)).join('');
+  document.getElementById('m-dtot').textContent=dealer.length?(hideHole?'('+Math.min(dealer[0].r+1,dealer[0].r===0?11:10)+'+?)':'('+val(dealer)+')'):'';
+  const ps=document.getElementById('pseats');ps.innerHTML='';
+  for(let i=0;i<np;i++){const p=players[i];
+    const seat=document.createElement('div');
+    seat.className='seat'+((mPhase==='bet'||mPhase==='play')&&i===curPlayer?' active':'')+(ONLINE&&i===MYSEAT?' me':'');
+    const rc=p.res==null?'':(p.res>0?'#6CC56C':p.res<0?'#e0533e':'var(--gold)');
+    const rt=p.res==null?'':(p.res>0?'勝ち':p.res<0?'負け':'引分');
+    seat.innerHTML='<div class="snm"><span>'+pname(i)+(p.done&&mPhase==='play'?' ✓':'')+'</span><span class="sc">'+p.chips+'</span></div>'+
+      '<div class="shand">'+p.hand.map(c=>cardHtml(c,false,true)).join('')+'</div>'+
+      '<div class="stot">'+(p.hand.length?'('+val(p.hand)+')'+(p.bet?' 賭'+p.bet:''):(p.bet?'賭'+p.bet:''))+'</div>'+
+      '<div class="sres" style="color:'+rc+'">'+rt+'</div>';
+    ps.appendChild(seat);
+  }
+}
+function updateMultiControls(){
+  const betShow=mPhase==='bet'&&myTurn();
+  const actShow=mPhase==='play'&&myTurn()&&!players[curPlayer].done;
+  const nextShow=mPhase==='over'&&(!ONLINE||MYSEAT===0);
+  document.getElementById('m-betrow').style.display=betShow?'flex':'none';
+  document.getElementById('m-actions').style.display=actShow?'flex':'none';
+  document.getElementById('m-nextrow').style.display=nextShow?'flex':'none';
+  if(betShow){pendBet=Math.min(pendBet||100,players[curPlayer].chips);document.getElementById('m-betv').textContent=pendBet;}
+}
+function _placeBet(amt){
+  if(mPhase!=='bet')return;
+  const p=players[curPlayer];amt=Math.max(50,Math.min(p.chips,amt));
+  p.bet=amt;p.chips-=amt;
+  if(curPlayer<np-1){curPlayer++;pendBet=100;renderMulti();updateMultiControls();msg(turnName(curPlayer)+'：ベットを決めて「ベット確定」');}
+  else dealAll();
+}
+function dealAll(){
+  mDeck=freshDeck();
+  for(const p of players)p.hand=[mDeck.pop(),mDeck.pop()];
+  dealer=[mDeck.pop(),mDeck.pop()];
+  for(const p of players)if(val(p.hand)===21)p.done=true; // ナチュラルは自動スタンド
+  mPhase='play';curPlayer=0;
+  while(curPlayer<np&&players[curPlayer].done)curPlayer++;
+  if(curPlayer>=np){dealerPlay();return;}
+  renderMulti();updateMultiControls();
+  msg(turnName(curPlayer)+'：ヒット or スタンド');
+}
+function nextPlayer(){
+  curPlayer++;
+  while(curPlayer<np&&players[curPlayer].done)curPlayer++;
+  if(curPlayer>=np)dealerPlay();
+}
+function _hit(){if(mPhase!=='play')return;const p=players[curPlayer];if(p.done)return;
+  p.hand.push(mDeck.pop());
+  if(val(p.hand)>=21){p.done=true;nextPlayer();}
+  if(mPhase==='play'){renderMulti();updateMultiControls();msg(turnName(curPlayer)+'：ヒット or スタンド');}
+}
+function _stand(){if(mPhase!=='play')return;const p=players[curPlayer];if(p.done)return;
+  p.done=true;nextPlayer();
+  if(mPhase==='play'){renderMulti();updateMultiControls();msg(turnName(curPlayer)+'：ヒット or スタンド');}
+}
+function dealerPlay(){
+  mPhase='dealer';
+  while(val(dealer)<17)dealer.push(mDeck.pop());
+  const dv=val(dealer);
+  for(const p of players){
+    const pv=val(p.hand);const bj=p.hand.length===2&&pv===21;
+    let r;
+    if(pv>21)r=-1;else if(dv>21)r=1;else if(pv>dv)r=1;else if(pv<dv)r=-1;else r=0;
+    if(bj&&r===1)r=1.5;
+    p.res=r;
+    if(r>0)p.chips+=p.bet+Math.floor(p.bet*r);   // 賭け金返却＋配当
+    else if(r===0)p.chips+=p.bet;                // 引分は返却
+    // r<0: 賭け金没収（既に減算済み）
+  }
+  mPhase='over';renderMulti();updateMultiControls();
+  const winners=players.map((p,i)=>p.res>0?i:-1).filter(i=>i>=0).map(i=>pname(i));
+  msg('ディーラー '+val(dealer)+'。'+(winners.length?'勝者: '+winners.join('・'):'勝者なし')+(ONLINE?'（ホストが「次のゲーム」へ）':''));
+}
+function _next(){
+  for(const p of players){if(p.chips<=0)p.chips=1000;p.bet=0;p.hand=[];p.done=false;p.res=null;}
+  dealer=[];mPhase='bet';curPlayer=0;pendBet=100;
+  renderMulti();updateMultiControls();msg(turnName(curPlayer)+'：ベットを決めて「ベット確定」');
+}
+
+/* ============ mode switch ============ */
+function setMode(m){
+  mode=m;
+  document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x.dataset.m===m));
+  document.getElementById('nprow').classList.toggle('hidden',m!=='multi');
+  document.getElementById('solo-area').classList.toggle('hidden',m!=='solo');
+  document.getElementById('multi-area').classList.toggle('hidden',m!=='multi');
+  if(m==='solo'){phase='bet';bet=0;pl=[];dl=[];document.getElementById('betrow').style.display='flex';document.getElementById('actions').style.display='none';renderSolo(false);msg('ベットしてください');}
+  else initMulti();
+}
+document.getElementById('mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||ONLINE)return;setMode(b.dataset.m);});
+document.getElementById('nprow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||ONLINE)return;np=+b.dataset.np;document.querySelectorAll('#nprow button').forEach(x=>x.classList.toggle('on',x===b));initMulti();});
+// solo bet
+document.getElementById('betrow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!b.dataset.b)return;if(phase!=='bet')return;const v=b.dataset.b;if(v==='clear')bet=0;else if(v==='max')bet=chips;else bet=Math.min(chips,bet+ +v);renderSolo(false);if(bet>0&&document.getElementById('msg').textContent.includes('ベット'))msg('「配る」でスタート');});
 document.getElementById('deal').addEventListener('click',startRound);
 document.getElementById('hit').addEventListener('click',hit);
 document.getElementById('stand').addEventListener('click',stand);
-pl=[];dl=[];render(false);
-document.getElementById('np').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!b.dataset.np)return;if(phase!=='bet'){msg('ラウンド終了後に変更してください');return;}np=+b.dataset.np;cur=0;document.querySelectorAll('#np button').forEach(x=>{x.classList.remove('on');x.style.borderColor='#3a6a4c';x.style.color='var(--sub)';});b.classList.add('on');b.style.borderColor='var(--gold)';b.style.color='var(--gold)';updateCurP();render(false);if(np>1)msg('プレイヤー1のベットをどうぞ');});
-</script></body></html>
+// multi bet
+document.getElementById('m-betrow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!b.dataset.b)return;if(mPhase!=='bet'||!myTurn())return;const mx=players[curPlayer].chips,v=b.dataset.b;if(v==='max')pendBet=mx;else pendBet=Math.max(50,Math.min(mx,pendBet+ +v));document.getElementById('m-betv').textContent=pendBet;});
+document.getElementById('m-confirm').addEventListener('click',()=>{if(mPhase!=='bet'||!myTurn())return;emit({k:'bet',amt:pendBet});});
+document.getElementById('m-hit').addEventListener('click',()=>emit({k:'hit'}));
+document.getElementById('m-stand').addEventListener('click',()=>emit({k:'stand'}));
+document.getElementById('m-next').addEventListener('click',()=>{if(ONLINE&&MYSEAT!==0)return;emit({k:'next'});});
+// init
+pl=[];dl=[];renderSolo(false);
+
+function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
+  document.getElementById('mode').classList.add('hidden');
+  document.getElementById('nprow').classList.add('hidden');
+  setMode('multi');
+}
+</script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="../shared/lobby.js?v=2"></script>
+<script src="../shared/online-room.js?v=1"></script>
+<script>
+OnlineRoom.init({gameId:'blackjack',minPlayers:2,maxPlayers:4,note:'各自ベットしてディーラーと勝負します。',
+  onStart:(seat,n,send)=>startOnline(seat,n,send),
+  onMessage:(from,msg)=>doAction(msg)});
+</script>
+</body></html>
