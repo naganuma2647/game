@@ -36,14 +36,23 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:26px;letter-spacing:.2em;t
 const EMO=['🍎','🍌','🍇','🍓','🍑','🍊','🍉','🥝','🍒','🦁','🐰','🐼','🐸','🐧','🦊','🐶','⭐','🌙','🌸','🍀'];
 let N=12,deck,flipped,matched,busy,mode='solo',moves,turn,score;
 const bd=document.getElementById('bd');
-function init(){const pairs=N/2;const pool=EMO.slice(0,pairs);deck=[];pool.forEach((e,i)=>{deck.push({e,id:i},{e,id:i});});for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
+function init(){deck=[];
+if(N===52){
+  // トランプ52枚: 同じ数字(ランク)ならスート違いでもペア成立
+  const SUITS=['♠','♥','♦','♣'],RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  for(let s=0;s<4;s++)for(let r=0;r<13;r++)deck.push({e:RANKS[r]+SUITS[s],k:r,red:s===1||s===2});
+}else{
+  const pool=EMO.slice(0,N/2);pool.forEach((e,i)=>{deck.push({e,k:i},{e,k:i});});
+}
+for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
 flipped=[];matched=new Set();busy=false;moves=0;turn=0;score=[0,0];
-const cols=N<=12?4:N<=16?4:5;bd.style.gridTemplateColumns='repeat('+cols+',1fr)';
-bd.innerHTML='';deck.forEach((c,i)=>{const el=document.createElement('div');el.className='card';el.innerHTML='<div class="back">?</div><div class="face">'+c.e+'</div>';el.addEventListener('click',()=>tap(i));bd.appendChild(el);});
+const cols=N<=16?4:N<=20?5:8;bd.style.gridTemplateColumns='repeat('+cols+',1fr)';
+bd.classList.toggle('trump',N===52);
+bd.innerHTML='';deck.forEach((c,i)=>{const el=document.createElement('div');el.className='card';const face=N===52?'<span class="'+(c.red?'red':'blk')+'">'+c.e+'</span>':c.e;el.innerHTML='<div class="back">?</div><div class="face">'+face+'</div>';el.addEventListener('click',()=>tap(i));bd.appendChild(el);});
 setStatus();}
 function setStatus(){const s=document.getElementById('status');if(mode==='solo')s.innerHTML='めくった回数: <b>'+moves+'</b>　そろえた: <b>'+matched.size/2+'/'+(N/2)+'</b>';else s.innerHTML='<b>プレイヤー'+(turn+1)+'</b>の番　（P1: '+score[0]+' / P2: '+score[1]+'）';}
 function cardEl(i){return bd.children[i];}
-function tap(i){if(busy||matched.has(i)||flipped.includes(i))return;cardEl(i).classList.add('flip');flipped.push(i);if(flipped.length===2){busy=true;moves++;const[a,b]=flipped;if(deck[a].e===deck[b].e){matched.add(a);matched.add(b);if(mode==='pvp')score[turn]++;setTimeout(()=>{cardEl(a).classList.add('done');cardEl(b).classList.add('done');flipped=[];busy=false;setStatus();checkEnd();},420);}else{setTimeout(()=>{cardEl(a).classList.remove('flip');cardEl(b).classList.remove('flip');flipped=[];busy=false;if(mode==='pvp'){turn=1-turn;}setStatus();},820);}}else{setStatus();}}
+function tap(i){if(busy||matched.has(i)||flipped.includes(i))return;cardEl(i).classList.add('flip');flipped.push(i);if(flipped.length===2){busy=true;moves++;const[a,b]=flipped;if(deck[a].k===deck[b].k){matched.add(a);matched.add(b);if(mode==='pvp')score[turn]++;setTimeout(()=>{cardEl(a).classList.add('done');cardEl(b).classList.add('done');flipped=[];busy=false;setStatus();checkEnd();},420);}else{setTimeout(()=>{cardEl(a).classList.remove('flip');cardEl(b).classList.remove('flip');flipped=[];busy=false;if(mode==='pvp'){turn=1-turn;}setStatus();},820);}}else{setStatus();}}
 function checkEnd(){if(matched.size===N){const s=document.getElementById('status');if(mode==='solo')s.innerHTML='クリア！ <b>'+moves+'回</b>でそろえました 🎉';else{const r=score[0]>score[1]?'プレイヤー1の勝ち！':score[1]>score[0]?'プレイヤー2の勝ち！':'引き分け';s.innerHTML='<b>'+r+'</b>（'+score[0]+' - '+score[1]+'）';}}}
 document.getElementById('reset').addEventListener('click',init);
 document.getElementById('mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;document.querySelectorAll('#mode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
