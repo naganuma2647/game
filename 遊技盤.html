@@ -159,10 +159,13 @@ window.addEventListener('popstate',e=>{
   }
 });
 // 直リンク (#shogi など)
-if(location.hash){
+function openFromHash(){
   const g=GAMES.find(x=>'#'+x.id===location.hash);
-  if(g)open(g);
+  if(g)open(g); else closeGame();
 }
+if(location.hash)openFromHash();
+// ハッシュだけ変わった場合（既に開いた状態で別ゲームのリンクを踏む等）にも追従
+window.addEventListener('hashchange',openFromHash);
 </script>
 </body>
 </html>
