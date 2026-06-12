@@ -261,8 +261,8 @@ let cellEls=[],ghLayer,hlLayer;
       svg.appendChild(t);
     }
   }
-  hlLayer=document.createElementNS(NS,'g');svg.appendChild(hlLayer);
-  ghLayer=document.createElementNS(NS,'g');svg.appendChild(ghLayer);
+  hlLayer=document.createElementNS(NS,'g');hlLayer.setAttribute('pointer-events','none');svg.appendChild(hlLayer);
+  ghLayer=document.createElementNS(NS,'g');ghLayer.setAttribute('pointer-events','none');svg.appendChild(ghLayer);
 })();
 
 function ghostPath(cx,cy,s){
