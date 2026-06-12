@@ -47,12 +47,23 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:24px;letter-spacing:.12em;
 .over button{background:var(--gold);border:none;color:#241c10;font-weight:700;padding:9px 22px;border-radius:7px;cursor:pointer;font-size:14px;font-family:inherit}
 .rule{width:min(94vw,380px);margin-top:14px;font-size:11px;line-height:1.7;color:var(--sub);border-top:1px solid var(--line);padding-top:10px}
 .rule b{color:var(--txt)}
+.h-row .h-pl{font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;border:1px solid var(--line)}
+.hidden{display:none!important}
 </style>
 </head>
 <body>
 <a href="../index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
 <h1>ヒットアンドブロー</h1><div class="sub">HIT &amp; BLOW</div>
 <div class="opts">
+  <div class="row" id="pmode"><span class="lbl">対戦:</span>
+    <button data-p="solo" class="on">1人</button>
+    <button data-p="multi">複数人（早解き）</button>
+  </div>
+  <div class="row hidden" id="nprow"><span class="lbl">人数:</span>
+    <button data-np="2" class="on">2人</button>
+    <button data-np="3">3人</button>
+    <button data-np="4">4人</button>
+  </div>
   <div class="row" id="mode"><span class="lbl">種類:</span>
     <button data-m="num" class="on">数字</button>
     <button data-m="col">色（ボール）</button>
@@ -82,6 +93,10 @@ const COLORS=[
   {id:4,name:'緑',css:'#5cb568'},{id:5,name:'紫',css:'#a濃'.replace('a濃','9a6dd0')}
 ];
 let mode='num',N=4,DUP=false,MAX=10,secret,guess,tries,over;
+let pmode='solo',np=2,curPlayer=0,winner=-1;
+let ONLINE=false,MYSEAT=0,roomSend=null;
+const PCOL=['#3e87d6','#e0473a','#5cb568','#e8c244'];
+function myTurn(){return !ONLINE||curPlayer===MYSEAT;}
 const disp=document.getElementById('disp'),pad=document.getElementById('pad'),hist=document.getElementById('history');
 // 使える値の集合
 function symbols(){return mode==='num'?[0,1,2,3,4,5,6,7,8,9]:COLORS.map(c=>c.id);}
@@ -92,9 +107,13 @@ function genSecret(){
   else{const pool=syms.slice();for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}return pool.slice(0,N);}
   return out;
 }
-function init(){MAX=maxTries();secret=genSecret();guess=[];tries=0;over=false;hist.innerHTML='';
-  document.getElementById('over').classList.remove('show');buildPad();renderDisp();renderRule();
-  msg(mode==='num'?'数字を選んで「判定」':'色を選んで「判定」');}
+function init(){MAX=maxTries();secret=genSecret();guess=[];tries=0;over=false;winner=-1;curPlayer=0;hist.innerHTML='';
+  document.getElementById('over').classList.remove('show');buildPad();renderDisp();renderRule();updatePad();updateTurnMsg();}
+function turnLabel(){return ONLINE?(curPlayer===MYSEAT?'★あなた(P'+(curPlayer+1)+')':'相手(P'+(curPlayer+1)+')'):'プレイヤー'+(curPlayer+1);}
+function updateTurnMsg(){
+  if(pmode==='solo')msg(mode==='num'?'数字を選んで「判定」':'色を選んで「判定」');
+  else msg(turnLabel()+'の番：'+(mode==='num'?'数字':'色')+'を入力して「判定」');}
+function updatePad(){const off=(pmode==='multi'&&!myTurn());pad.style.opacity=off?'.4':'1';pad.style.pointerEvents=off?'none':'auto';}
 function msg(s){document.getElementById('msg').textContent=s;}
 function symHtml(v){return mode==='num'?String(v):`<span class="ball" style="background:${COLORS[v].css}"></span>`;}
 function renderDisp(){disp.innerHTML='';for(let i=0;i<N;i++){const d=document.createElement('div');d.className='slot'+(i===guess.length?' active':'');
@@ -106,8 +125,8 @@ function buildPad(){pad.className='pad '+(mode==='num'?'num':'col');pad.innerHTM
     b.addEventListener('click',()=>push(v));pad.appendChild(b);}
   const del=document.createElement('button');del.className='wide';del.textContent='⌫ 消す';del.addEventListener('click',pop);pad.appendChild(del);
   const go=document.createElement('button');go.className='wide go';go.id='go';go.textContent='判定';go.addEventListener('click',submit);pad.appendChild(go);}
-function push(v){if(over||guess.length>=N)return;if(!DUP&&guess.includes(v)){msg(mode==='num'?'同じ数字は使えません':'同じ色は使えません');return;}guess.push(v);msg('');renderDisp();}
-function pop(){if(over||!guess.length)return;guess.pop();renderDisp();}
+function push(v){if(over||guess.length>=N)return;if(pmode==='multi'&&!myTurn())return;if(!DUP&&guess.includes(v)){msg(mode==='num'?'同じ数字は使えません':'同じ色は使えません');return;}guess.push(v);renderDisp();}
+function pop(){if(over||!guess.length)return;if(pmode==='multi'&&!myTurn())return;guess.pop();renderDisp();}
 // 正確なヒット/ブロー計算（重複対応）
 function evaluate(g,s){
   let hit=0;const restG=[],restS=[];
@@ -118,16 +137,40 @@ function evaluate(g,s){
   return{hit,blow};
 }
 function submit(){if(over)return;if(guess.length!==N){msg(N+'個すべて入力してください');return;}
-  const{hit,blow}=evaluate(guess,secret);tries++;
-  addHistory(guess.slice(),hit,blow);
-  if(hit===N){finish(true);return;}
-  if(tries>=MAX){finish(false);return;}
-  msg(`${hit} ヒット / ${blow} ブロー　（残り${MAX-tries}回）`);
-  guess=[];renderDisp();}
+  if(pmode==='solo'){
+    const{hit,blow}=evaluate(guess,secret);tries++;
+    addHistory(guess.slice(),hit,blow);
+    if(hit===N){finish(true);return;}
+    if(tries>=MAX){finish(false);return;}
+    msg(`${hit} ヒット / ${blow} ブロー　（残り${MAX-tries}回）`);
+    guess=[];renderDisp();return;
+  }
+  // multi（早解きレース）
+  emit({k:'guess',g:guess.slice()});guess=[];renderDisp();}
+function emit(a){if(ONLINE){if(!myTurn())return;roomSend(a);}else doAction(a);}
+function doAction(a){if(a.k==='guess')applyGuess(curPlayer,a.g);else if(a.k==='setup')applySetup(a);}
+function applyGuess(player,g){
+  const{hit,blow}=evaluate(g,secret);tries++;
+  addHistoryMulti(player,g,hit,blow);
+  if(hit===N){finishMulti(player);return;}
+  curPlayer=(curPlayer+1)%np;guess=[];renderDisp();updateTurnMsg();updatePad();}
+function applySetup(a){mode=a.mode;N=a.N;DUP=a.DUP;np=a.np;init();}
 function addHistory(g,hit,blow){const r=document.createElement('div');r.className='h-row';
   r.innerHTML=`<span class="h-no">${tries}</span><span class="h-guess">${g.map(symHtml).join(mode==='num'?' ':'')}</span>`+
     `<span class="h-res"><span class="hit">${hit} H</span><span class="blow">${blow} B</span></span>`;
   hist.insertBefore(r,hist.firstChild);}
+function addHistoryMulti(player,g,hit,blow){const r=document.createElement('div');r.className='h-row';
+  const nm=ONLINE&&player===MYSEAT?'あなた':'P'+(player+1);
+  r.innerHTML=`<span class="h-pl" style="color:${PCOL[player]};border-color:${PCOL[player]}">${nm}</span>`+
+    `<span class="h-guess">${g.map(symHtml).join(mode==='num'?' ':'')}</span>`+
+    `<span class="h-res"><span class="hit">${hit} H</span><span class="blow">${blow} B</span></span>`;
+  hist.insertBefore(r,hist.firstChild);}
+function finishMulti(player){over=true;winner=player;
+  const t=document.getElementById('ov-t'),s=document.getElementById('ov-s');
+  const win=ONLINE?(player===MYSEAT?'あなたの勝ち！ 🎉':'プレイヤー'+(player+1)+'の勝ち'):'プレイヤー'+(player+1)+'の勝ち！ 🎉';
+  t.textContent=win;t.style.color='var(--gold)';
+  s.innerHTML=tries+'手で決着<div class="answer">'+answerHtml()+'</div>';
+  document.getElementById('over').classList.add('show');}
 function answerHtml(){return secret.map(symHtml).join(mode==='num'?' ':'');}
 function finish(win){over=true;const t=document.getElementById('ov-t'),s=document.getElementById('ov-s');
   if(win){t.textContent='正解！ 🎉';t.style.color='var(--gold)';
@@ -141,17 +184,35 @@ function renderRule(){
   else{r.innerHTML=`6色（赤・青・黄・白・緑・紫）のボールを${DUP?'<b>重複ありで</b>':'重複なしで'}並べた秘密の列を当てます。<b style="color:var(--hit)">ヒット</b>＝色も位置も一致。<b style="color:var(--blow)">ブロー</b>＝色はあるが位置違い。（マスターマインド風）`;}
 }
 window.addEventListener('keydown',e=>{if(mode==='num'&&e.key>='0'&&e.key<='9')push(+e.key);else if(e.key==='Backspace'){e.preventDefault();pop();}else if(e.key==='Enter')submit();});
-document.getElementById('new').addEventListener('click',init);
-document.getElementById('again').addEventListener('click',init);
-document.getElementById('mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;
-  document.querySelectorAll('#mode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
-  // 色版は最大6色なので重複なし時は桁数を6以下に制限（最大5なのでOK）
-  init();});
-document.getElementById('len').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;N=+b.dataset.n;
+function newGame(){if(ONLINE)return;init();}
+document.getElementById('new').addEventListener('click',newGame);
+document.getElementById('again').addEventListener('click',newGame);
+document.getElementById('pmode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||ONLINE)return;pmode=b.dataset.p;
+  document.querySelectorAll('#pmode button').forEach(x=>x.classList.toggle('on',x===b));
+  document.getElementById('nprow').classList.toggle('hidden',pmode!=='multi');init();});
+document.getElementById('nprow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||ONLINE)return;np=+b.dataset.np;
+  document.querySelectorAll('#nprow button').forEach(x=>x.classList.toggle('on',x===b));init();});
+document.getElementById('mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||ONLINE)return;mode=b.dataset.m;
+  document.querySelectorAll('#mode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
+document.getElementById('len').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||ONLINE)return;N=+b.dataset.n;
   document.querySelectorAll('#len button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
-document.getElementById('dup').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;DUP=b.dataset.d==='1';
+document.getElementById('dup').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||ONLINE)return;DUP=b.dataset.d==='1';
   document.querySelectorAll('#dup button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
 init();
+
+function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;pmode='multi';
+  document.querySelectorAll('#pmode,#nprow,#mode,#len,#dup').forEach(el=>el.classList.add('hidden'));
+  document.getElementById('new').parentElement.classList.add('hidden');
+  if(seat===0){roomSend({k:'setup',mode,N,DUP,np:n});msg('開始しています…');}
+  else msg('ホストの設定を待っています…');}
+</script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="../shared/lobby.js?v=2"></script>
+<script src="../shared/online-room.js?v=1"></script>
+<script>
+OnlineRoom.init({gameId:'hitblow',minPlayers:2,maxPlayers:4,note:'同じ秘密の番号を全員で当て、最速正解者が勝ち。',
+  onStart:(seat,n,send)=>startOnline(seat,n,send),
+  onMessage:(from,msg)=>doAction(msg)});
 </script>
 </body>
 </html>
