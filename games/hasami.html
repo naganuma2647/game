@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ハサミ将棋</title>
+<style>
+:root{
+  --bg:#181410;
+  --board:#D9A85C;
+  --grid:#5A3A1A;
+  --piece:#F2DCAE;
+  --piece-edge:#B98F4E;
+  --ink:#1E160C;
+  --red:#A32D2D;
+  --gold:#C9A227;
+  --txt:#E8E0D0;
+  --sub:#998F7B;
+  --sel:rgba(201,162,39,.45);
+  --dest:rgba(163,45,45,.35);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  padding:14px 8px 30px;
+}
+h1{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:25px;font-weight:600;letter-spacing:.35em;text-indent:.35em;margin:2px 0;
+}
+.sub{font-size:10.5px;color:var(--sub);letter-spacing:.22em;margin-bottom:10px}
+.modes{display:flex;gap:8px;margin-bottom:10px}
+.modes button{
+  background:transparent;border:1px solid #463a2a;color:var(--sub);
+  padding:6px 13px;border-radius:18px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .2s;
+}
+.modes button.on{border-color:var(--gold);color:var(--gold)}
+
+.status{
+  width:min(96vw,440px);display:flex;justify-content:space-between;align-items:center;
+  font-size:12.5px;color:var(--sub);margin:2px 0 8px;padding:0 4px;
+}
+.status b{color:var(--txt);font-variant-numeric:tabular-nums;font-size:15px}
+.status .turn{color:var(--gold)}
+
+.bwrap{
+  padding:8px;border-radius:8px;
+  background:linear-gradient(160deg,#3a2a16,#241808);
+  box-shadow:0 14px 44px rgba(0,0,0,.6);
+}
+svg.board{display:block;width:min(96vw,440px);height:auto}
+.sq{fill:transparent;cursor:pointer}
+.sq.sel{fill:var(--sel)}
+.sq.dest{fill:var(--dest)}
+.sq.last{fill:rgba(201,162,39,.22)}
+text.kanji{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-weight:600;
+  fill:var(--ink);text-anchor:middle;pointer-events:none;user-select:none;
+}
+text.kanji.promo{fill:var(--red)}
+
+.msg{min-height:22px;font-size:13.5px;color:var(--gold);letter-spacing:.06em;margin-top:10px;text-align:center}
+.foot{display:flex;gap:10px;margin-top:10px}
+.foot button{
+  background:transparent;border:1px solid #463a2a;color:var(--txt);
+  padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;
+}
+.foot button:hover{border-color:var(--gold)}
+.foot button:disabled{opacity:.35}
+
+.rule{
+  width:min(96vw,440px);margin-top:12px;font-size:11.5px;line-height:1.7;color:var(--sub);
+  border-top:1px solid #3a2c1a;padding-top:9px;
+}
+.rule b{color:var(--txt)}
+
+.overlay{
+  position:fixed;inset:0;background:rgba(12,9,5,.82);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .35s;z-index:20;
+}
+.overlay.show{opacity:1;pointer-events:auto}
+.card{
+  background:#221A10;border:1px solid var(--gold);border-radius:10px;
+  padding:28px 40px;text-align:center;
+}
+.card .t{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:27px;letter-spacing:.25em;text-indent:.25em;color:var(--gold);margin-bottom:8px;
+}
+.card .s{font-size:13px;color:var(--sub);margin-bottom:18px;font-variant-numeric:tabular-nums}
+.card button{
+  background:var(--gold);border:none;color:#221A10;padding:9px 24px;
+  border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
+<h1>ハサミ将棋</h1>
+<div class="sub">HASAMI SHOGI — 先手(歩・あなた)は下側</div>
+
+<div class="modes" id="modes">
+  <button data-m="cpu1" class="on">CPU 弱</button>
+  <button data-m="cpu2">CPU 強</button>
+  <button data-m="pvp">2人対戦</button>
+</div>
+
+<div class="status">
+  <span>歩が取った <b id="cap1">0</b>/5</span>
+  <span class="turn" id="tlabel">先手の番です</span>
+  <span>と が取った <b id="cap2">0</b>/5</span>
+</div>
+
+<div class="bwrap"><svg class="board" id="bd"></svg></div>
+
+<div class="msg" id="msg"></div>
+<div class="foot">
+  <button id="undo">待った</button>
+  <button id="reset">最初から</button>
+</div>
+
+<div class="rule">
+<b>ルール</b>：駒は飛車と同じく縦横に何マスでも動けます（飛び越え不可）。相手の駒を自分の駒2枚で縦か横に<b>挟むと取れます</b>（列ごとまとめて取り）。隅の駒は斜め2方向を押さえると取れます。自分から挟まれた位置に入るのは安全。<b>先に5枚取った方の勝ち</b>です。
+</div>
+
+<div class="overlay" id="gov">
+  <div class="card">
+    <div class="t" id="g-t">勝利</div>
+    <div class="s" id="g-s"></div>
+    <button id="g-again">もう一度</button>
+  </div>
+</div>
+
+<script>
+/* ============ core ============ */
+/* board[81]: 0=空, 1=先手(歩・下), 2=後手(と・上) */
+const N=9,DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
+const WIN_CAPS=5;
+let board,turn,mode='cpu1',history=[],last=[-1,-1],over=false,busy=false,sel=null,caps;
+
+const inB=(r,c)=>r>=0&&r<N&&c>=0&&c<N;
+
+function init(){
+  board=new Array(81).fill(0);
+  for(let c=0;c<9;c++){board[c]=2;board[72+c]=1;}
+  turn=1;history=[];last=[-1,-1];over=false;busy=false;sel=null;caps={1:0,2:0};
+  document.getElementById('gov').classList.remove('show');
+  render();
+  msg('先手(歩)の番です');
+}
+
+function movesFrom(bd,i){
+  const r=Math.floor(i/9),c=i%9,out=[];
+  for(const[dr,dc]of DIRS){
+    let nr=r+dr,nc=c+dc;
+    while(inB(nr,nc)&&!bd[nr*9+nc]){out.push(nr*9+nc);nr+=dr;nc+=dc;}
+  }
+  return out;
+}
+
+/* 移動後の捕獲判定: 挟み取り(移動駒を通る列のみ) + 角取り(移動駒が完成させた時のみ) */
+function captures(bd,to,p){
+  const opp=3-p,r=Math.floor(to/9),c=to%9,out=[];
+  for(const[dr,dc]of DIRS){
+    const line=[];
+    let nr=r+dr,nc=c+dc;
+    while(inB(nr,nc)&&bd[nr*9+nc]===opp){line.push(nr*9+nc);nr+=dr;nc+=dc;}
+    if(line.length&&inB(nr,nc)&&bd[nr*9+nc]===p)out.push(...line);
+  }
+  // 角取り: [角, 隣1, 隣2]
+  for(const[ci,a,b]of[[0,1,9],[8,7,17],[72,63,73],[80,71,79]]){
+    if(bd[ci]===opp&&(to===a||to===b)&&bd[a]===p&&bd[b]===p)out.push(ci);
+  }
+  return out;
+}
+
+function applyMove(bd,from,to,p){
+  bd[to]=p;bd[from]=0;
+  const cs=captures(bd,to,p);
+  for(const i of cs)bd[i]=0;
+  return cs.length;
+}
+
+function allMoves(bd,p){
+  const out=[];
+  for(let i=0;i<81;i++)if(bd[i]===p)for(const t of movesFrom(bd,i))out.push([i,t]);
+  return out;
+}
+
+/* ============ UI ============ */
+const NS='http://www.w3.org/2000/svg';
+const bdSvg=document.getElementById('bd');
+const CELL=46,PAD=14;
+bdSvg.setAttribute('viewBox',`0 0 ${CELL*9+PAD*2} ${CELL*9+PAD*2}`);
+let sqEls=[],pieceLayer;
+
+(function buildBoard(){
+  const bg=document.createElementNS(NS,'rect');
+  bg.setAttribute('x',PAD-4);bg.setAttribute('y',PAD-4);
+  bg.setAttribute('width',CELL*9+8);bg.setAttribute('height',CELL*9+8);
+  bg.setAttribute('fill','var(--board)');bg.setAttribute('rx',3);
+  bdSvg.appendChild(bg);
+  for(let k=0;k<=9;k++){
+    for(const[x1,y1,x2,y2]of[[PAD+k*CELL,PAD,PAD+k*CELL,PAD+9*CELL],[PAD,PAD+k*CELL,PAD+9*CELL,PAD+k*CELL]]){
+      const l=document.createElementNS(NS,'line');
+      l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+      l.setAttribute('stroke','var(--grid)');l.setAttribute('stroke-width',k===0||k===9?2:1);
+      bdSvg.appendChild(l);
+    }
+  }
+  for(const[r,c]of[[3,3],[3,6],[6,3],[6,6]]){
+    const d=document.createElementNS(NS,'circle');
+    d.setAttribute('cx',PAD+c*CELL);d.setAttribute('cy',PAD+r*CELL);
+    d.setAttribute('r',2.6);d.setAttribute('fill','var(--grid)');
+    bdSvg.appendChild(d);
+  }
+  pieceLayer=document.createElementNS(NS,'g');bdSvg.appendChild(pieceLayer);
+  const clickLayer=document.createElementNS(NS,'g');bdSvg.appendChild(clickLayer);
+  for(let i=0;i<81;i++){
+    const r=Math.floor(i/9),c=i%9;
+    const rc=document.createElementNS(NS,'rect');
+    rc.setAttribute('x',PAD+c*CELL);rc.setAttribute('y',PAD+r*CELL);
+    rc.setAttribute('width',CELL);rc.setAttribute('height',CELL);
+    rc.setAttribute('class','sq');
+    rc.addEventListener('click',()=>onSquare(i));
+    clickLayer.appendChild(rc);
+    sqEls[i]=rc;
+  }
+})();
+
+function pentPath(cx,cy,s,flip){
+  const w=s*.82,h=s*.92,t=s*.30;
+  let pts=[[0,-h/2],[w/2,-h/2+t],[w/2*.92,h/2],[-w/2*.92,h/2],[-w/2,-h/2+t]];
+  if(flip)pts=pts.map(([x,y])=>[-x,-y]);
+  return pts.map(([x,y],k)=>(k?'L':'M')+(cx+x).toFixed(1)+','+(cy+y).toFixed(1)).join('')+'Z';
+}
+
+function render(){
+  pieceLayer.innerHTML='';
+  for(let i=0;i<81;i++){
+    sqEls[i].classList.toggle('last',i===last[0]||i===last[1]);
+    sqEls[i].classList.remove('sel','dest');
+  }
+  if(sel){
+    sqEls[sel.i].classList.add('sel');
+    for(const t of sel.moves)sqEls[t].classList.add('dest');
+  }
+  for(let i=0;i<81;i++){
+    const p=board[i];
+    if(!p)continue;
+    const r=Math.floor(i/9),c=i%9;
+    const cx=PAD+c*CELL+CELL/2,cy=PAD+r*CELL+CELL/2;
+    const path=document.createElementNS(NS,'path');
+    path.setAttribute('d',pentPath(cx,cy,CELL*.94,p===2));
+    path.setAttribute('fill','var(--piece)');
+    path.setAttribute('stroke','var(--piece-edge)');
+    path.setAttribute('stroke-width',1.2);
+    pieceLayer.appendChild(path);
+    const tx=document.createElementNS(NS,'text');
+    tx.setAttribute('x',cx);tx.setAttribute('y',cy);
+    tx.setAttribute('class','kanji'+(p===2?' promo':''));
+    tx.setAttribute('font-size',CELL*.52);
+    tx.setAttribute('dominant-baseline','central');
+    if(p===2)tx.setAttribute('transform',`rotate(180 ${cx} ${cy})`);
+    tx.textContent=p===1?'歩':'と';
+    pieceLayer.appendChild(tx);
+  }
+  document.getElementById('cap1').textContent=caps[1];
+  document.getElementById('cap2').textContent=caps[2];
+  document.getElementById('tlabel').textContent=over?'対局終了':(turn===1?'先手の番です':'後手の番です');
+  document.getElementById('undo').disabled=!history.length||busy||over;
+}
+
+function msg(s){document.getElementById('msg').textContent=s;}
+const humanTurn=()=>mode==='pvp'||turn===1;
+
+function onSquare(i){
+  if(over||busy)return;
+  if(sel&&sel.moves.includes(i)){
+    pushHist();
+    doMove(sel.i,i);
+    return;
+  }
+  if(board[i]===turn&&humanTurn()){
+    sel={i,moves:movesFrom(board,i)};
+  }else sel=null;
+  render();
+}
+
+function pushHist(){
+  history.push({bd:board.slice(),turn,caps:{...caps},last:[...last]});
+  if(history.length>200)history.shift();
+}
+
+function doMove(from,to){
+  const mover=turn;
+  const got=applyMove(board,from,to,mover);
+  caps[mover]+=got;
+  last=[from,to];sel=null;
+  if(caps[mover]>=WIN_CAPS){render();finish(mover,(mover===1?'先手(歩)':'後手(と)')+'が'+WIN_CAPS+'枚先取');return;}
+  turn=3-turn;
+  if(!allMoves(board,turn).length){render();finish(3-turn,(turn===1?'先手':'後手')+'は動けません');return;}
+  render();
+  msg((got?(mover===1?'先手':'後手')+'が'+got+'枚取った! — ':'')+(turn===1?'先手(歩)':'後手(と)')+'の番です');
+  if(!humanTurn()){
+    busy=true;render();
+    setTimeout(()=>{
+      const m=cpuMove();
+      busy=false;
+      pushHist();
+      doMove(m[0],m[1]);
+    },520);
+  }
+}
+
+function finish(winner,how){
+  over=true;busy=false;
+  const t=document.getElementById('g-t');
+  if(mode==='pvp')t.textContent=winner===1?'先手の勝ち':'後手の勝ち';
+  else t.textContent=winner===1?'勝利':'敗北';
+  document.getElementById('g-s').textContent=`${how}(歩 ${caps[1]} − と ${caps[2]})`;
+  msg('対局終了');render();
+  setTimeout(()=>document.getElementById('gov').classList.add('show'),500);
+}
+
+/* ============ CPU ============ */
+function bestReply(bd,p){
+  let best=0;
+  for(const[f,t]of allMoves(bd,p)){
+    const nb=bd.slice();
+    const g=applyMove(nb,f,t,p);
+    if(g>best)best=g;
+  }
+  return best;
+}
+
+function cpuMove(){
+  const ms=allMoves(board,2);
+  if(mode==='cpu1'){
+    // 弱: 取れる手を優先するだけ(相手の反撃は見ない)
+    const scored=ms.map(([f,t])=>{
+      const nb=board.slice();
+      const g=applyMove(nb,f,t,2);
+      return[g*100+Math.random()*40,f,t];
+    }).sort((a,b)=>b[0]-a[0]);
+    const top=scored.slice(0,Math.min(6,scored.length));
+    const p=top[Math.floor(Math.random()*top.length)];
+    return[p[1],p[2]];
+  }
+  // 強: 自分の取り − 相手の最善反撃 + 前進
+  let best=ms[0],bs=-Infinity;
+  for(const[f,t]of ms){
+    const nb=board.slice();
+    const g=applyMove(nb,f,t,2);
+    let s=g*100;
+    if(caps[2]+g>=WIN_CAPS)s+=10000;
+    const rep=bestReply(nb,1);
+    s-=rep*95;
+    if(caps[1]+rep>=WIN_CAPS)s-=9000;
+    s+=Math.floor(t/9)*1.2;
+    s+=Math.random()*3;
+    if(s>bs){bs=s;best=[f,t];}
+  }
+  return best;
+}
+
+/* ============ controls ============ */
+document.getElementById('undo').addEventListener('click',()=>{
+  if(!history.length||busy)return;
+  let h=history.pop();
+  if(mode!=='pvp'){while(history.length&&h.turn!==1)h=history.pop();}
+  board=h.bd;turn=h.turn;caps=h.caps;last=h.last;over=false;sel=null;
+  document.getElementById('gov').classList.remove('show');
+  render();
+  msg((turn===1?'先手(歩)':'後手(と)')+'の番です');
+});
+document.getElementById('reset').addEventListener('click',init);
+document.getElementById('g-again').addEventListener('click',init);
+document.getElementById('modes').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  mode=b.dataset.m;
+  document.querySelectorAll('#modes button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');init();
+});
+
+init();
+</script>
+</body>
+</html>
