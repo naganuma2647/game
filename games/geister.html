@@ -96,7 +96,8 @@ svg{display:block;width:min(96vw,420px);height:auto}
 
 <div class="modes" id="modes">
   <button data-m="cpu1" class="on">CPU 弱</button>
-  <button data-m="cpu2">CPU 強</button>
+  <button data-m="cpu2">CPU 普通</button>
+  <button data-m="cpu3">CPU 強</button>
   <button data-m="pvp">2人対戦</button>
 </div>
 
@@ -597,6 +598,9 @@ function cpuTurn(){
   let pick;
   if(mode==='cpu1'){
     const top=cand.slice(0,Math.min(10,cand.length));
+    pick=top[Math.floor(Math.random()*top.length)];
+  }else if(mode==='cpu2'){
+    const top=cand.slice(0,Math.min(3,cand.length));
     pick=top[Math.floor(Math.random()*top.length)];
   }else pick=cand[0];
   const[,p,m]=pick;

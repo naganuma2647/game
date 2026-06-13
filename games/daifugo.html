@@ -56,6 +56,7 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:22px;letter-spacing:.12em;
   <span class="lab">対戦:</span><button data-g="cpu" class="on">CPU</button><button data-g="local">みんなで</button>
   <span class="lab" style="margin-left:8px">人数:</span><button data-n="2">2人</button><button data-n="3">3人</button><button data-n="4" class="on">4人</button>
   <span class="lab" style="margin-left:8px">ジョーカー:</span><button data-j="0" class="on">0枚</button><button data-j="1">1枚</button><button data-j="2">2枚</button>
+  <span class="lab" style="margin-left:8px">CPU強さ:</span><button data-lv="1">弱</button><button data-lv="2" class="on">普通</button><button data-lv="3">強</button>
 </div>
 <div class="cpus" id="cpus"></div>
 <div class="field"><div class="lab">場</div><div class="cards" id="field"></div><div class="flag" id="flag"></div></div>
@@ -158,6 +159,20 @@ function cpuChoose(p){const h=hands[p];
   const jokerIdxs=h.map((c,i)=>c.joker?i:-1).filter(i=>i>=0);
   const groups={};h.forEach((c,i)=>{if(!c.joker)(groups[c.r]=groups[c.r]||[]).push(i);});
   const ranks=Object.keys(groups).map(Number).sort((a,b)=>revolution?b-a:a-b);
+  // 弱: 出せる手の中からランダム選択
+  if(cpuLv===1){
+    const valid=[];
+    if(field.length===0){
+      for(const r of ranks)for(let k=1;k<=groups[r].length;k++)valid.push(groups[r].slice(0,k));
+      if(jokerIdxs.length)valid.push([jokerIdxs[0]]);
+    } else {
+      const need=field.length,fs=setStrength(field);
+      for(const r of ranks){const g=groups[r];if(g.length+jokerIdxs.length>=need){const cs=r;if(revolution?cs<fs:cs>fs){
+        const use=Math.min(need,g.length);valid.push(g.slice(0,use).concat(jokerIdxs.slice(0,need-use)));}}}
+    }
+    if(!valid.length)return null;
+    return valid[Math.floor(Math.random()*valid.length)];
+  }
   if(field.length===0){
     for(const r of ranks){
       if(r===12&&h.length>3)continue;
@@ -183,6 +198,8 @@ function cpuChoose(p){const h=hands[p];
     const jokA=a.filter(i=>h[i].joker).length,jokB=b.filter(i=>h[i].joker).length;
     return (ra-rb)||(jokA-jokB);});
   const pick=cand[0];
+  // 普通: ジョーカー温存ロジックを使わない（強よりやや雑）
+  if(cpuLv===2)return pick;
   if(!h[pick[0]].joker&&h[pick[0]].r===12&&h.length>need+1&&cand.length>1)return cand[1]||cand[0];
   return pick;
 }
@@ -222,7 +239,9 @@ document.getElementById('setup').addEventListener('click',e=>{const b=e.target.c
   if(b.dataset.g){gmode=b.dataset.g;document.querySelectorAll('#setup button[data-g]').forEach(x=>x.classList.toggle('on',x===b));}
   if(b.dataset.n){np=+b.dataset.n;document.querySelectorAll('#setup button[data-n]').forEach(x=>x.classList.toggle('on',x===b));}
   if(b.dataset.j!==undefined){jokerCount=+b.dataset.j;document.querySelectorAll('#setup button[data-j]').forEach(x=>x.classList.toggle('on',x===b));}
+  if(b.dataset.lv){cpuLv=+b.dataset.lv;document.querySelectorAll('#setup button[data-lv]').forEach(x=>x.classList.toggle('on',x===b));return;}
   init();});
+let cpuLv=2;
 init();
 
 function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
@@ -231,13 +250,25 @@ function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
   if(seat===0)roomSend({k:'setup',np:n,jokerCount});
   else msg('ホストの設定を待っています…');}
 function applySetup(a){np=a.np;jokerCount=a.jokerCount;init();}
+// 再接続: 現在状態の書き出し/復元
+function getState(){return {hands,turn,field,fieldOwner,passes,revolution,finished,gameOver,jokerCount};}
+function applyState(o){ONLINE=true;MYSEAT=o.seat;roomSend=o.send;np=o.n;
+  document.getElementById('setup').classList.add('hidden');
+  document.querySelector('.foot').classList.add('hidden');
+  const s=o.state;jokerCount=s.jokerCount;hands=s.hands;turn=s.turn;field=s.field;fieldOwner=s.fieldOwner;passes=s.passes;revolution=s.revolution;finished=s.finished;gameOver=s.gameOver;sel=[];
+  NAMES=makeNames(np);
+  render();
+  if(gameOver)showResult();
+  else msg(turn===MYSEAT?'あなたの番。同じ数字をまとめて出せます':NAMES[turn]+'の番です…');
+  autoKick();}
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=3"></script>
-<script src="../shared/online-room.js?v=4"></script>
+<script src="../shared/online-room.js?v=5"></script>
 <script>
 OnlineRoom.init({gameId:'daifugo',minPlayers:2,maxPlayers:4,note:'8切り・革命ありの大富豪をオンライン対戦。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),
   onMessage:(from,msg)=>{ if(msg.k==='setup')applySetup(msg); else doAction(msg); },
-  onLeft:(seat)=>autoKick()});
+  onLeft:(seat)=>autoKick(),
+  getState,applyState});
 </script></body></html>

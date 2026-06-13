@@ -38,6 +38,7 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:23px;letter-spacing:.12em;
 <a href="../index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
 <h1>どうぶつしょうぎ</h1><div class="sub">DOBUTSU SHOGI</div>
 <div class="row" id="mode"><button data-m="cpu" class="on">CPU対戦</button><button data-m="pvp">2人対戦</button></div>
+<div class="row" id="lv" style="display:flex;gap:6px;justify-content:center;margin-bottom:8px"><span style="font-size:11px;color:#9a8f7b;align-self:center;margin-right:2px">CPU強さ:</span><button data-lv="1" style="background:transparent;border:1px solid #3a3326;color:#9a8f7b;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;font-family:inherit">弱</button><button data-lv="2" class="on" style="background:transparent;border:1px solid #c9a227;color:#c9a227;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;font-family:inherit">普通</button><button data-lv="3" style="background:transparent;border:1px solid #3a3326;color:#9a8f7b;padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;font-family:inherit">強</button></div>
 <div class="hand top"><span class="hlabel">相手</span><div class="hand" id="hand-you" style="min-height:auto"></div></div>
 <div class="status" id="status"></div>
 <div id="bd"></div>
@@ -118,7 +119,10 @@ function evalBoard(o){let s=0;const opp=1-o;for(let r=0;r<4;r++)for(let c=0;c<3;
 function applyForAI(m,o){const undo={};if(m.k==='b'){const p=board[m.fr][m.fc],cap=board[m.tr][m.tc];undo.p=p;undo.cap=cap;undo.fr=m.fr;undo.fc=m.fc;undo.tr=m.tr;undo.tc=m.tc;undo.captured=null;if(cap){const base=cap.t==='H'?'C':cap.t;hands[o].push(base);undo.captured=base;}board[m.fr][m.fc]=null;let np={t:p.t,o};if(p.t==='C'&&((o===ME&&m.tr===0)||(o===YOU&&m.tr===3)))np.t='H';board[m.tr][m.tc]=np;undo.np=np;undo.wasLionCap=cap&&cap.t==='L';}else{board[m.tr][m.tc]={t:m.t,o};const idx=hands[o].indexOf(m.t);undo.dropIdx=idx;undo.t=m.t;undo.tr=m.tr;undo.tc=m.tc;hands[o].splice(idx,1);}return undo;}
 function undoForAI(u,o){if(u.np!==undefined){board[u.fr][u.fc]={t:u.np.t==='H'&&u.p.t==='C'?'C':u.p.t,o:u.p.o};board[u.fr][u.fc]=u.p;board[u.tr][u.tc]=u.cap;if(u.captured){const i=hands[o].lastIndexOf(u.captured);if(i>=0)hands[o].splice(i,1);}}else{board[u.tr][u.tc]=null;hands[o].splice(u.dropIdx,0,u.t);}}
 function search(o,depth,a,b){const lkO=findLion(o),lkOpp=findLion(1-o);if(!lkOpp)return 9999;if(!lkO)return-9999;if(depth===0)return evalBoard(o);const moves=allMoves(o);if(!moves.length)return-9999;let best=-Infinity;for(const m of moves){const u=applyForAI(m,o);let val;if(u.wasLionCap){val=9999;}else{val=-search(1-o,depth-1,-b,-a);}undoForAI(u,o);if(val>best)best=val;if(best>a)a=best;if(a>=b)break;}return best;}
-function cpuMove(){const o=YOU;const moves=allMoves(o);let best=moves[0],bs=-Infinity;for(const m of moves){const u=applyForAI(m,o);let val;if(u.wasLionCap)val=9999;else val=-search(ME,3,-Infinity,Infinity);
+function cpuMove(){const o=YOU;const moves=allMoves(o);
+  if(cpuLv===1){busy=false;const m=moves[Math.floor(Math.random()*moves.length)];if(m.k==='b')doMove(m.fr,m.fc,m.tr,m.tc);else doDrop(m.t,m.tr,m.tc);return;}
+  const depth=cpuLv===2?1:3;
+  let best=moves[0],bs=-Infinity;for(const m of moves){const u=applyForAI(m,o);let val;if(u.wasLionCap)val=9999;else val=-search(ME,depth,-Infinity,Infinity);
   // トライ判定加点
   if(m.k==='b'){const p=board[m.tr][m.tc];if(p&&p.t==='L'&&m.tr===3&&!attacked(m.tr,m.tc,ME))val=9000;}
   undoForAI(u,o);if(val>bs){bs=val;best=m;}}
@@ -129,6 +133,8 @@ function finish(winner){over=true;sel=null;render();const t=document.getElementB
 document.getElementById('reset').addEventListener('click',init);
 document.getElementById('again').addEventListener('click',init);
 document.getElementById('mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;document.querySelectorAll('#mode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
+let cpuLv=2;
+document.getElementById('lv').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cpuLv=+b.dataset.lv;document.querySelectorAll('#lv button').forEach(x=>{x.classList.remove('on');x.style.borderColor='#3a3326';x.style.color='#9a8f7b';});b.classList.add('on');b.style.borderColor='#c9a227';b.style.color='#c9a227';});
 init();
 </script><script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=3"></script>

@@ -36,6 +36,7 @@ svg{display:block;width:min(92vw,420px);height:auto}
 <h1>チャイニーズチェッカー</h1><div class="sub">CHINESE CHECKERS</div>
 <div class="row" id="np"><span class="lab">人数:</span><button data-np="2" class="on">2人</button><button data-np="3">3人</button></div>
 <div class="row" id="mode"><span class="lab">対戦:</span><button data-m="cpu" class="on">CPU対戦</button><button data-m="pvp">人対人</button></div>
+<div class="row" id="lv"><span class="lab">CPU強さ:</span><button data-lv="1">弱</button><button data-lv="2" class="on">普通</button><button data-lv="3">強</button></div>
 <div class="turn" id="turn"></div>
 <div class="bwrap"><svg id="bd"></svg></div>
 <div class="msg" id="msg">自分の駒をタップ→光った穴へ移動。対面の三角を全部埋めたら勝ち。</div>
@@ -185,14 +186,17 @@ function cpuMove(){busy=false;if(over)return;
   if(ONLINE&&(!OnlineRoom.isHost()||!isCpuSeat()))return;
   const p=turn;
   const gc=zoneCentroid(myGoalZone(p));
-  let best=null,bestScore=-1e9;
+  const noise=cpuLv===1?30:cpuLv===2?6:2;
+  let best=null,bestScore=-1e9;const cands=[];
   for(const c of cells){if(occ[c.id]!==p)continue;
     for(const to of legalMoves(c.id)){
       const t=cellById(to);
       const d0=Math.hypot(c.x-gc.x,c.y-gc.y);
       const d1=Math.hypot(t.x-gc.x,t.y-gc.y);
-      let sc=(d0-d1)*10 + (t.zone===myGoalZone(p)?15:0) + Math.random()*2;
+      let sc=(d0-d1)*10 + (t.zone===myGoalZone(p)?15:0) + Math.random()*noise;
+      cands.push([sc,c.id,to]);
       if(sc>bestScore){bestScore=sc;best=[c.id,to];}}}
+  if(cpuLv===1&&cands.length){const r=cands[Math.floor(Math.random()*cands.length)];best=[r[1],r[2]];}
   if(!best){nextTurn();render();updateTurn();if(shouldRunCpu())setTimeout(cpuMove,520);return;}
   emit({k:'move',from:best[0],to:best[1]});
 }
@@ -210,6 +214,8 @@ document.getElementById('new').addEventListener('click',init);
 document.getElementById('again').addEventListener('click',init);
 document.getElementById('mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;document.querySelectorAll('#mode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
 document.getElementById('np').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;np=+b.dataset.np;document.querySelectorAll('#np button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
+let cpuLv=2;
+document.getElementById('lv').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cpuLv=+b.dataset.lv;document.querySelectorAll('#lv button').forEach(x=>x.classList.remove('on'));b.classList.add('on');});
 init();
 
 function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
@@ -220,7 +226,7 @@ function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=3"></script>
-<script src="../shared/online-room.js?v=4"></script>
+<script src="../shared/online-room.js?v=5"></script>
 <script>
 OnlineRoom.init({gameId:'chinese',minPlayers:2,maxPlayers:3,note:'星型盤で対面の三角ゴールを目指す。2〜3人対応。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),

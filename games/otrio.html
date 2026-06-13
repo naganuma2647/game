@@ -44,6 +44,7 @@ svg{display:block;width:min(92vw,400px);height:auto}
 <h1>オートリオ</h1><div class="sub">OTRIO — 3サイズで揃える3目並べ</div>
 <div class="row" id="np"><span class="lab">人数:</span><button data-np="2" class="on">2人</button><button data-np="3">3人</button><button data-np="4">4人</button></div>
 <div class="row" id="mode"><span class="lab">対戦:</span><button data-m="cpu" class="on">CPU対戦</button><button data-m="pvp">人対人</button></div>
+<div class="row" id="lv"><span class="lab">CPU強さ:</span><button data-lv="1">弱</button><button data-lv="2" class="on">普通</button><button data-lv="3">強</button></div>
 <div class="turn" id="turn"></div>
 <div class="stock" id="stock"></div>
 <div class="bwrap"><svg id="bd"></svg></div>
@@ -203,18 +204,25 @@ function cpuMove(){
   if(over)return;
   if(ONLINE&&(!OnlineRoom.isHost()||!isCpuSeat()))return;
   const p=turn;
+  // 弱: 完全ランダム（勝ち/ブロック手も見ない）
+  if(cpuLv===1){
+    const all=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)for(let s=0;s<3;s++)if(placeable(r,c,s,p))all.push([r,c,s]);
+    if(all.length){const[r,c,s]=all[Math.floor(Math.random()*all.length)];doCpuPlace(r,c,s);return;}
+  }
   // 1. winning move
   for(let r=0;r<3;r++)for(let c=0;c<3;c++)for(let s=0;s<3;s++){
     if(!placeable(r,c,s,p))continue;
     place(r,c,s,p);const w=checkWinFor(p);unplace(r,c,s,p);
     if(w){doCpuPlace(r,c,s);return;}
   }
-  // 2. block opponent immediate wins (any opponent)
-  for(let q=0;q<np;q++){if(q===p)continue;
-    for(let r=0;r<3;r++)for(let c=0;c<3;c++)for(let s=0;s<3;s++){
-      if(!placeable(r,c,s,q))continue;
-      place(r,c,s,q);const w=checkWinFor(q);unplace(r,c,s,q);
-      if(w&&placeable(r,c,s,p)){doCpuPlace(r,c,s);return;}
+  // 2. block opponent immediate wins (強のみ厳密ブロック / 普通は半分の確率)
+  if(cpuLv===3||(cpuLv===2&&Math.random()<0.7)){
+    for(let q=0;q<np;q++){if(q===p)continue;
+      for(let r=0;r<3;r++)for(let c=0;c<3;c++)for(let s=0;s<3;s++){
+        if(!placeable(r,c,s,q))continue;
+        place(r,c,s,q);const w=checkWinFor(q);unplace(r,c,s,q);
+        if(w&&placeable(r,c,s,p)){doCpuPlace(r,c,s);return;}
+      }
     }
   }
   // 3. heuristic: prefer center, then near my existing pieces; try to extend a 2-in-line
@@ -251,6 +259,8 @@ function finishDraw(){
 
 document.getElementById('np').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;np=+b.dataset.np;document.querySelectorAll('#np button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
 document.getElementById('mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;document.querySelectorAll('#mode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
+let cpuLv=2;
+document.getElementById('lv').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cpuLv=+b.dataset.lv;document.querySelectorAll('#lv button').forEach(x=>x.classList.remove('on'));b.classList.add('on');});
 document.getElementById('again').addEventListener('click',init);
 init();
 
@@ -259,14 +269,24 @@ function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
   document.getElementById('mode').classList.add('hidden');
   init();
   if(shouldRunCpu())setTimeout(cpuMove,600);}
+// 再接続: 現在状態の書き出し/復元
+function getState(){return {board,stock,turn,over,winner,winInfo};}
+function applyState(o){ONLINE=true;MYSEAT=o.seat;roomSend=o.send;np=o.n;
+  document.getElementById('np').classList.add('hidden');
+  document.getElementById('mode').classList.add('hidden');
+  const s=o.state;board=s.board;stock=s.stock;turn=s.turn;over=s.over;winner=s.winner;winInfo=s.winInfo;
+  document.getElementById('over').classList.toggle('show',!!over);
+  render();updateTurn();updateStock();
+  if(shouldRunCpu())setTimeout(cpuMove,600);}
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script src="../shared/lobby.js?v=2"></script>
-<script src="../shared/online-room.js?v=4"></script>
+<script src="../shared/lobby.js?v=3"></script>
+<script src="../shared/online-room.js?v=5"></script>
 <script>
 OnlineRoom.init({gameId:'otrio',minPlayers:2,maxPlayers:4,note:'3サイズのリングで揃える3目並べ。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),
   onMessage:(from,msg)=>doAction(msg),
-  onLeft:(seat)=>{updateTurn();if(shouldRunCpu())setTimeout(cpuMove,600);}});
+  onLeft:(seat)=>{updateTurn();if(shouldRunCpu())setTimeout(cpuMove,600);},
+  getState,applyState});
 </script>
 </body></html>

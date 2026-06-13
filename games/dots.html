@@ -38,6 +38,7 @@ svg{display:block;width:min(94vw,420px);height:auto}
 <a href="../index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
 <h1>ドットアンドボックス</h1><div class="sub">DOTS &amp; BOXES</div>
 <div class="row" id="mode"><button data-m="cpu" class="on">CPU対戦</button><button data-m="pvp">2人対戦</button></div>
+<div class="row" id="lv"><span style="font-size:11px;color:#9a8f7b;align-self:center">CPU強さ:</span><button data-lv="1">弱</button><button data-lv="2" class="on">普通</button><button data-lv="3">強</button></div>
 <div class="row" id="size"><button data-s="3">3×3</button><button data-s="4" class="on">4×4</button><button data-s="5">5×5</button></div>
 <div class="score"><span class="me">あなた <span id="s0">0</span></span><span class="turn" id="turn">あなたの番</span><span class="cpu" id="cpulabel">CPU <span id="s1">0</span></span></div>
 <div class="bwrap"><svg id="bd"></svg></div>
@@ -156,12 +157,14 @@ function completesBox(t,r,c){ // この線で4辺になる箱があるか
 function cpuMove(){
   busy=false;if(over)return;
   const edges=freeEdges();
-  // 1) 取れる箱があれば取る（連鎖して全部）
+  // 弱: 完全ランダム
+  if(cpuLv===1){const[t,r,c]=edges[Math.floor(Math.random()*edges.length)];const got=setEdge(t,r,c,1);afterMove(got);return;}
+  // 1) 取れる箱があれば取る
   const winning=edges.filter(([t,r,c])=>completesBox(t,r,c));
   if(winning.length){const[t,r,c]=winning[0];const got=setEdge(t,r,c,1);afterMove(got);return;}
-  // 2) 相手に3辺目を渡さない安全手（引いても箱が3辺にならない）
-  const safe=edges.filter(([t,r,c])=>boxSidesIf(t,r,c)<2); // 引くと最大2辺になる→相手に取られない
-  const pool=safe.length?safe:edges;
+  // 2) 強: 安全手のみ / 普通: 半分の確率で安全手
+  const safe=edges.filter(([t,r,c])=>boxSidesIf(t,r,c)<2);
+  const pool=(cpuLv===3||(cpuLv===2&&Math.random()<0.5))&&safe.length?safe:edges;
   const[t,r,c]=pool[Math.floor(Math.random()*pool.length)];
   const got=setEdge(t,r,c,1);afterMove(got);
 }
@@ -175,6 +178,8 @@ document.getElementById('new').addEventListener('click',init);
 document.getElementById('again').addEventListener('click',init);
 document.getElementById('mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;document.querySelectorAll('#mode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
 document.getElementById('size').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;SZ=+b.dataset.s;document.querySelectorAll('#size button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
+let cpuLv=2;
+document.getElementById('lv').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cpuLv=+b.dataset.lv;document.querySelectorAll('#lv button').forEach(x=>x.classList.remove('on'));b.classList.add('on');});
 init();
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>

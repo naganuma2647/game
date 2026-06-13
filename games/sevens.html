@@ -65,6 +65,7 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:23px;letter-spacing:.18em;
   <span class="lab">対戦:</span><button data-g="cpu" class="on">CPU</button><button data-g="local">みんなで</button>
   <span class="lab" style="margin-left:8px">人数:</span><button data-n="2">2人</button><button data-n="3">3人</button><button data-n="4" class="on">4人</button>
   <span class="lab" style="margin-left:8px">ジョーカー:</span><button data-j="0" class="on">0枚</button><button data-j="1">1枚</button><button data-j="2">2枚</button>
+  <span class="lab" style="margin-left:8px">CPU強さ:</span><button data-lv="1">弱</button><button data-lv="2" class="on">普通</button><button data-lv="3">強</button>
 </div>
 <div class="cpus" id="cpus"></div>
 <div class="board" id="board"></div>
@@ -213,8 +214,15 @@ document.getElementById('ho-ok').addEventListener('click',()=>{
 });
 function cpuTurn(){const o=turn;busy=false;
   const legal=legalCards(o);const regularLegal=legal.filter(c=>!c.joker);const jokerLegal=legal.filter(c=>c.joker);
-  if(regularLegal.length){regularLegal.sort((a,b)=>Math.min(a.r,12-a.r)-Math.min(b.r,12-b.r));_play(o,hands[o].indexOf(regularLegal[0]));}
-  else if(jokerLegal.length){const pos=bestJokerPos(o);if(pos){msg(NAMES[o]+'がジョーカーを使います');setTimeout(()=>_joker(o,pos.s,pos.r),400);}else{msg(NAMES[o]+'はパス（'+(passes[o]+1)+'/3）');_pass(o);}}
+  if(regularLegal.length){
+    // 弱: ランダム / 普通=強と同じ端優先（弱目だけランダム化）
+    if(cpuLv===1){_play(o,hands[o].indexOf(regularLegal[Math.floor(Math.random()*regularLegal.length)]));return;}
+    regularLegal.sort((a,b)=>Math.min(a.r,12-a.r)-Math.min(b.r,12-b.r));
+    _play(o,hands[o].indexOf(regularLegal[0]));}
+  else if(jokerLegal.length){
+    // 弱: ジョーカーをむやみに使ってしまう / 強: 温存
+    if(cpuLv===1){msg(NAMES[o]+'がジョーカーを使います');setTimeout(()=>_joker(o,jokerLegal[0].s,jokerLegal[0].r),400);return;}
+    const pos=bestJokerPos(o);if(pos){msg(NAMES[o]+'がジョーカーを使います');setTimeout(()=>_joker(o,pos.s,pos.r),400);}else{msg(NAMES[o]+'はパス（'+(passes[o]+1)+'/3）');_pass(o);}}
   else{msg(NAMES[o]+'はパス（'+(passes[o]+1)+'/3）');_pass(o);}
 }
 function endGame(){gameOver=true;
@@ -237,7 +245,9 @@ document.getElementById('setup').addEventListener('click',e=>{const b=e.target.c
   if(b.dataset.g){gmode=b.dataset.g;document.querySelectorAll('#setup button[data-g]').forEach(x=>x.classList.toggle('on',x===b));}
   if(b.dataset.n){np=+b.dataset.n;document.querySelectorAll('#setup button[data-n]').forEach(x=>x.classList.toggle('on',x===b));}
   if(b.dataset.j!==undefined){jokerCount=+b.dataset.j;document.querySelectorAll('#setup button[data-j]').forEach(x=>x.classList.toggle('on',x===b));}
+  if(b.dataset.lv){cpuLv=+b.dataset.lv;document.querySelectorAll('#setup button[data-lv]').forEach(x=>x.classList.toggle('on',x===b));return;}
   init();});
+let cpuLv=2;
 init();
 
 function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
@@ -246,15 +256,29 @@ function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
   if(seat===0)roomSend({k:'setup',np:n,jokerCount});
   else msg('ホストの設定を待っています…');}
 function applySetup(a){np=a.np;jokerCount=a.jokerCount;init();}
+// 再接続: 現在状態の書き出し/復元
+function getState(){return {hands,board,turn,passes,outCnt,finished,gameOver,jokerCount};}
+function applyState(o){ONLINE=true;MYSEAT=o.seat;roomSend=o.send;np=o.n;
+  document.getElementById('setup').classList.add('hidden');
+  document.querySelector('.foot').classList.add('hidden');
+  const s=o.state;jokerCount=s.jokerCount;hands=s.hands;board=s.board;turn=s.turn;passes=s.passes;outCnt=s.outCnt;finished=s.finished;gameOver=s.gameOver;
+  busy=false;jokerPending=null;localView=MYSEAT;NAMES=makeNames();
+  document.getElementById('winov').classList.remove('show');
+  document.getElementById('handoff').classList.remove('show');
+  render();
+  if(gameOver)endGame();
+  else msg(turn===MYSEAT?'あなたの番。光るカードをタップ':NAMES[turn]+'の番です…');
+  autoKick();}
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=3"></script>
-<script src="../shared/online-room.js?v=4"></script>
+<script src="../shared/online-room.js?v=5"></script>
 <script>
 OnlineRoom.init({gameId:'sevens',minPlayers:2,maxPlayers:4,note:'全員でカードをつなげて手札を早く出し切ります。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),
   onMessage:(from,msg)=>{ if(msg.k==='setup')applySetup(msg); else doAction(msg); },
-  onLeft:(seat)=>autoKick()});
+  onLeft:(seat)=>autoKick(),
+  getState,applyState});
 </script>
 </body>
 </html>
