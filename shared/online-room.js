@@ -95,6 +95,9 @@
 #start-room[hidden]{display:none}
 #online-status{min-height:18px;margin:12px 0 0;font-size:12px;font-weight:600;color:#ffd34d;line-height:1.5}
 #oc-badge{position:fixed;top:10px;right:10px;z-index:99998;background:rgba(0,0,0,.65);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:9px 14px;font:600 13px/1 'Segoe UI',sans-serif;display:none}
+#oc-room{position:fixed;top:46px;right:10px;z-index:99998;background:rgba(0,0,0,.7);color:#ffd34d;border:1px solid rgba(255,211,77,.5);border-radius:999px;padding:7px 13px;font:700 13px/1 Consolas,'Segoe UI',monospace;letter-spacing:.12em;display:none;cursor:pointer}
+#oc-room:hover{background:rgba(0,0,0,.85)}
+#oc-room .lab{font:600 10px/1 'Segoe UI',sans-serif;color:#cfd6e4;letter-spacing:.05em;margin-right:5px}
 #oc-badge.oc-myturn{background:#16a34a;color:#fff;border-color:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.35);font-size:15px;font-weight:800;animation:ocpulse .9s ease-in-out infinite alternate}
 #oc-badge.oc-wait{background:rgba(40,40,46,.85);color:#cfd6e4;border-color:rgba(255,255,255,.18)}
 @keyframes ocpulse{from{box-shadow:0 0 0 3px rgba(34,197,94,.30)}to{box-shadow:0 0 0 7px rgba(34,197,94,.0)}}
@@ -116,11 +119,16 @@
     <p id="oc-roster"></p>
     <div id="cpu-row" hidden><span class="lab">CPUを追加:</span><span id="cpu-btns"></span></div>
     <button id="start-room" class="oc-btn" hidden>この人数で開始</button>
+    <div class="oc-div">または</div>
+    <div class="oc-sec"><h3>対局中に切れたら再接続</h3>
+      <div class="oc-join"><input id="recon-code" maxlength="4" placeholder="部屋番号" inputmode="numeric" autocomplete="off"><button id="recon-room" class="oc-btn" style="background:#3a8f5a;color:#fff">再接続</button></div>
+    </div>
     <button id="reclaim-room" class="oc-btn" hidden style="background:#3a8f5a;color:#fff;margin-top:10px">🔄 前の対局に再接続</button>
     <p id="online-status"></p>
   </div>
 </div>
-<div id="oc-badge">🌐</div>`;
+<div id="oc-badge">🌐</div>
+<div id="oc-room" title="タップで番号をコピー"><span class="lab">部屋</span><span id="oc-room-code">----</span></div>`;
     document.body.appendChild(ui);
 
     const $ = (id) => document.getElementById(id);
@@ -129,6 +137,8 @@
     function openLobby() { $('online-lobby').hidden = false; }
     function hideLobby() { $('online-lobby').hidden = true; }
     function showBadge(m) { badge.style.display = 'block'; if (m != null) badge.textContent = m; }
+    // 対局中ずっと部屋番号を表示（タップでコピー）
+    function showRoom(c) { if (!c) return; $('oc-room-code').textContent = c; $('oc-room').style.display = 'block'; }
     // ゲームが「今あなたの番か」を渡すと、バッジで目立たせる
     function setTurn(mine, label) {
       if (!started) return;
@@ -215,6 +225,7 @@
         $('room-code-box').hidden = false;
         $('start-room').hidden = false;
         rosterText();
+        showRoom(code);
         setStatus('参加者を待っています。この番号を相手に送ってください。');
       });
       peer.on('connection', wireIncoming);
@@ -245,16 +256,20 @@
           broadcastRoster();
         }
       } else if (m.t === 'reclaim') {
-        // a previously-departed human is reconnecting to reclaim their seat
-        const seat = m.seat;
-        if (started && gone.has(seat) && m.game === cfg.gameId) {
-          gone.delete(seat);
-          const ex = guests.find(g => g.seat === seat);
-          if (ex) { ex.conn = c; ex.alive = true; } else guests.push({ conn: c, seat, alive: true });
-          roster.add(seat);
-          try { c.send({ t: 'resume', seat, snap: snapshot(), relaySeat, gen }); } catch (_) {}
-          broadcastRoster();
-          showBadge('🌐 プレイヤー' + (seat + 1) + 'が再接続しました');
+        // a previously-departed human is reconnecting to reclaim their seat.
+        // seat<0 (= "番号だけで再接続") → assign the lowest empty (gone) seat.
+        let seat = m.seat;
+        if (started && m.game === cfg.gameId) {
+          if (!(seat >= 0 && gone.has(seat))) { const g0 = [...gone].sort((a, b) => a - b); seat = g0.length ? g0[0] : -1; }
+          if (seat >= 0 && gone.has(seat)) {
+            gone.delete(seat);
+            const ex = guests.find(g => g.seat === seat);
+            if (ex) { ex.conn = c; ex.alive = true; } else guests.push({ conn: c, seat, alive: true });
+            roster.add(seat);
+            try { c.send({ t: 'resume', seat, snap: snapshot(), relaySeat, gen }); } catch (_) {}
+            broadcastRoster();
+            showBadge('🌐 プレイヤー' + (seat + 1) + 'が再接続しました');
+          } else { try { c.send({ t: 'full' }); } catch (_) {} }
         } else {
           try { c.send({ t: 'full' }); } catch (_) {}
         }
@@ -335,6 +350,7 @@
             settled = true; mySeat = m.seat;
             setStatus('参加しました。ホストの開始を待っています…');
             showBadge('🌐 待機中…');
+            showRoom(code);
           } else if (m.t === 'full') {
             setStatus('満員、または対局が始まっています。');
           } else { guestApply(m); }
@@ -358,6 +374,7 @@
       saveSession();
       hideLobby();
       $('online-btn').style.display = 'none';
+      showRoom(code);
       const cpuTxt = nCpus > 0 ? ` / CPU×${nCpus}` : '';
       showBadge('🌐 オンライン（あなたはP' + (seat + 1) + cpuTxt + '）');
       try { cfg.onStart && cfg.onStart(seat, n, send); } catch (e) { console.error(e); }
@@ -500,6 +517,7 @@
       saveSession();
       hideLobby();
       $('online-btn').style.display = 'none';
+      showRoom(code);
       showBadge('🌐 再接続しました（あなたはP' + (mySeat + 1) + '）');
       try { cfg.applyState && cfg.applyState({ seat: mySeat, n: nPlayers, send, state: snap.state }); }
       catch (e) { console.error(e); }
@@ -520,6 +538,25 @@
     $('join-room').addEventListener('click', () => joinCode(($('join-code').value || '').trim()));
     $('join-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinCode(($('join-code').value || '').trim()); });
     $('start-room').addEventListener('click', hostStart);
+    // 番号を再入力して再接続: 同じ番号の保存席があればその席、なければ -1(空席を自動割当)
+    function reconByCode() {
+      const c0 = ($('recon-code').value || '').trim();
+      if (!/^\d{4}$/.test(c0)) { setStatus('4桁の部屋番号を入力してください。'); return; }
+      if (!cfg.applyState) { setStatus('このゲームは再接続に未対応です。'); return; }
+      const saved = savedSession();
+      const seat = (saved && saved.code === c0 && typeof saved.seat === 'number') ? saved.seat : -1;
+      $('recon-room').disabled = true;
+      reclaim(c0, seat);
+      // 失敗してもリトライできるよう、復帰しなければボタンを戻す
+      setTimeout(() => { if (!started) $('recon-room').disabled = false; }, 9000);
+    }
+    $('recon-room').addEventListener('click', reconByCode);
+    $('recon-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') reconByCode(); });
+    // 部屋番号チップ: タップでコピー
+    $('oc-room').addEventListener('click', async () => {
+      const code = $('oc-room-code').textContent;
+      try { await navigator.clipboard.writeText(code); const el = $('oc-room-code'); const prev = el.textContent; el.textContent = 'コピー!'; setTimeout(() => { el.textContent = prev; }, 900); } catch (_) {}
+    });
     // Offer reconnect if a previous session for this game is remembered.
     // Within 2 min of the last save we also auto-try (a fresh reload / reopen
     // after a drop should just put you back in); older sessions show a button.
