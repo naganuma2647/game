@@ -116,9 +116,9 @@ html, body {
 
 /* 手牌(裏) */
 .hand-back { display: flex; gap: 0; flex-wrap: nowrap; justify-content: center; }
-/* 上家・下家の手牌も横一列で表示（牌は少し小さく） */
-.seat-left .hand-back, .seat-right .hand-back { max-width: none; }
-.seat-left .hand-back .tile-glyph, .seat-right .hand-back .tile-glyph { font-size: 18px; }
+/* 上家・下家（左右）の手牌裏は縦一列で表示 */
+.seat-left .hand-back, .seat-right .hand-back { max-width: none; flex-direction: column; flex-wrap: nowrap; align-items: center; }
+.seat-left .hand-back .tile-glyph, .seat-right .hand-back .tile-glyph { font-size: 18px; line-height: .82; }
 
 /* プレイヤー手牌（横一列） */
 .hand { display: flex; gap: 3px; flex-wrap: nowrap; justify-content: center; padding: 6px; }
@@ -264,7 +264,7 @@ html, body {
 @media (max-width: 600px) {
   #table { padding: 2px; gap: 1px; grid-template-columns: minmax(0,0.55fr) minmax(0,2.4fr) minmax(0,0.55fr); grid-template-rows: minmax(0,0.7fr) minmax(0,2.6fr) minmax(0,1.1fr); }
   .seat-left, .seat-right { overflow: hidden; }
-  .seat-left .hand-back, .seat-right .hand-back { flex-wrap: wrap; max-width: 100%; }
+  .seat-left .hand-back, .seat-right .hand-back { flex-direction: column; flex-wrap: nowrap; max-width: 100%; }
   #board { gap: 1px; }
   .pinfo { font-size: 10px; padding: 2px 6px; gap: 5px; margin: 1px; border-radius: 4px; }
   .pond-bottom .prow, .pond-top .prow { min-width: 101px; }
