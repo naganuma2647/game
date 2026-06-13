@@ -152,7 +152,7 @@ let cpuLv=2;
 document.getElementById('lv').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cpuLv=+b.dataset.lv;document.querySelectorAll('#lv button').forEach(x=>{x.classList.remove('on');x.style.borderColor='#3a3326';x.style.color='#9a8f7b';});b.classList.add('on');b.style.borderColor='#c9a227';b.style.color='#c9a227';});
 init();
 </script><script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script src="../shared/lobby.js?v=3"></script>
+<script src="../shared/lobby.js?v=4"></script>
 <script src="../shared/online-core.js?v=5"></script>
 <script>OnlineCore.init({gameId:'dobutsu',statusSel:'#status',hostMark:'下の番',guestMark:'上の番',pvpSel:'#mode button[data-m=\"pvp\"]',hideSel:'#mode',flip:{board:'#bd',upright:'.sq'}});</script>
 </body></html>

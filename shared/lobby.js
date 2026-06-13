@@ -41,6 +41,8 @@
     hitblow: "games/hitblow.html",
     sevens: "games/sevens.html",
     daifugo: "games/daifugo.html",
+    otrio: "games/otrio.html",
+    quoridor: "games/quoridor.html",
   };
 
   function randomCode() {
