@@ -36,6 +36,7 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:26px;letter-spacing:.2em;t
   <span class="b">💣 <span id="mleft">10</span></span>
   <button class="flagmode" id="fmode">🚩 旗モード</button>
   <span class="b">⏱ <span id="time">0</span></span>
+  <span class="b">🏆 <span id="best">—</span></span>
 </div>
 <div id="bd"></div>
 <div class="msg" id="msg"></div>
@@ -43,9 +44,11 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:26px;letter-spacing:.2em;t
 <div style="font-size:11px;color:var(--sub);margin-top:10px;text-align:center;line-height:1.7">🚩旗の立て方: 「旗モード」をONにしてタップ／PCは右クリック／スマホは長押し</div>
 <script>
 let W=9,H=9,M=10,board,revealed,flags,over,started,timer,sec=0,flagMode=false,cells=[];
+function bestKey(){return 'minebest_'+W+'x'+H+'_'+M;}
+function showBest(){const v=localStorage.getItem(bestKey());document.getElementById('best').textContent=v?(v+'秒'):'—';}
 const bd=document.getElementById('bd');
 function setSize(){const cs=Math.min(Math.floor((Math.min(window.innerWidth*0.94,460))/W)-2,38);bd.style.gridTemplateColumns='repeat('+W+',1fr)';document.documentElement.style.setProperty('--cs',cs+'px');}
-function init(){clearInterval(timer);sec=0;document.getElementById('time').textContent=0;over=false;started=false;flags=new Set();revealed=new Set();document.getElementById('msg').textContent='';document.getElementById('mleft').textContent=M;board=null;setSize();draw();}
+function init(){clearInterval(timer);sec=0;document.getElementById('time').textContent=0;over=false;started=false;flags=new Set();revealed=new Set();document.getElementById('msg').textContent='';document.getElementById('mleft').textContent=M;board=null;setSize();draw();showBest();}
 function plant(safe){board=Array(W*H).fill(0);const spots=[];for(let i=0;i<W*H;i++)if(i!==safe&&!neighbors(safe).includes(i))spots.push(i);for(let i=spots.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[spots[i],spots[j]]=[spots[j],spots[i]];}for(let i=0;i<M;i++)board[spots[i]]=-1;for(let i=0;i<W*H;i++){if(board[i]===-1)continue;board[i]=neighbors(i).filter(n=>board[n]===-1).length;}}
 function neighbors(i){const r=Math.floor(i/W),c=i%W,out=[];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(nr>=0&&nr<H&&nc>=0&&nc<W)out.push(nr*W+nc);}return out;}
 function draw(){bd.innerHTML='';cells=[];for(let i=0;i<W*H;i++){const d=document.createElement('div');d.className='c';
@@ -64,7 +67,12 @@ function reveal(i){if(revealed.has(i)||flags.has(i))return;if(board[i]===-1){los
 function toggleFlag(i){if(over||revealed.has(i))return;if(flags.has(i))flags.delete(i);else flags.add(i);document.getElementById('mleft').textContent=M-flags.size;render();}
 function render(){for(let i=0;i<W*H;i++){const el=cells[i];el.className='c';el.textContent='';if(flags.has(i)){el.classList.add('flag');el.textContent='🚩';continue;}if(revealed.has(i)){el.classList.add('open');const v=board?board[i]:0;if(v>0){el.classList.add('n'+v);el.textContent=v;}}}}
 function lose(boom){over=true;clearInterval(timer);for(let i=0;i<W*H;i++){if(board[i]===-1){revealed.add(i);cells[i].classList.add('open','mine');cells[i].textContent='💣';}}cells[boom].classList.add('boom');render();document.getElementById('msg').textContent='ドカン！ 💥 ゲームオーバー';}
-function check(){if(over)return;let safe=0;for(let i=0;i<W*H;i++)if(board[i]!==-1)safe++;if(revealed.size===safe){over=true;clearInterval(timer);document.getElementById('msg').textContent='クリア！ '+sec+'秒 🎉';for(let i=0;i<W*H;i++)if(board[i]===-1){flags.add(i);}document.getElementById('mleft').textContent=0;render();}}
+function check(){if(over)return;let safe=0;for(let i=0;i<W*H;i++)if(board[i]!==-1)safe++;if(revealed.size===safe){over=true;clearInterval(timer);
+  const prev=+(localStorage.getItem(bestKey())||0);
+  let msg='クリア！ '+sec+'秒 🎉';
+  if(!prev||sec<prev){localStorage.setItem(bestKey(),sec);msg+=' ベスト更新!';showBest();}
+  document.getElementById('msg').textContent=msg;
+  for(let i=0;i<W*H;i++)if(board[i]===-1){flags.add(i);}document.getElementById('mleft').textContent=0;render();}}
 document.getElementById('fmode').addEventListener('click',()=>{flagMode=!flagMode;document.getElementById('fmode').classList.toggle('on',flagMode);});
 document.getElementById('new').addEventListener('click',init);
 document.getElementById('diff').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;W=+b.dataset.w;H=+b.dataset.h;M=+b.dataset.m;document.querySelectorAll('#diff button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});

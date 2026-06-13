@@ -40,6 +40,7 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:24px;letter-spacing:.2em;t
   <button id="draw3">めくり: 1枚</button>
   <span class="b">手数 <span id="moves">0</span></span>
   <span class="b">スコア <span id="score">0</span></span>
+  <span class="b">ベスト <span id="best">0</span></span>
   <button id="hintbtn">ヒント</button>
   <button id="undo">戻す</button>
   <button id="new">配り直し</button>
@@ -63,7 +64,9 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:24px;letter-spacing:.2em;t
 const SUITS=['♠','♥','♦','♣'],RED={'♥':1,'♦':1};
 const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 let stock,waste,found,tab,sel,moves,drawN=1,history,score=0,hint=null;
-function addScore(n){score=Math.max(0,score+n);}
+let best=+(localStorage.getItem('solibest')||0);
+document.getElementById('best').textContent=best;
+function addScore(n){score=Math.max(0,score+n);if(score>best){best=score;localStorage.setItem('solibest',best);document.getElementById('best').textContent=best;}}
 function clearHint(){hint=null;document.getElementById('msg').textContent='';}
 function autoDest(card,exceptCol){const ds=[];for(let d=0;d<7;d++){if(d===exceptCol)continue;if(canStackTab(card,d))ds.push(d);}return ds;}
 const NAME=c=>RANKS[c.r]+SUITS[c.s];

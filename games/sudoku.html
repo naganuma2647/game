@@ -35,12 +35,20 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:28px;letter-spacing:.25em;
   <button data-d="48">ふつう</button>
   <button data-d="54">むずかしい</button>
 </div>
+<div class="row" style="font-size:13px;justify-content:center;gap:14px;color:var(--sub);margin-bottom:8px">
+  <span>⏱ <span id="time" style="color:var(--gold);font-weight:700">0</span>秒</span>
+  <span>🏆 ベスト <span id="best" style="color:var(--gold);font-weight:700">—</span></span>
+</div>
 <div class="msg" id="msg"></div>
 <div id="bd"></div>
 <div class="pad" id="pad"></div>
 <div class="foot"><button id="check">答え合わせ</button><button id="new">新しい問題</button></div>
 <script>
 let solution,puzzle,given,sel=-1,blanks=46;
+let sec=0,timer=null,solved=false;
+function bestKey(){return 'sudokubest_'+blanks;}
+function showBest(){const v=localStorage.getItem(bestKey());document.getElementById('best').textContent=v?(v+'秒'):'—';}
+function tick(){sec++;document.getElementById('time').textContent=sec;}
 const bd=document.getElementById('bd');
 const cells=[];
 function build(){bd.innerHTML='';cells.length=0;for(let i=0;i<81;i++){const r=Math.floor(i/9),c=i%9;const d=document.createElement('div');let cl='cell';if((Math.floor(r/3)+Math.floor(c/3))%2)cl+=' b2';if(c%3===2&&c!==8)cl+=' r3';if(r%3===2&&r!==8)cl+=' b3';d.className=cl;d.addEventListener('click',()=>select(i));bd.appendChild(d);cells.push(d);}}
@@ -49,11 +57,21 @@ function genFull(){const g=Array(81).fill(0);function ok(p,v){const r=Math.floor
 function fill(p){if(p===81)return true;const nums=shuffle([1,2,3,4,5,6,7,8,9]);for(const v of nums){if(ok(p,v)){g[p]=v;if(fill(p+1))return true;g[p]=0;}}return false;}
 fill(0);return g;}
 function makePuzzle(holes){solution=genFull();puzzle=solution.slice();const idx=shuffle([...Array(81).keys()]);let removed=0;for(const i of idx){if(removed>=holes)break;const bak=puzzle[i];puzzle[i]=0;removed++;}given=puzzle.map(v=>v!==0);}
-function newGame(){makePuzzle(blanks);sel=-1;document.getElementById('msg').textContent='';render();}
+function newGame(){makePuzzle(blanks);sel=-1;document.getElementById('msg').textContent='';
+  if(timer)clearInterval(timer);sec=0;solved=false;document.getElementById('time').textContent=0;showBest();
+  timer=setInterval(tick,1000);
+  render();}
 function select(i){if(given[i])return;sel=i;render();}
 function render(){for(let i=0;i<81;i++){const v=puzzle[i];const el=cells[i];el.textContent=v||'';el.classList.toggle('given',given[i]);el.classList.remove('sel','peer','same','bad');}
 if(sel>=0){const r=Math.floor(sel/9),c=sel%9,br=Math.floor(r/3),bc=Math.floor(c/3);const sv=puzzle[sel];for(let i=0;i<81;i++){const rr=Math.floor(i/9),cc=i%9;if(rr===r||cc===c||(Math.floor(rr/3)===br&&Math.floor(cc/3)===bc))cells[i].classList.add('peer');if(sv&&puzzle[i]===sv)cells[i].classList.add('same');}cells[sel].classList.add('sel');}}
-function place(v){if(sel<0||given[sel])return;puzzle[sel]=v;render();if(puzzle.every((x,i)=>x===solution[i])){document.getElementById('msg').textContent='クリア！おめでとう 🎉';}}
+function place(v){if(sel<0||given[sel]||solved)return;puzzle[sel]=v;render();
+  if(puzzle.every((x,i)=>x===solution[i])){
+    solved=true;if(timer)clearInterval(timer);
+    const prev=+(localStorage.getItem(bestKey())||0);
+    let m='クリア！おめでとう 🎉 '+sec+'秒';
+    if(!prev||sec<prev){localStorage.setItem(bestKey(),sec);m+=' ベスト更新!';showBest();}
+    document.getElementById('msg').textContent=m;
+  }}
 const pad=document.getElementById('pad');
 for(let v=1;v<=9;v++){const b=document.createElement('button');b.textContent=v;b.addEventListener('click',()=>place(v));pad.appendChild(b);}
 {const b=document.createElement('button');b.className='del';b.textContent='消す';b.addEventListener('click',()=>place(0));pad.appendChild(b);}
