@@ -44,6 +44,7 @@
     otrio: "games/otrio.html",
     quoridor: "games/quoridor.html",
     tetrisvs: "games/tetris-vs.html",
+    g2048vs: "games/g2048-vs.html",
     morris: "games/morris.html",
   };
 

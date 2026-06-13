@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>花札こいこい</title>
+<style>
+:root{--bg:#0d2417;--panel:#123022;--felt:#16432d;--txt:#f0ead8;--sub:#9fb8a4;--gold:#e0b53a;--line:#2a543b;--red:#d8473a;--blue:#3e87d6;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:radial-gradient(ellipse at top,#15402a,#08180f);color:var(--txt);font-family:"Hiragino Sans","Yu Gothic UI",sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:10px 6px 24px;user-select:none}
+h1{font-family:"Hiragino Mincho ProN",serif;font-size:20px;letter-spacing:.14em;margin:2px 0;color:var(--gold)}
+.sub{font-size:9.5px;color:var(--sub);letter-spacing:.26em;margin-bottom:6px}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;margin-bottom:5px}
+.row .lbl{font-size:11px;color:var(--sub);margin-right:2px}
+.row button{background:transparent;border:1px solid #2a543b;color:var(--sub);padding:5px 11px;border-radius:15px;font-size:12px;cursor:pointer;font-family:inherit}
+.row button.on{border-color:var(--gold);color:var(--gold)}
+.tableau{width:min(96vw,440px)}
+.side{display:flex;align-items:flex-start;gap:8px;padding:5px 2px}
+.side .info{font-size:11px;color:var(--sub);min-width:78px;line-height:1.5}
+.side .info b{color:var(--txt)}
+.hand{display:flex;gap:3px;flex-wrap:wrap;flex:1}
+.cap{display:flex;gap:2px;flex-wrap:wrap;flex:1;min-height:24px}
+.field{background:var(--felt);border:1px solid var(--line);border-radius:10px;padding:8px;margin:4px 0;display:flex;gap:4px;flex-wrap:wrap;justify-content:center;min-height:80px;align-items:center;box-shadow:inset 0 0 20px rgba(0,0,0,.35)}
+.deckwrap{display:flex;align-items:center;justify-content:center;gap:10px;margin:2px 0}
+.card{width:40px;height:60px;border-radius:6px;background:#f7f2e2;border:1.5px solid #cdbf94;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:3px 2px;font-size:9px;color:#3a3020;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.3);flex:0 0 auto}
+.card .ico{font-size:19px;line-height:1}
+.card .mn{font-size:8.5px;color:#6b5d3a;font-weight:700}
+.card.bright{border-color:var(--gold);box-shadow:0 0 0 1.5px var(--gold),0 1px 2px rgba(0,0,0,.3)}
+.card.animal{border-color:#d98a2b}
+.card.ribbon-red{border-color:var(--red)}
+.card.ribbon-blue{border-color:var(--blue)}
+.card.ribbon-plain{border-color:#b08d57}
+.card .tp{font-size:7.5px;padding:0 3px;border-radius:6px;background:rgba(0,0,0,.06)}
+.card.sel{outline:3px solid var(--gold);outline-offset:1px}
+.card.match{outline:3px solid #6ee06e;outline-offset:1px;cursor:pointer;animation:mp .8s infinite alternate}
+@keyframes mp{from{outline-color:#6ee06e}to{outline-color:#caffca}}
+.card.mini{width:24px;height:36px;font-size:0}
+.card.mini .ico{font-size:13px}.card.mini .mn,.card.mini .tp{display:none}
+.card.back{background:linear-gradient(135deg,#7a1f1f,#4a1212);border-color:#3a0e0e}
+.card.back .ico{color:rgba(255,255,255,.25);font-size:16px}
+.card.clk{cursor:pointer}.card.clk:hover{transform:translateY(-4px)}
+.card.dim{opacity:.45}
+.msg{min-height:20px;font-size:13px;color:var(--gold);margin:6px 0;text-align:center;font-weight:700}
+.yk{font-size:11px;color:var(--sub);text-align:center;min-height:16px}
+.yk b{color:var(--gold)}
+.foot{margin-top:8px;display:flex;gap:8px}
+.foot button{background:transparent;border:1px solid var(--line);color:var(--txt);padding:7px 16px;border-radius:6px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.over{position:fixed;inset:0;background:rgba(6,16,10,.86);display:none;align-items:center;justify-content:center;z-index:30;padding:16px}
+.over.show{display:flex}
+.over .c{background:#10301f;border:1px solid var(--gold);border-radius:12px;padding:22px 26px;text-align:center;max-width:94vw}
+.over .t{font-size:21px;color:var(--gold);font-family:"Hiragino Mincho ProN",serif;margin-bottom:10px}
+.over .d{font-size:13px;line-height:1.8;margin-bottom:16px;color:var(--txt)}
+.over .d .y{color:var(--gold)}
+.over button{background:var(--gold);border:none;color:#10301f;font-weight:800;padding:9px 20px;border-radius:7px;cursor:pointer;font-size:14px;font-family:inherit;margin:0 4px}
+.over .alt{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+.rule{width:min(94vw,440px);margin-top:12px;font-size:10.5px;line-height:1.7;color:var(--sub);border-top:1px solid var(--line);padding-top:8px}
+.rule b{color:var(--txt)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.5);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.22)">← 一覧に戻る</a>
+<h1>花札こいこい</h1><div class="sub">HANAFUDA KOI-KOI</div>
+<div class="row" id="opts">
+  <span class="lbl">対戦:</span>
+  <button data-m="cpu" class="on">CPU対戦</button>
+  <button data-m="pvp">2人対戦</button>
+  <span class="lbl" style="margin-left:8px">月数:</span>
+  <button data-r="3">3</button>
+  <button data-r="6" class="on">6</button>
+  <button data-r="12">12</button>
+</div>
+<div class="tableau">
+  <div class="side"><div class="info" id="oInfo"></div><div class="cap" id="oCap"></div></div>
+  <div class="side"><div class="info">相手の手札</div><div class="hand" id="oHand"></div></div>
+  <div class="field" id="field"></div>
+  <div class="deckwrap"><div class="card back" id="deck"><span class="ico">花</span></div><div id="deckMsg" style="font-size:11px;color:var(--sub)"></div></div>
+  <div class="side"><div class="info">あなたの手札</div><div class="hand" id="pHand"></div></div>
+  <div class="side"><div class="info" id="pInfo"></div><div class="cap" id="pCap"></div></div>
+</div>
+<div class="msg" id="msg"></div>
+<div class="yk" id="yk"></div>
+<div class="foot"><button id="reset">最初から</button></div>
+<div class="rule">
+札を出して場の<b>同じ月</b>の札と合わせて取り、山札をめくってまた合わせます。光・種・短冊・カスなどで<b>役</b>を作ると、続けて高得点を狙う「<b>こいこい</b>」か、そこで止める「<b>あがり</b>」を選べます。こいこい後に勝つと点数2倍。指定の月数だけ戦い、合計点で勝敗を決めます。
+</div>
+<div class="over" id="over"><div class="c"><div class="t" id="ov-t"></div><div class="d" id="ov-d"></div><div id="ov-btns"></div></div></div>
+<div class="over" id="ho"><div class="c"><div class="t" id="ho-t">交代</div><div class="d">端末を次の人に渡してください</div><button id="ho-ok">手札を見る</button></div></div>
+<script>
+const MONTHS=['松','梅','桜','藤','菖蒲','牡丹','萩','芒','菊','紅葉','柳','桐'];
+function buildDeck(){const D=[];let id=0;
+  const a=(m,type,ribbon,name,ico)=>D.push({id:id++,m,type,ribbon,name,ico});
+  a(0,'bright',0,'松に鶴','🦢');a(0,'ribbon','red','松に赤短','🎴');a(0,'plain',0,'松','🌲');a(0,'plain',0,'松','🌲');
+  a(1,'animal',0,'梅に鶯','🐦');a(1,'ribbon','red','梅に赤短','🎴');a(1,'plain',0,'梅','🌸');a(1,'plain',0,'梅','🌸');
+  a(2,'bright',0,'桜に幕','🎏');a(2,'ribbon','red','桜に赤短','🎴');a(2,'plain',0,'桜','🌸');a(2,'plain',0,'桜','🌸');
+  a(3,'animal',0,'藤に郭公','🐦');a(3,'ribbon','plain','藤に短冊','🎋');a(3,'plain',0,'藤','🌿');a(3,'plain',0,'藤','🌿');
+  a(4,'animal',0,'菖蒲に八ツ橋','🌉');a(4,'ribbon','plain','菖蒲に短冊','🎋');a(4,'plain',0,'菖蒲','🪻');a(4,'plain',0,'菖蒲','🪻');
+  a(5,'animal',0,'牡丹に蝶','🦋');a(5,'ribbon','blue','牡丹に青短','📘');a(5,'plain',0,'牡丹','🌺');a(5,'plain',0,'牡丹','🌺');
+  a(6,'animal',0,'萩に猪','🐗');a(6,'ribbon','plain','萩に短冊','🎋');a(6,'plain',0,'萩','🌿');a(6,'plain',0,'萩','🌿');
+  a(7,'bright',0,'芒に月','🌕');a(7,'animal',0,'芒に雁','🦆');a(7,'plain',0,'芒','🌾');a(7,'plain',0,'芒','🌾');
+  a(8,'animal',0,'菊に盃','🍶');a(8,'ribbon','blue','菊に青短','📘');a(8,'plain',0,'菊','🌼');a(8,'plain',0,'菊','🌼');
+  a(9,'animal',0,'紅葉に鹿','🦌');a(9,'ribbon','blue','紅葉に青短','📘');a(9,'plain',0,'紅葉','🍁');a(9,'plain',0,'紅葉','🍁');
+  a(10,'bright',0,'柳に小野道風','☔');a(10,'animal',0,'柳に燕','🐦');a(10,'ribbon','plain','柳に短冊','🎋');a(10,'plain',0,'柳','⚡');
+  a(11,'bright',0,'桐に鳳凰','🦅');a(11,'plain',0,'桐','🌳');a(11,'plain',0,'桐','🌳');a(11,'plain',0,'桐','🌳');
+  return D;}
+
+let mode='cpu',rounds=6;
+let deck,hands,field,captured,cur,dealer,roundNo,total,koikoi,prevTotal,over,viewP;
+let pending=null;   // {source:'hand'|'draw', card, handIdx, matches:[fieldIdx]}
+let awaitingDecision=false;
+let busy=false;
+
+const $=id=>document.getElementById(id);
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function newGame(){roundNo=0;total=[0,0];dealer=Math.random()<.5?0:1;startRound();}
+function startRound(){
+  roundNo++;
+  deck=shuffle(buildDeck());
+  hands=[[],[]];field=[];captured=[[],[]];
+  for(let i=0;i<8;i++){hands[0].push(deck.pop());hands[1].push(deck.pop());}
+  for(let i=0;i<8;i++)field.push(deck.pop());
+  cur=dealer;koikoi=0;prevTotal=[0,0];over=false;pending=null;awaitingDecision=false;busy=false;
+  viewP=(mode==='cpu')?0:cur;
+  $('over').classList.remove('show');
+  if(mode==='pvp'&&isHuman(cur))handoff();
+  else beginTurn();
+}
+function isHuman(p){return mode==='pvp'?true:p===0;}
+function handoff(){$('ho-t').textContent=(cur===0?'プレイヤー1':'プレイヤー2')+'の番';$('ho').classList.add('show');}
+$('ho-ok').addEventListener('click',()=>{$('ho').classList.remove('show');viewP=cur;render();beginTurn();});
+
+function beginTurn(){
+  render();
+  if(over)return;
+  if(!isHuman(cur)){busy=true;render();setTimeout(cpuTurn,650);}
+  else{busy=false;msg(turnName(cur)+'の番：手札を1枚選んでください');render();}
+}
+function turnName(p){if(mode==='cpu')return p===0?'あなた':'CPU';return p===0?'プレイヤー1':'プレイヤー2';}
+
+function matchesInField(card){const o=[];for(let i=0;i<field.length;i++)if(field[i].m===card.m)o.push(i);return o;}
+
+/* ---------- 入力（人間） ---------- */
+function clickHand(idx){
+  if(over||busy||!isHuman(cur)||pending||awaitingDecision)return;
+  const c=hands[viewP][idx];
+  // viewPの手札＝curの手札（pvpは交代後cur、cpuはviewP0=cur0）
+  if(viewP!==cur)return;
+  const ms=matchesInField(c);
+  if(ms.length===0){ // 場に出す
+    hands[cur].splice(idx,1);field.push(c);drawPhase();
+  }else if(ms.length===1||ms.length===3){
+    hands[cur].splice(idx,1);capture([c,...ms.map(i=>field[i])]);removeFieldIdx(ms);drawPhase();
+  }else{ // 2枚一致 → どちらか選択
+    hands[cur].splice(idx,1);pending={source:'hand',card:c,matches:matchesInField(c)};render();msg('取る場札を選んでください');
+  }
+}
+function clickField(idx){
+  if(!pending)return;
+  if(!pending.matches.includes(idx))return;
+  capture([pending.card,field[idx]]);removeFieldIdx([idx]);
+  const src=pending.source;pending=null;
+  if(src==='hand')drawPhase();else afterCaptures();
+}
+function drawPhase(){
+  render();
+  setTimeout(()=>{
+    if(!deck.length){afterCaptures();return;}
+    const d=deck.pop();
+    const ms=matchesInField(d);
+    if(ms.length===0){field.push(d);msg('めくり: '+d.name+' → 場へ');afterCaptures();}
+    else if(ms.length===1||ms.length===3){capture([d,...ms.map(i=>field[i])]);removeFieldIdx(ms);msg('めくり: '+d.name+' を取った！');afterCaptures();}
+    else{pending={source:'draw',card:d,matches:ms};field.push(d);pending.matches=matchesInField(d).filter(i=>field[i]!==d);render();
+      if(isHuman(cur))msg('めくり札 '+d.name+'：取る場札を選んでください');
+      else setTimeout(()=>{const pick=cpuPickField(pending.matches);clickFieldCpu(pick);},600);}
+  },420);
+}
+function removeFieldIdx(idxs){const set=new Set(idxs);field=field.filter((_,i)=>!set.has(i));}
+function capture(cards){for(const c of cards)captured[cur].push(c);}
+
+function afterCaptures(){
+  render();
+  const t=ykTotal(cur);
+  if(t>prevTotal[cur]){ // 役が増えた → こいこい/あがり
+    if(isHuman(cur)){awaitingDecision=true;showDecision(cur,t);}
+    else{const dec=cpuDecide();if(dec==='stop')roundEnd(cur);else{koikoi++;prevTotal[cur]=t;msg('CPUは「こいこい！」');setTimeout(endTurn,800);}}
+  }else endTurn();
+}
+function endTurn(){
+  if(over)return;
+  if(!hands[0].length&&!hands[1].length){return roundDraw();}
+  cur=1-cur;prevTotal[cur]=ykTotal(cur);pending=null;awaitingDecision=false;
+  if(mode==='pvp'&&isHuman(cur)){busy=true;render();handoff();}
+  else beginTurn();
+}
+
+/* ---------- 役 ---------- */
+function ykList(cap){
+  const br=cap.filter(c=>c.type==='bright'),an=cap.filter(c=>c.type==='animal'),ri=cap.filter(c=>c.type==='ribbon'),ka=cap.filter(c=>c.type==='plain');
+  const has=p=>cap.some(p);const res=[];const rain=br.some(c=>c.m===10);
+  if(br.length===5)res.push(['五光',10]);
+  else if(br.length===4)res.push(rain?['雨四光',7]:['四光',8]);
+  else if(br.length===3&&!rain)res.push(['三光',5]);
+  if(has(c=>c.m===6&&c.type==='animal')&&has(c=>c.m===9&&c.type==='animal')&&has(c=>c.m===5&&c.type==='animal'))res.push(['猪鹿蝶',5]);
+  if([0,1,2].every(m=>ri.some(c=>c.m===m&&c.ribbon==='red')))res.push(['赤短',5]);
+  if([5,8,9].every(m=>ri.some(c=>c.m===m&&c.ribbon==='blue')))res.push(['青短',5]);
+  const cup=has(c=>c.m===8&&c.type==='animal');
+  if(has(c=>c.m===2&&c.type==='bright')&&cup)res.push(['花見で一杯',5]);
+  if(has(c=>c.m===7&&c.type==='bright')&&cup)res.push(['月見で一杯',5]);
+  if(an.length>=5)res.push(['たね',an.length-4]);
+  if(ri.length>=5)res.push(['たん',ri.length-4]);
+  if(ka.length>=10)res.push(['カス',ka.length-9]);
+  return res;
+}
+function ykTotal(p){return ykList(captured[p]).reduce((s,[,x])=>s+x,0);}
+
+/* ---------- 終局・点数 ---------- */
+function roundEnd(winner){
+  over=true;awaitingDecision=false;
+  let pts=ykTotal(winner);if(koikoi>0)pts*=2;
+  total[winner]+=pts;
+  showResult(turnName(winner)+'の「あがり」！',winner,pts);
+}
+function roundDraw(){
+  over=true;
+  showResult('引き分け（流れ）',-1,0);
+}
+function showResult(title,winner,pts){
+  render();
+  const t=$('ov-t'),d=$('ov-d'),btns=$('ov-btns');
+  t.textContent=title;
+  let html='';
+  if(winner>=0){const yl=ykList(captured[winner]);
+    html+=yl.map(([n,p])=>'<span class="y">'+n+' '+p+'</span>').join('　')+'<br>';
+    html+='獲得 <span class="y">'+pts+'点</span>'+(koikoi>0?'（こいこい×2）':'')+'<br>';}
+  html+='<div style="margin-top:8px">合計　'+turnName(0)+' <b>'+total[0]+'</b> / '+turnName(1)+' <b>'+total[1]+'</b>（'+roundNo+'/'+rounds+'月）</div>';
+  d.innerHTML=html;
+  btns.innerHTML='';
+  if(roundNo>=rounds){
+    const w=total[0]===total[1]?-1:(total[0]>total[1]?0:1);
+    t.textContent=w<0?'引き分け！':turnName(w)+'の勝ち！ 🎉';
+    const b=document.createElement('button');b.textContent='もう一度';b.onclick=()=>newGame();btns.appendChild(b);
+  }else{
+    const b=document.createElement('button');b.textContent='次の月へ';b.onclick=()=>{dealer=1-dealer;startRound();};btns.appendChild(b);
+  }
+  $('over').classList.add('show');
+}
+
+/* ---------- こいこい判断（人間） ---------- */
+function showDecision(p,t){
+  render();
+  const ov=$('over'),tt=$('ov-t'),d=$('ov-d'),btns=$('ov-btns');
+  const yl=ykList(captured[p]);
+  tt.textContent='役ができた！（'+t+'点）';
+  d.innerHTML=yl.map(([n,x])=>'<span class="y">'+n+' '+x+'</span>').join('　')+'<br>「こいこい」で続けて高得点を狙う？';
+  btns.innerHTML='';
+  const a=document.createElement('button');a.textContent='あがり（'+t*(koikoi>0?2:1)+'点）';a.onclick=()=>{ov.classList.remove('show');roundEnd(p);};
+  const k=document.createElement('button');k.className='alt';k.textContent='こいこい';k.onclick=()=>{ov.classList.remove('show');koikoi++;prevTotal[p]=t;awaitingDecision=false;msg(turnName(p)+'は「こいこい！」');setTimeout(endTurn,500);};
+  btns.appendChild(a);btns.appendChild(k);
+  ov.classList.add('show');
+}
+
+/* ---------- CPU ---------- */
+function cardVal(c){return c.type==='bright'?20:c.type==='animal'?(c.m===8?14:10):c.type==='ribbon'?(c.ribbon==='plain'?6:8):1;}
+function cpuPickField(matches){let best=matches[0],bv=-1;for(const i of matches){const v=cardVal(field[i]);if(v>bv){bv=v;best=i;}}return best;}
+function clickFieldCpu(idx){capture([pending.card,field[idx]]);removeFieldIdx([idx]);const src=pending.source;pending=null;if(src==='hand')drawPhase();else afterCaptures();}
+function cpuTurn(){
+  if(over)return;busy=true;
+  const h=hands[1];if(!h.length){return endTurn();}
+  let best=0,bs=-1e9;
+  for(let i=0;i<h.length;i++){const c=h[i];const ms=matchesInField(c);let s;
+    if(ms.length)s=10+Math.max(...ms.map(j=>cardVal(field[j])))+cardVal(c)*0.05;
+    else s=-cardVal(c)*0.3;
+    if(s>bs){bs=s;best=i;}}
+  const c=h[best];const ms=matchesInField(c);
+  if(ms.length===0){h.splice(best,1);field.push(c);msg('CPU: '+c.name+' を場へ');drawPhase();}
+  else if(ms.length===1||ms.length===3){h.splice(best,1);capture([c,...ms.map(i=>field[i])]);removeFieldIdx(ms);msg('CPU: '+c.name+' を取った');drawPhase();}
+  else{h.splice(best,1);pending={source:'hand',card:c,matches:matchesInField(c)};render();setTimeout(()=>{const pick=cpuPickField(pending.matches);clickFieldCpu(pick);},500);}
+}
+function cpuDecide(){const t=ykTotal(1);if(t>=7)return 'stop';if(hands[1].length>=4&&t<7)return 'koi';return 'stop';}
+
+/* ---------- 描画 ---------- */
+function cardHTML(c,cls){
+  const tc=c.type==='bright'?'bright':c.type==='animal'?'animal':c.type==='ribbon'?('ribbon-'+c.ribbon):'plain';
+  const tp=c.type==='bright'?'光':c.type==='animal'?(c.m===8?'盃':'種'):c.type==='ribbon'?(c.ribbon==='red'?'赤短':c.ribbon==='blue'?'青短':'短'):'カス';
+  return `<div class="card ${tc} ${cls||''}"><span class="mn">${MONTHS[c.m]}</span><span class="ico">${c.ico}</span><span class="tp">${tp}</span></div>`;
+}
+function capHTML(cap){return cap.slice().sort((a,b)=>a.m-b.m).map(c=>cardHTML(c,'mini')).join('');}
+function render(){
+  // 相手手札（裏） / 自分側はviewP
+  const me=viewP,opp=1-viewP;
+  $('oHand').innerHTML=hands[opp].map(()=>'<div class="card back"><span class="ico">花</span></div>').join('');
+  $('oCap').innerHTML=capHTML(captured[opp]);
+  $('pCap').innerHTML=capHTML(captured[me]);
+  $('oInfo').innerHTML=turnName(opp)+'<br>取り札 '+captured[opp].length+'枚<br><b>'+ykTotal(opp)+'点</b>';
+  $('pInfo').innerHTML=turnName(me)+'<br>取り札 '+captured[me].length+'枚<br><b>'+ykTotal(me)+'点</b>';
+  // 場
+  $('field').innerHTML=field.map((c,i)=>{
+    let cls='';
+    if(pending&&pending.matches.includes(i))cls='match';
+    return cardHTML(c,cls);
+  }).join('');
+  [...$('field').children].forEach((el,i)=>{if(pending&&pending.matches.includes(i)){el.classList.add('clk');el.onclick=()=>{ if(isHuman(cur)) clickField(i); };}});
+  // 自分の手札（操作はcur===viewPのときのみ）
+  const canPlay=isHuman(cur)&&cur===me&&!pending&&!awaitingDecision&&!over;
+  $('pHand').innerHTML=hands[me].map((c,i)=>cardHTML(c,(canPlay?'clk':'dim'))).join('');
+  if(canPlay)[...$('pHand').children].forEach((el,i)=>{el.onclick=()=>clickHand(i);});
+  $('deckMsg').textContent='山札 '+(deck?deck.length:0)+'枚';
+  // 役表示
+  const yl=ykList(captured[me]);
+  $('yk').innerHTML=yl.length?('あなたの役: '+yl.map(([n,p])=>'<b>'+n+' '+p+'</b>').join(' / ')):'';
+}
+function msg(s){$('msg').textContent=s;}
+
+$('reset').addEventListener('click',newGame);
+$('opts').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.m){mode=b.dataset.m;document.querySelectorAll('#opts button[data-m]').forEach(x=>x.classList.toggle('on',x===b));}
+  if(b.dataset.r){rounds=+b.dataset.r;document.querySelectorAll('#opts button[data-r]').forEach(x=>x.classList.toggle('on',x===b));}
+  newGame();});
+newGame();
+</script>
+</body>
+</html>

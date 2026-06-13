@@ -50,7 +50,7 @@ document.getElementById('undo').addEventListener('click',()=>{if(!hist.length)re
 document.getElementById('mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;document.querySelectorAll('#mode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
 init();
 </script><script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script src="../shared/lobby.js?v=5"></script>
+<script src="../shared/lobby.js?v=6"></script>
 <script src="../shared/online-core.js?v=7"></script>
 <script>OnlineCore.init({gameId:'tictactoe',statusSel:'#status',hostMark:'○',guestMark:'×',pvpSel:'#mode button[data-m=\"pvp\"]',hideSel:'#mode'});</script>
 </body></html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>2048 VS</title>
+<style>
+:root{--bg:#15120E;--panel:#1F1A14;--txt:#EDE6D6;--sub:#9A8F7B;--gold:#C9A227;--line:#352C20;--grid:#2C2620;--you:#5B9BD5;--opp:#E0533E;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--txt);font-family:"Hiragino Sans","Yu Gothic UI",sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:10px 6px 24px;user-select:none;touch-action:none}
+h1{font-family:"Hiragino Mincho ProN",serif;font-size:22px;letter-spacing:.18em;text-indent:.18em;margin:2px 0}
+.sub{font-size:10px;color:var(--sub);letter-spacing:.2em;margin-bottom:8px}
+.modes{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:6px}
+.modes button{background:transparent;border:1px solid var(--line);color:var(--sub);padding:7px 12px;border-radius:16px;font-size:12px;cursor:pointer;font-family:inherit;line-height:1.4}
+.modes button.on{border-color:var(--gold);color:var(--gold)}
+.modes button small{display:block;font-size:9px;opacity:.8}
+.timer{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--gold);min-height:32px;letter-spacing:.05em}
+.timer.warn{color:#e0533e}
+.arena{display:flex;gap:10px;align-items:flex-start;justify-content:center;width:100%;margin-top:4px}
+.player{display:flex;flex-direction:column;align-items:center;gap:5px;flex:0 0 auto}
+.ptitle{font-size:12px;font-weight:800;letter-spacing:.06em}
+.p0 .ptitle{color:var(--you)}.p1 .ptitle{color:var(--opp)}
+.scores{display:flex;gap:6px}
+.sc{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 9px;text-align:center;min-width:62px}
+.sc .l{font-size:8px;color:var(--sub);letter-spacing:.1em}
+.sc .v{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+.board{background:var(--grid);border-radius:7px;padding:5px;display:grid;grid-template-columns:repeat(4,1fr);gap:5px;position:relative}
+.cell{aspect-ratio:1/1;border-radius:5px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;font-weight:800;font-variant-numeric:tabular-nums}
+.gameover{position:absolute;inset:0;background:rgba(20,16,10,.78);border-radius:7px;display:none;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--gold)}
+.gameover.show{display:flex}
+.center{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:10px}
+.msg{min-height:18px;font-size:12.5px;color:var(--gold);text-align:center}
+.foot{display:flex;gap:8px}
+.foot button{background:var(--gold);border:none;color:#15120E;font-weight:700;padding:9px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit}
+.foot .alt{background:transparent;border:1px solid var(--line);color:var(--txt)}
+.foot button:disabled{opacity:.4;cursor:default}
+.hint{font-size:10.5px;color:var(--sub);text-align:center;line-height:1.7}
+.over{position:fixed;inset:0;background:rgba(10,8,5,.86);display:none;align-items:center;justify-content:center;z-index:30}
+.over.show{display:flex}
+.over .c{background:#241c10;border:1px solid var(--gold);border-radius:10px;padding:24px 32px;text-align:center}
+.over .t{font-size:24px;color:var(--gold);font-family:"Hiragino Mincho ProN",serif;margin-bottom:8px}
+.over .s{font-size:14px;color:var(--txt);margin-bottom:16px;line-height:1.8}
+.over button{background:var(--gold);border:none;color:#241c10;font-weight:700;padding:9px 22px;border-radius:7px;cursor:pointer;font-size:14px;font-family:inherit}
+</style>
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
+<h1>2048 VS</h1><div class="sub">2048 — スコア対決</div>
+
+<div class="modes" id="modes">
+  <button data-mode="time" class="on">① タイムアタック<small>5分・リトライ無制限・最高点で勝負</small></button>
+  <button data-mode="oneshot">② 一発勝負<small>10分上限・1ゲームのスコアで勝負</small></button>
+</div>
+<div class="timer" id="timer">--:--</div>
+
+<div class="arena">
+  <div class="player p0" id="pl0">
+    <div class="ptitle" id="t0">あなた</div>
+    <div class="scores"><div class="sc"><div class="l">SCORE</div><div class="v" id="cur0">0</div></div><div class="sc"><div class="l">BEST</div><div class="v" id="best0">0</div></div></div>
+    <div class="board" id="bd0"></div>
+  </div>
+  <div class="player p1" id="pl1">
+    <div class="ptitle" id="t1">あいて</div>
+    <div class="scores"><div class="sc"><div class="l">SCORE</div><div class="v" id="cur1">0</div></div><div class="sc"><div class="l">BEST</div><div class="v" id="best1">0</div></div></div>
+    <div class="board" id="bd1"></div>
+  </div>
+</div>
+
+<div class="center">
+  <div class="msg" id="msg">モードを選んで「スタート」。オンラインで相手と対戦できます。</div>
+  <div class="foot"><button id="start">スタート</button><button id="retry" class="alt" disabled>リトライ</button></div>
+  <div class="hint">スワイプ（スマホ）／矢印キー（PC）で操作。①は時間内に何度でもやり直して最高点を狙う。②は1ゲームのスコアで勝負。</div>
+</div>
+
+<div class="over" id="over"><div class="c"><div class="t" id="ovt">結果</div><div class="s" id="ovs"></div><button id="again">もう一度</button></div></div>
+
+<script>
+const N=4;
+const TCOL={0:['rgba(255,255,255,.04)','transparent'],2:['#3A3225','#EDE6D6'],4:['#4A3E2A','#EDE6D6'],8:['#B07A3A','#fff'],16:['#C9762A','#fff'],32:['#D45F38','#fff'],64:['#E04A2E','#fff'],128:['#C9A227','#fff'],256:['#D4A91E','#fff'],512:['#E0B81A','#fff'],1024:['#E6C418','#fff'],2048:['#F0CE10','#15120E']};
+function tcol(v){return TCOL[v]||['#F0CE10','#15120E'];}
+function fontFor(v){return v<100?20:v<1000?16:13;}
+
+let MODE='time',MODEDUR={time:300,oneshot:600};
+let running=false,gameOver=false;
+let timeLeft=0,timerId=null;
+let ONLINE=false,MYSEAT=0,roomSend=null,lastSend=0;
+let oppOver=false; // online: 相手がゲームオーバーしたか
+
+function makeBoard(idx){
+  const el=document.getElementById('bd'+idx);
+  el.innerHTML='';const cells=[];
+  for(let i=0;i<16;i++){const d=document.createElement('div');d.className='cell';el.appendChild(d);cells.push(d);}
+  const go=document.createElement('div');go.className='gameover';go.textContent='GAME OVER';el.appendChild(go);
+  return {idx,grid:[],score:0,best:0,over:false,cells,goEl:go};
+}
+let B=[makeBoard(0),makeBoard(1)];
+function me(){return B[ONLINE?MYSEAT:0];}
+
+function newGrid(b){b.grid=[];for(let r=0;r<N;r++)b.grid.push([0,0,0,0]);b.score=0;b.over=false;addRandom(b);addRandom(b);}
+function addRandom(b){const e=[];for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(!b.grid[r][c])e.push([r,c]);if(!e.length)return;const[r,c]=e[Math.floor(Math.random()*e.length)];b.grid[r][c]=Math.random()<.9?2:4;}
+function slide(row){let a=row.filter(x=>x);for(let i=0;i<a.length-1;i++){if(a[i]===a[i+1]){a[i]*=2;rowGain+=a[i];a.splice(i+1,1);}}while(a.length<N)a.push(0);return a;}
+function rotate(g){const n=[];for(let c=0;c<N;c++){n.push([]);for(let r=N-1;r>=0;r--)n[c].push(g[r][c]);}return n;}
+let rowGain=0;
+function move(b,dir){
+  if(b.over)return false;
+  let g=b.grid.map(r=>r.slice());for(let i=0;i<dir;i++)g=rotate(g);
+  let moved=false;rowGain=0;
+  for(let r=0;r<N;r++){const ns=slide(g[r]);if(ns.join()!==g[r].join())moved=true;g[r]=ns;}
+  for(let i=0;i<(4-dir)%4;i++)g=rotate(g);
+  if(!moved)return false;
+  b.grid=g;b.score+=rowGain;if(b.score>b.best)b.best=b.score;
+  addRandom(b);
+  if(isStuck(b)){b.over=true;b.goEl.classList.add('show');onMyOver(b);}
+  render(b);
+  return true;
+}
+function isStuck(b){for(let r=0;r<N;r++)for(let c=0;c<N;c++){if(!b.grid[r][c])return false;if(c<N-1&&b.grid[r][c]===b.grid[r][c+1])return false;if(r<N-1&&b.grid[r][c]===b.grid[r+1][c])return false;}return true;}
+function render(b){
+  for(let i=0;i<16;i++){const v=b.grid.length?b.grid[Math.floor(i/4)][i%4]:0;const el=b.cells[i];const[bg,fg]=tcol(v);
+    el.style.background=bg;el.style.color=fg;el.style.fontSize=fontFor(v)+'px';el.textContent=v||'';}
+  document.getElementById('cur'+b.idx).textContent=b.score;
+  document.getElementById('best'+b.idx).textContent=b.best;
+}
+
+function compScore(b){return MODE==='time'?b.best:b.score;}
+
+function onMyOver(b){
+  // ①タイム: 自動でリトライ可能（時間が残っていれば）。②一発: 終了
+  if(ONLINE){sendState(true);if(MODE==='oneshot')checkOneshotEnd();}
+}
+
+/* ===== タイマー ===== */
+function fmt(s){const m=Math.floor(s/60),x=s%60;return (m<10?'0':'')+m+':'+(x<10?'0':'')+x;}
+function startTimer(){
+  timeLeft=MODEDUR[MODE];document.getElementById('timer').textContent=fmt(timeLeft);
+  if(timerId)clearInterval(timerId);
+  timerId=setInterval(()=>{
+    if(!running)return;
+    timeLeft--;document.getElementById('timer').textContent=fmt(timeLeft);
+    document.getElementById('timer').classList.toggle('warn',timeLeft<=30);
+    if(timeLeft<=0){clearInterval(timerId);finishMatch();}
+  },1000);
+}
+
+function startMatch(){
+  running=true;gameOver=false;oppOver=false;
+  document.getElementById('over').classList.remove('show');
+  B[0].goEl.classList.remove('show');B[1].goEl.classList.remove('show');
+  newGrid(me());render(me());
+  if(!ONLINE){ // 練習(相手なし)
+    B[1].grid=[];B[1].score=0;B[1].best=0;B[1].over=false;render(B[1]);
+    document.getElementById('t1').textContent='（オンラインで対戦）';
+  }
+  document.getElementById('retry').disabled=(MODE!=='time');
+  document.getElementById('start').disabled=true;
+  document.getElementById('msg').textContent=MODE==='time'?'5分間で最高点を狙え！':'1ゲーム勝負！';
+  startTimer();
+  if(ONLINE)sendState(false);
+}
+function retry(){ // ①のみ: 盤面リセット(bestは保持), 時間は継続
+  if(MODE!=='time'||!running)return;
+  const b=me();b.goEl.classList.remove('show');
+  newGrid(b);render(b);
+  if(ONLINE)sendState(false);
+}
+
+function finishMatch(){
+  if(gameOver)return;gameOver=true;running=false;
+  if(timerId)clearInterval(timerId);
+  const myC=compScore(me());
+  let oppC=null;
+  if(ONLINE)oppC=MODE==='time'?B[1-MYSEAT].best:B[1-MYSEAT].score;
+  const ovt=document.getElementById('ovt'),ovs=document.getElementById('ovs');
+  if(ONLINE){
+    let r;if(myC>oppC)r='あなたの勝ち！🎉';else if(myC<oppC)r='あいての勝ち';else r='引き分け';
+    ovt.textContent=r;
+    ovs.innerHTML='あなた: <b>'+myC+'</b><br>あいて: <b>'+oppC+'</b>';
+    if(MYSEAT===0)roomSend&&roomSend({k:'finish'}); // 念のため終了通知
+  }else{
+    ovt.textContent='終了';ovs.innerHTML='スコア: <b>'+myC+'</b>';
+  }
+  document.getElementById('over').classList.add('show');
+}
+function checkOneshotEnd(){ // ②: 両者ゲームオーバーで即終了
+  if(MODE!=='oneshot'||!ONLINE)return;
+  if(me().over&&oppOver)finishMatch();
+}
+
+/* ===== 入力 ===== */
+function input(dir){if(!running||gameOver)return;const b=me();if(b.over)return;const ok=move(b,dir);if(ok&&ONLINE)sendState(b.over);}
+window.addEventListener('keydown',e=>{const k={ArrowLeft:0,ArrowDown:1,ArrowRight:2,ArrowUp:3}[e.key];if(k!==undefined){e.preventDefault();input(k);}});
+let sx,sy;
+const arena=document.querySelector('.arena');
+window.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;},{passive:true});
+window.addEventListener('touchend',e=>{if(sx==null)return;const t=e.changedTouches[0];const dx=t.clientX-sx,dy=t.clientY-sy;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<24){sx=null;return;}
+  if(Math.abs(dx)>Math.abs(dy))input(dx>0?2:0);else input(dy>0?1:3);sx=null;},{passive:true});
+
+/* ===== オンライン ===== */
+function sendState(over){
+  if(!ONLINE||!roomSend)return;
+  const now=performance.now();if(!over&&now-lastSend<60)return;lastSend=now;
+  const b=me();
+  roomSend({k:'state',grid:b.grid.flat(),score:b.score,best:b.best,over:b.over});
+}
+function applyState(msg){
+  const rp=B[1-MYSEAT];
+  rp.grid=[];for(let r=0;r<N;r++)rp.grid.push(msg.grid.slice(r*4,r*4+4));
+  rp.score=msg.score;rp.best=msg.best;rp.over=msg.over;
+  rp.goEl.classList.toggle('show',!!msg.over);
+  oppOver=!!msg.over;
+  render(rp);
+  if(MODE==='oneshot')checkOneshotEnd();
+}
+function onNet(from,msg){
+  if(!ONLINE||from===MYSEAT||!msg)return;
+  if(msg.k==='start'){MODE=msg.mode;startMatch();}
+  else if(msg.k==='state')applyState(msg);
+  else if(msg.k==='finish'){if(!gameOver)finishMatch();}
+}
+function startOnline(seat,n){
+  ONLINE=true;MYSEAT=seat;
+  document.getElementById('t'+MYSEAT).textContent='あなた';
+  document.getElementById('t'+(1-MYSEAT)).textContent='あいて';
+  // モード選択はホストのみ
+  if(seat!==0){document.querySelectorAll('#modes button').forEach(b=>b.disabled=true);document.getElementById('start').style.display='none';document.getElementById('msg').textContent='ホストの開始を待っています…';}
+  // 盤面プレースホルダ
+  newGrid(B[seat]);render(B[seat]);B[1-seat].grid=[];render(B[1-seat]);
+}
+
+/* ===== controls ===== */
+document.getElementById('modes').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||running)return;
+  if(ONLINE&&MYSEAT!==0)return;
+  MODE=b.dataset.mode;document.querySelectorAll('#modes button').forEach(x=>x.classList.remove('on'));b.classList.add('on');});
+document.getElementById('start').addEventListener('click',()=>{
+  if(ONLINE){if(MYSEAT!==0)return;roomSend&&roomSend({k:'start',mode:MODE});}
+  startMatch();
+});
+document.getElementById('retry').addEventListener('click',retry);
+document.getElementById('again').addEventListener('click',()=>{
+  document.getElementById('over').classList.remove('show');
+  document.getElementById('start').disabled=false;running=false;gameOver=false;
+  document.getElementById('timer').textContent=fmt(MODEDUR[MODE]);
+  if(ONLINE&&MYSEAT===0){roomSend&&roomSend({k:'start',mode:MODE});startMatch();}
+});
+// 初期表示
+B.forEach(b=>{newGrid(b);render(b);});
+B[1].grid=[];render(B[1]);
+document.getElementById('timer').textContent=fmt(MODEDUR[MODE]);
+</script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="../shared/lobby.js?v=6"></script>
+<script src="../shared/online-room.js?v=8"></script>
+<script>
+OnlineRoom.init({
+  gameId:'g2048vs', minPlayers:2, maxPlayers:2,
+  note:'2人でスコア対決。①5分タイムアタック ②10分一発勝負。',
+  onStart:(seat,n,send)=>{ roomSend=send; startOnline(seat,n); },
+  onMessage:(from,msg)=>onNet(from,msg)
+});
+</script>
+</body>
+</html>
