@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>将棋 / Shogi</title>
+<style>
+:root {
+  --cell: 52px;
+  --board-bg: #e9c08a;
+  --board-line: #6b4a23;
+  --piece-bg: #f7e0b5;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: #20160c;
+  color: #f3ead9;
+  font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+}
+
+.app {
+  width: 100%;
+  max-width: 560px;
+  padding: 20px 12px 48px;
+  text-align: center;
+}
+
+h1 { margin: 6px 0 18px; letter-spacing: 0.2em; }
+
+/* ---- Setup ---- */
+.setup {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  padding: 22px 18px 26px;
+}
+.setup h2 { margin: 0 0 18px; font-size: 18px; letter-spacing: 0.1em; }
+.setup-players { display: flex; gap: 14px; justify-content: center; }
+.player-config {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px 12px;
+}
+.player-head { font-weight: 700; margin-bottom: 14px; }
+.type-options {
+  display: flex; flex-direction: column; gap: 8px;
+  align-items: flex-start; width: fit-content; margin: 0 auto 14px;
+}
+.type-options label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.type-options input, .level-row select { accent-color: #c8772f; cursor: pointer; }
+.level-row { font-size: 13px; opacity: 0.9; }
+.level-row select { margin-left: 6px; }
+
+select, .btn {
+  font-size: 14px; padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer;
+}
+.btn { background: #c8772f; color: #fff; font-weight: 600; transition: background 0.15s, opacity 0.15s; }
+.btn:hover { background: #dd8a3d; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+select { background: #f3ead9; color: #20160c; }
+.btn-primary { background: #e0a13a; color: #20160c; padding: 12px 30px; font-size: 16px; }
+.btn-primary:hover { background: #f0b450; }
+
+/* ---- Turn bar ---- */
+.turn-bar { font-size: 16px; font-weight: 700; margin-bottom: 10px; min-height: 22px; }
+.turn-bar .check { color: #ff5b5b; }
+
+/* ---- Board ---- */
+.board-wrap { display: flex; justify-content: center; }
+.board {
+  display: grid;
+  grid-template-columns: repeat(9, var(--cell));
+  grid-template-rows: repeat(9, var(--cell));
+  background: var(--board-bg);
+  border: 3px solid var(--board-line);
+  width: max-content;
+  margin: 6px auto;
+}
+.cell {
+  width: var(--cell); height: var(--cell);
+  border: 1px solid var(--board-line);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; cursor: default;
+}
+.cell.selectable { cursor: pointer; }
+
+/* Pieces */
+.piece {
+  width: 84%; height: 84%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 22px; line-height: 1;
+  background: var(--piece-bg);
+  color: #1c1208;
+  border: 1px solid #8a6334;
+  border-radius: 4px 4px 3px 3px;
+  /* pentagon-ish shogi piece */
+  clip-path: polygon(50% 0%, 88% 22%, 100% 100%, 0% 100%, 12% 22%);
+  cursor: pointer;
+  user-select: none;
+}
+.piece.gote { transform: rotate(180deg); background: #efd29e; }
+.piece.promoted { color: #c0392b; }
+
+.cell.selected { background: #ffd98a; }
+.cell.last-move { background: #fff0c2; }
+
+/* legal target hint */
+.cell.target::after {
+  content: ""; position: absolute;
+  width: 30%; height: 30%; border-radius: 50%;
+  background: rgba(40, 120, 60, 0.55);
+  pointer-events: none;
+}
+.cell.target.capture::after {
+  width: 86%; height: 86%; border-radius: 6px;
+  background: transparent;
+  border: 3px solid rgba(200, 50, 50, 0.7);
+}
+
+/* ---- Komadai (hands) ---- */
+.komadai {
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 6px auto;
+  max-width: 480px;
+  text-align: left;
+  min-height: 30px;
+}
+.komadai-label { font-size: 12px; opacity: 0.8; margin-right: 8px; }
+.komadai-pieces { display: inline-flex; flex-wrap: wrap; gap: 6px; vertical-align: middle; }
+.hand-piece {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: var(--piece-bg); color: #1c1208;
+  border: 1px solid #8a6334; border-radius: 4px;
+  padding: 2px 6px; font-weight: 700; cursor: pointer;
+  font-size: 18px;
+}
+.hand-piece .cnt { font-size: 12px; color: #6b4a23; }
+.hand-piece.selectable:hover { background: #ffe4ad; }
+.hand-piece.selected { background: #ffd98a; outline: 2px solid #c8772f; }
+.hand-piece:not(.selectable) { opacity: 0.85; cursor: default; }
+
+/* ---- Controls / message ---- */
+.controls { display: flex; gap: 10px; justify-content: center; margin: 16px 0 8px; flex-wrap: wrap; }
+.message { min-height: 24px; font-weight: 700; color: #ffd34d; }
+
+.assist-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 4px 0; font-size: 14px; cursor: pointer;
+}
+.assist-toggle input { accent-color: #c8772f; cursor: pointer; }
+.assist-hint { min-height: 20px; margin: 2px 0; font-weight: 700; color: #8fe3a2; }
+
+/* AI-assistant evaluation overlay on the board */
+.cell .hint-score {
+  position: absolute; z-index: 2;
+  font-size: 13px; font-weight: 800;
+  color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  pointer-events: none; display: none;
+}
+.cell.assist .hint-score { display: block; }
+.cell.assist.target::after { display: none; } /* hide the dot when a number shows */
+.cell.assist.rank1 .hint-score { color: #ff4d4d; }
+.cell.assist.rank2 .hint-score { color: #ff9e2c; }
+.cell.assist.rank3 .hint-score { color: #ffe04d; }
+
+/* recommended move highlight */
+.cell.reco-from { box-shadow: inset 0 0 0 3px #6cd08a; }
+.cell.reco-to { box-shadow: inset 0 0 0 3px #ff4d4d; }
+.hand-piece.reco-drop { outline: 3px solid #6cd08a; outline-offset: 1px; }
+
+/* ---- Promotion dialog ---- */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
+  display: flex; align-items: center; justify-content: center; z-index: 10;
+}
+.overlay[hidden] { display: none; } /* honor the hidden attribute over display:flex */
+.promo-dialog {
+  background: #2b1f12; border: 2px solid #c8772f; border-radius: 12px;
+  padding: 22px 26px; text-align: center;
+}
+.promo-dialog p { margin: 0 0 16px; font-weight: 700; font-size: 17px; }
+.promo-buttons { display: flex; gap: 12px; justify-content: center; }
+
+@media (max-width: 520px) {
+  :root { --cell: 36px; }
+  .piece { font-size: 16px; }
+}
+
+/* ---- Online play ---- */
+.online-entry { margin-top: 14px; }
+.btn-online { background: #2563c9; font-size: 15px; padding: 11px 22px; }
+.btn-online:hover { background: #2f74e0; }
+.btn-small { padding: 6px 12px; font-size: 13px; }
+
+.lobby-card {
+  position: relative; background: #2b1f12;
+  border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px;
+  padding: 24px 22px; width: 100%; max-width: 360px; text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+.lobby-card h2 { margin: 0 0 6px; font-size: 20px; }
+.lobby-note { font-size: 13px; opacity: 0.85; line-height: 1.6; margin: 0 0 18px; }
+.lobby-close {
+  position: absolute; top: 10px; right: 12px; background: none; border: none;
+  color: #f3ead9; font-size: 24px; line-height: 1; cursor: pointer; opacity: 0.7;
+}
+.lobby-close:hover { opacity: 1; }
+.lobby-section h3 { font-size: 15px; margin: 0 0 10px; }
+.lobby-divider { margin: 18px 0; font-size: 12px; opacity: 0.6; display: flex; align-items: center; gap: 10px; }
+.lobby-divider::before, .lobby-divider::after { content: ""; flex: 1; height: 1px; background: rgba(255, 255, 255, 0.18); }
+.room-code-box {
+  margin-top: 14px; padding: 12px; background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.rc-label { font-size: 12px; opacity: 0.7; }
+.room-code { font-size: 34px; font-weight: 800; letter-spacing: 0.25em; color: #ffd34d; font-family: "Consolas", monospace; }
+.join-row { display: flex; gap: 8px; justify-content: center; }
+.join-input {
+  font-size: 20px; font-weight: 700; letter-spacing: 0.2em; text-align: center;
+  width: 140px; padding: 8px; border-radius: 8px; border: none; background: #f3ead9; color: #20160c;
+}
+.online-status { min-height: 20px; margin: 16px 0 0; font-size: 13px; font-weight: 600; color: #ffd34d; line-height: 1.5; }
+</style>
+</head>
+<body>
+  <a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 14px/1 'Segoe UI',sans-serif;padding:9px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.25);backdrop-filter:blur(4px);">← 一覧に戻る</a>
+  <div class="app">
+    <h1>将棋</h1>
+
+    <!-- 対戦設定 -->
+    <section id="setup" class="setup">
+      <h2>対戦設定</h2>
+      <div class="setup-players">
+        <div class="player-config">
+          <div class="player-head">☗ 先手（下）</div>
+          <div class="type-options">
+            <label><input type="radio" name="sente-type" value="human" checked> 人間</label>
+            <label><input type="radio" name="sente-type" value="cpu"> CPU</label>
+          </div>
+          <label class="level-row">強さ:
+            <select id="sente-level" disabled>
+              <option value="1">弱い</option>
+              <option value="2" selected>普通</option>
+              <option value="3">強い</option>
+            </select>
+          </label>
+        </div>
+        <div class="player-config">
+          <div class="player-head">☖ 後手（上）</div>
+          <div class="type-options">
+            <label><input type="radio" name="gote-type" value="human"> 人間</label>
+            <label><input type="radio" name="gote-type" value="cpu" checked> CPU</label>
+          </div>
+          <label class="level-row">強さ:
+            <select id="gote-level">
+              <option value="1">弱い</option>
+              <option value="2" selected>普通</option>
+              <option value="3">強い</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <button id="start" class="btn btn-primary">対戦開始</button>
+      <div class="online-entry">
+        <button id="online-btn" class="btn btn-online">🌐 オンラインで対戦（部屋番号）</button>
+      </div>
+    </section>
+
+    <!-- オンライン対戦ロビー -->
+    <div id="online-lobby" class="overlay" hidden>
+      <div class="lobby-card">
+        <button id="lobby-close" class="lobby-close" aria-label="閉じる">×</button>
+        <h2>オンライン対戦</h2>
+        <p class="lobby-note">2人で同じ部屋番号を共有して対局します。<br>部屋を作る側は<b>先手</b>、参加する側は<b>後手</b>です。</p>
+
+        <div class="lobby-section">
+          <h3>部屋を作る</h3>
+          <button id="create-room" class="btn btn-primary">部屋を作成</button>
+          <div id="room-code-box" class="room-code-box" hidden>
+            <span class="rc-label">部屋番号</span>
+            <span id="room-code" class="room-code">----</span>
+            <button id="copy-code" class="btn btn-small">コピー</button>
+          </div>
+        </div>
+
+        <div class="lobby-divider">または</div>
+
+        <div class="lobby-section">
+          <h3>部屋に参加する</h3>
+          <div class="join-row">
+            <input id="join-code" class="join-input" maxlength="4" placeholder="4桁の番号" inputmode="numeric" pattern="\d*" autocomplete="off">
+            <button id="join-room" class="btn btn-primary">参加</button>
+          </div>
+        </div>
+
+        <p id="online-status" class="online-status"></p>
+        <a href="../index.html" style="display:inline-block;margin-top:14px;color:#cfd6e4;font-size:13px;text-decoration:none;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:7px 16px">← 一覧に戻る</a>
+      </div>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <section id="game" class="game" hidden>
+      <div class="turn-bar"><span id="turn-indicator">先手番</span></div>
+
+      <!-- 後手の持ち駒 -->
+      <div class="komadai" id="hand-gote" data-owner="1">
+        <span class="komadai-label">☖ 後手 持ち駒</span>
+        <div class="komadai-pieces" id="hand-gote-pieces"></div>
+      </div>
+
+      <div class="board-wrap">
+        <div id="board" class="board"></div>
+      </div>
+
+      <!-- 先手の持ち駒 -->
+      <div class="komadai" id="hand-sente" data-owner="0">
+        <span class="komadai-label">☗ 先手 持ち駒</span>
+        <div class="komadai-pieces" id="hand-sente-pieces"></div>
+      </div>
+
+      <div class="controls">
+        <button id="undo" class="btn" disabled>一手戻る</button>
+        <button id="reset" class="btn">最初から</button>
+        <button id="back" class="btn">設定を変える</button>
+      </div>
+
+      <label class="assist-toggle">
+        <input type="checkbox" id="assist"> AIアシスタント（推奨手と評価値を表示）
+      </label>
+      <p id="assist-hint" class="assist-hint"></p>
+
+      <p id="message" class="message"></p>
+    </section>
+
+    <!-- 成り確認ダイアログ -->
+    <div id="promo-overlay" class="overlay" hidden>
+      <div class="promo-dialog">
+        <p>成りますか？</p>
+        <div class="promo-buttons">
+          <button id="promo-yes" class="btn btn-primary">成る</button>
+          <button id="promo-no" class="btn">成らない</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="../shared/lobby.js?v=6"></script>
+<script>
+/* Shogi (本将棋) rules engine.
+ * Exposes window.Shogi: board setup, move generation (incl. drops &
+ * promotion), check / checkmate detection, and move application.
+ *
+ * Board: 9x9 array, board[row][col]. row 0 = top (Gote's home), row 8 =
+ * bottom (Sente's home). A piece is { type, owner, promoted }.
+ *   owner: 0 = Sente (bottom, moves up), 1 = Gote (top, moves down).
+ *   type:  'P' 歩, 'L' 香, 'N' 桂, 'S' 銀, 'G' 金, 'K' 玉/王, 'R' 飛, 'B' 角.
+ *
+ * Known simplification: 打ち歩詰め (pawn-drop checkmate) is NOT forbidden.
+ */
+(function () {
+  const N = 9;
+  const SENTE = 0, GOTE = 1;
+  const opp = (o) => (o === SENTE ? GOTE : SENTE);
+  const inside = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+
+  // Drop-able / hand piece types (no King).
+  const HAND_TYPES = ["R", "B", "G", "S", "N", "L", "P"];
+
+  // Step moves and slide directions, from Sente's view (forward = row - 1).
+  const STEP = {
+    P: [[-1, 0]],
+    L: [],
+    N: [[-2, -1], [-2, 1]],
+    S: [[-1, -1], [-1, 0], [-1, 1], [1, -1], [1, 1]],
+    G: [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0]],
+    K: [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]],
+    R: [],
+    B: [],
+  };
+  const SLIDE = {
+    P: [], N: [], S: [], G: [], K: [],
+    L: [[-1, 0]],
+    R: [[-1, 0], [1, 0], [0, -1], [0, 1]],
+    B: [[-1, -1], [-1, 1], [1, -1], [1, 1]],
+  };
+  const GOLD_STEP = STEP.G;
+
+  function moveVectors(piece) {
+    if (piece.promoted) {
+      if (piece.type === "R") {
+        return { step: [[-1, -1], [-1, 1], [1, -1], [1, 1]], slide: SLIDE.R };
+      }
+      if (piece.type === "B") {
+        return { step: [[-1, 0], [1, 0], [0, -1], [0, 1]], slide: SLIDE.B };
+      }
+      return { step: GOLD_STEP, slide: [] }; // +P/+L/+N/+S move like gold
+    }
+    return { step: STEP[piece.type], slide: SLIDE[piece.type] };
+  }
+
+  // Destination squares for the piece at (r,c) — ignores leaving own king in check.
+  function pieceMoves(board, r, c) {
+    const p = board[r][c];
+    const sign = p.owner === SENTE ? 1 : -1; // flip forward for Gote
+    const { step, slide } = moveVectors(p);
+    const res = [];
+    for (const [dr, dc] of step) {
+      const nr = r + dr * sign, nc = c + dc;
+      if (inside(nr, nc) && (!board[nr][nc] || board[nr][nc].owner !== p.owner)) {
+        res.push([nr, nc]);
+      }
+    }
+    for (const [dr, dc] of slide) {
+      let nr = r + dr * sign, nc = c + dc;
+      while (inside(nr, nc)) {
+        if (!board[nr][nc]) {
+          res.push([nr, nc]);
+        } else {
+          if (board[nr][nc].owner !== p.owner) res.push([nr, nc]);
+          break;
+        }
+        nr += dr * sign; nc += dc;
+      }
+    }
+    return res;
+  }
+
+  function findKing(board, owner) {
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const p = board[r][c];
+        if (p && p.type === "K" && p.owner === owner) return [r, c];
+      }
+    }
+    return null;
+  }
+
+  // Is `owner`'s king currently attacked?
+  function inCheck(board, owner) {
+    const k = findKing(board, owner);
+    if (!k) return true; // king captured == worst case
+    const enemy = opp(owner);
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const p = board[r][c];
+        if (!p || p.owner !== enemy) continue;
+        for (const [nr, nc] of pieceMoves(board, r, c)) {
+          if (nr === k[0] && nc === k[1]) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /* ---------- zones / promotion rules ---------- */
+
+  const inZone = (owner, row) => (owner === SENTE ? row <= 2 : row >= 6);
+  const lastRank = (owner, row) => (owner === SENTE ? row === 0 : row === 8);
+  const lastTwoRanks = (owner, row) =>
+    owner === SENTE ? row <= 1 : row >= 7;
+
+  function canPromote(piece, fromRow, toRow) {
+    if (piece.promoted) return false;
+    if (piece.type === "G" || piece.type === "K") return false;
+    return inZone(piece.owner, fromRow) || inZone(piece.owner, toRow);
+  }
+
+  // Must promote when the piece would otherwise have no future move.
+  function mustPromote(piece, toRow) {
+    if (piece.promoted) return false;
+    if (piece.type === "P" || piece.type === "L") return lastRank(piece.owner, toRow);
+    if (piece.type === "N") return lastTwoRanks(piece.owner, toRow);
+    return false;
+  }
+
+  /* ---------- state ---------- */
+
+  function emptyHands() {
+    const h = () => ({ R: 0, B: 0, G: 0, S: 0, N: 0, L: 0, P: 0 });
+    return { 0: h(), 1: h() };
+  }
+
+  function initialBoard() {
+    const b = Array.from({ length: N }, () => new Array(N).fill(null));
+    const back = ["L", "N", "S", "G", "K", "G", "S", "N", "L"];
+    const pc = (type, owner, promoted = false) => ({ type, owner, promoted });
+    // Gote (top, owner 1) — gote 飛 at 8筋 = col 1, gote 角 at 2筋 = col 7
+    for (let c = 0; c < N; c++) b[0][c] = pc(back[c], GOTE);
+    b[1][1] = pc("R", GOTE); b[1][7] = pc("B", GOTE);
+    for (let c = 0; c < N; c++) b[2][c] = pc("P", GOTE);
+    // Sente (bottom, owner 0) — sente 角 at 8筋 = col 1 (左), sente 飛 at 2筋 = col 7 (右)
+    for (let c = 0; c < N; c++) b[6][c] = pc("P", SENTE);
+    b[7][1] = pc("B", SENTE); b[7][7] = pc("R", SENTE);
+    for (let c = 0; c < N; c++) b[8][c] = pc(back[c], SENTE);
+    return b;
+  }
+
+  function initialState() {
+    return { board: initialBoard(), hands: emptyHands(), turn: SENTE };
+  }
+
+  function cloneState(s) {
+    return {
+      board: s.board.map((row) => row.slice()),
+      hands: { 0: { ...s.hands[0] }, 1: { ...s.hands[1] } },
+      turn: s.turn,
+    };
+  }
+
+  /* ---------- move generation ---------- */
+
+  // A move: { from:[r,c]|null, to:[r,c], promote:bool, drop:type|null,
+  //           capture:type|null, capturedKing:bool }
+  function mkMove(from, to, promote, capture, capturedKing) {
+    return { from, to, promote, drop: null, capture, capturedKing: !!capturedKing };
+  }
+
+  function dropOk(state, type, owner, r, c) {
+    if (state.board[r][c]) return false;
+    if (type === "P" || type === "L") {
+      if (lastRank(owner, r)) return false;
+    }
+    if (type === "N" && lastTwoRanks(owner, r)) return false;
+    if (type === "P") {
+      // 二歩: no own unpromoted pawn already in this file.
+      for (let rr = 0; rr < N; rr++) {
+        const p = state.board[rr][c];
+        if (p && p.owner === owner && p.type === "P" && !p.promoted) return false;
+      }
+      // 打ち歩詰め: a pawn drop must not be immediate checkmate.
+      const test = cloneState(state);
+      test.board[r][c] = { type: "P", owner, promoted: false };
+      test.hands[owner].P -= 1;
+      test.turn = opp(owner);
+      if (isCheckmate(test)) return false;
+    }
+    return true;
+  }
+
+  // Pseudo-legal moves (does not filter out leaving own king in check).
+  function pseudoMoves(state) {
+    const { board, hands, turn } = state;
+    const moves = [];
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const p = board[r][c];
+        if (!p || p.owner !== turn) continue;
+        for (const [nr, nc] of pieceMoves(board, r, c)) {
+          const target = board[nr][nc];
+          const cap = target ? target.type : null;
+          const capK = !!(target && target.type === "K");
+          if (mustPromote(p, nr)) {
+            moves.push(mkMove([r, c], [nr, nc], true, cap, capK));
+          } else {
+            moves.push(mkMove([r, c], [nr, nc], false, cap, capK));
+            if (canPromote(p, r, nr)) {
+              moves.push(mkMove([r, c], [nr, nc], true, cap, capK));
+            }
+          }
+        }
+      }
+    }
+    for (const type of HAND_TYPES) {
+      if (hands[turn][type] <= 0) continue;
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+          if (dropOk(state, type, turn, r, c)) {
+            moves.push({ from: null, to: [r, c], promote: false, drop: type, capture: null, capturedKing: false });
+          }
+        }
+      }
+    }
+    return moves;
+  }
+
+  function applyMove(state, move) {
+    const ns = cloneState(state);
+    const owner = state.turn;
+    const [tr, tc] = move.to;
+    if (move.drop) {
+      ns.hands[owner][move.drop] -= 1;
+      ns.board[tr][tc] = { type: move.drop, owner, promoted: false };
+    } else {
+      const [fr, fc] = move.from;
+      const p = ns.board[fr][fc];
+      const captured = ns.board[tr][tc];
+      if (captured) {
+        ns.hands[owner][captured.type] += 1; // captured piece reverts, switches side
+      }
+      ns.board[fr][fc] = null;
+      ns.board[tr][tc] = {
+        type: p.type,
+        owner: p.owner,
+        promoted: p.promoted || move.promote,
+      };
+    }
+    ns.turn = opp(owner);
+    return ns;
+  }
+
+  // Fully legal moves for the side to move.
+  function legalMoves(state) {
+    return pseudoMoves(state).filter((m) => {
+      const ns = applyMove(state, m);
+      return !inCheck(ns.board, state.turn);
+    });
+  }
+
+  // Legal destinations from a square, with promote options annotated.
+  // Returns [{ to:[r,c], canPromote, mustPromote }]
+  function legalFrom(state, fr, fc) {
+    const moves = legalMoves(state).filter(
+      (m) => m.from && m.from[0] === fr && m.from[1] === fc
+    );
+    const byTo = new Map();
+    for (const m of moves) {
+      const key = m.to[0] * N + m.to[1];
+      const e = byTo.get(key) || { to: m.to, canPromote: false, mustPromote: false, plain: false };
+      if (m.promote) e.canPromote = true;
+      else e.plain = true;
+      byTo.set(key, e);
+    }
+    // mustPromote = promote available but plain not legal
+    return [...byTo.values()].map((e) => ({
+      to: e.to,
+      canPromote: e.canPromote,
+      mustPromote: e.canPromote && !e.plain,
+    }));
+  }
+
+  // Legal drop squares for a hand piece type.
+  function legalDrops(state, type) {
+    return legalMoves(state)
+      .filter((m) => m.drop === type)
+      .map((m) => m.to);
+  }
+
+  function isCheckmate(state) {
+    return inCheck(state.board, state.turn) && legalMoves(state).length === 0;
+  }
+
+  // No legal move at all (mate or — practically never in shogi — stalemate).
+  function isStuck(state) {
+    return legalMoves(state).length === 0;
+  }
+
+  window.Shogi = {
+    N, SENTE, GOTE, HAND_TYPES,
+    opp,
+    initialState, cloneState,
+    pieceMoves, pseudoMoves, legalMoves, legalFrom, legalDrops,
+    applyMove, inCheck, findKing,
+    isCheckmate, isStuck,
+    canPromote, mustPromote, inZone,
+  };
+})();
+</script>
+<script>
+/* Shogi AI — material-based negamax with alpha-beta over the Shogi engine.
+ *
+ * For speed, the deep search uses pseudo-legal moves and treats capturing the
+ * enemy king as an immediate win (so it avoids leaving its own king en prise
+ * at depth >= 2). The ROOT move is always chosen from fully legal moves.
+ */
+(function () {
+  const S = window.Shogi;
+  const MATE = 1000000;
+  const NODE_BUDGET = 250000; // soft cap so deep levels stay responsive
+
+  const VAL = { P: 1, L: 3, N: 4, S: 5, G: 6, B: 8, R: 11, K: 1000 };
+  const PROMO_VAL = { P: 7, L: 6, N: 6, S: 6, R: 13, B: 10 };
+  const pieceValue = (p) => (p.promoted ? (PROMO_VAL[p.type] || VAL[p.type]) : VAL[p.type]);
+
+  // Material balance (board + hands) from the side-to-move's perspective.
+  function evaluate(state) {
+    const me = state.turn, enemy = S.opp(me);
+    let score = 0;
+    for (let r = 0; r < S.N; r++) {
+      for (let c = 0; c < S.N; c++) {
+        const p = state.board[r][c];
+        if (!p) continue;
+        score += (p.owner === me ? 1 : -1) * pieceValue(p);
+      }
+    }
+    for (const t of S.HAND_TYPES) {
+      score += VAL[t] * (state.hands[me][t] - state.hands[enemy][t]);
+    }
+    return score;
+  }
+
+  // Captures (and promotions) first — better ordering prunes more.
+  function orderScore(m) {
+    let s = 0;
+    if (m.capture) s += VAL[m.capture] * 10;
+    if (m.promote) s += 5;
+    return s;
+  }
+  function order(moves) {
+    return moves.sort((a, b) => orderScore(b) - orderScore(a));
+  }
+
+  let nodes = 0;
+
+  function negamax(state, depth, alpha, beta) {
+    if (depth === 0 || nodes > NODE_BUDGET) return evaluate(state);
+    const moves = order(S.pseudoMoves(state));
+    if (moves.length === 0) return -MATE + (10 - depth); // stuck = losing
+    let best = -Infinity;
+    for (const m of moves) {
+      nodes++;
+      if (m.capturedKing) return MATE - (10 - depth); // capturing king wins now
+      const sc = -negamax(S.applyMove(state, m), depth - 1, -beta, -alpha);
+      if (sc > best) best = sc;
+      if (best > alpha) alpha = best;
+      if (alpha >= beta) break;
+    }
+    return best;
+  }
+
+  // Choose a move for the side to move. level: 1 (weak) .. 3 (strong).
+  function chooseMove(state, level) {
+    const depthByLevel = { 1: 1, 2: 2, 3: 3 };
+    const depth = depthByLevel[level] || 2;
+    const moves = order(S.legalMoves(state));
+    if (moves.length === 0) return null;
+
+    nodes = 0;
+    let best = moves[0], bestScore = -Infinity;
+    let alpha = -Infinity;
+    const beta = Infinity;
+    for (const m of moves) {
+      let sc = -negamax(S.applyMove(state, m), depth - 1, -beta, -alpha);
+      // Level 1 plays greedily but with a little noise to vary its games.
+      if (level === 1) sc += (m.to[0] * 7 + m.to[1] * 3) % 3 - 1;
+      if (sc > bestScore) { bestScore = sc; best = m; }
+      if (sc > alpha) alpha = sc;
+    }
+    return best;
+  }
+
+  // Score every legal move for the side to move (higher = better for them).
+  // Used by the AI-assistant overlay.
+  function evaluateMoves(state, depth) {
+    const d = depth || 3;
+    const moves = order(S.legalMoves(state));
+    const out = [];
+    for (const m of moves) {
+      nodes = 0; // give each root move a fair node budget
+      const sc = m.capturedKing
+        ? MATE
+        : -negamax(S.applyMove(state, m), d - 1, -Infinity, Infinity);
+      out.push({ move: m, score: sc });
+    }
+    return out;
+  }
+
+  window.ShogiAI = { chooseMove, evaluate, evaluateMoves, MATE };
+})();
+</script>
+<script>
+/* Shogi UI controller. */
+(function () {
+  const S = window.Shogi;
+  const AI = window.ShogiAI;
+  const N = S.N;
+  const SENTE = S.SENTE, GOTE = S.GOTE;
+
+  // Display characters.
+  const BASE = { R: "飛", B: "角", G: "金", S: "銀", N: "桂", L: "香", P: "歩" };
+  const PROMO = { R: "竜", B: "馬", S: "全", N: "圭", L: "杏", P: "と" };
+  const HAND_ORDER = ["R", "B", "G", "S", "N", "L", "P"];
+
+  function pieceChar(p) {
+    if (p.type === "K") return p.owner === SENTE ? "玉" : "王";
+    if (p.promoted) return PROMO[p.type] || BASE[p.type];
+    return BASE[p.type];
+  }
+  const sideName = (o) => (o === SENTE ? "先手" : "後手");
+
+  // DOM
+  const setupEl = document.getElementById("setup");
+  const gameEl = document.getElementById("game");
+  const startBtn = document.getElementById("start");
+  const senteLevel = document.getElementById("sente-level");
+  const goteLevel = document.getElementById("gote-level");
+  const boardEl = document.getElementById("board");
+  const turnEl = document.getElementById("turn-indicator");
+  const messageEl = document.getElementById("message");
+  const handSenteEl = document.getElementById("hand-sente-pieces");
+  const handGoteEl = document.getElementById("hand-gote-pieces");
+  const undoBtn = document.getElementById("undo");
+  const resetBtn = document.getElementById("reset");
+  const backBtn = document.getElementById("back");
+  const promoOverlay = document.getElementById("promo-overlay");
+  const promoYes = document.getElementById("promo-yes");
+  const promoNo = document.getElementById("promo-no");
+  const assistEl = document.getElementById("assist");
+  const assistHintEl = document.getElementById("assist-hint");
+
+  const ASSIST_DEPTH = 3;
+  const RANK_KANJI = ["一", "二", "三", "四", "五", "六", "七", "八", "九"];
+
+  const players = {
+    [SENTE]: { type: "human", level: "2" },
+    [GOTE]: { type: "cpu", level: "2" },
+  };
+
+  // Online session: null for local play, else { myColor, send(msg) }.
+  let online = null;
+
+  let state, busy, gameOver, lastMove;
+  let history = [];
+  let sel = null;        // { kind:'board', r, c } | { kind:'hand', type, owner }
+  let selDetail = null;  // Map(key -> {canPromote,mustPromote}) for board moves
+  let targetSet = new Set();
+  let assistEvals = null; // cached [{move,score}] for the current position
+  let bestMove = null;    // recommended move for the side to move
+  const cells = [];
+
+  // Can the local human act now? (online: only on my color's turn)
+  const isHumanTurn = () => {
+    if (busy || gameOver) return false;
+    if (online) return state.turn === online.myColor;
+    return players[state.turn].type === "human";
+  };
+  const isCpu = (o) => !online && players[o].type === "cpu";
+
+  /* ---------- setup ---------- */
+
+  function syncLevels() {
+    senteLevel.disabled =
+      document.querySelector('input[name="sente-type"]:checked').value !== "cpu";
+    goteLevel.disabled =
+      document.querySelector('input[name="gote-type"]:checked').value !== "cpu";
+  }
+  document.querySelectorAll('input[name="sente-type"], input[name="gote-type"]')
+    .forEach((el) => el.addEventListener("change", syncLevels));
+
+  function enterGameScreen() {
+    setupEl.hidden = true;
+    gameEl.hidden = false;
+    undoBtn.style.display = online ? "none" : "";
+    resetBtn.style.display = online ? "none" : "";
+    backBtn.style.display = online ? "none" : "";
+    if (assistEl) assistEl.parentElement.style.display = online ? "none" : "";
+    newGame();
+  }
+
+  // 人間vsCPUのとき、どちらが先手かを毎回ランダムに決める（振り駒）。
+  function randomizeFirst() {
+    const s = players[SENTE].type, g = players[GOTE].type;
+    const oneEach = (s === "human" && g === "cpu") || (s === "cpu" && g === "human");
+    if (oneEach && Math.random() < 0.5) {
+      const tmp = players[SENTE];
+      players[SENTE] = players[GOTE];
+      players[GOTE] = tmp;
+    }
+  }
+
+  startBtn.addEventListener("click", () => {
+    online = null;
+    players[SENTE].type = document.querySelector('input[name="sente-type"]:checked').value;
+    players[GOTE].type = document.querySelector('input[name="gote-type"]:checked').value;
+    players[SENTE].level = senteLevel.value;
+    players[GOTE].level = goteLevel.value;
+    randomizeFirst();
+    enterGameScreen();
+  });
+  backBtn.addEventListener("click", () => {
+    gameEl.hidden = true;
+    setupEl.hidden = false;
+  });
+
+  /* ---------- board build ---------- */
+
+  function buildGrid() {
+    boardEl.innerHTML = "";
+    cells.length = 0;
+    for (let r = 0; r < N; r++) {
+      cells.push([]);
+      for (let c = 0; c < N; c++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.addEventListener("click", () => onCellClick(r, c));
+        boardEl.appendChild(cell);
+        cells[r].push(cell);
+      }
+    }
+  }
+
+  function newGame() {
+    state = S.initialState();
+    busy = false;
+    gameOver = false;
+    lastMove = null;
+    history = [];
+    assistEvals = null;
+    clearSelection();
+    messageEl.textContent = "";
+    render();
+    maybeCpu();
+  }
+
+  function clearSelection() {
+    sel = null;
+    selDetail = null;
+    targetSet = new Set();
+  }
+
+  /* ---------- AI assistant ---------- */
+
+  function ensureAssist() {
+    if (online || !assistEl.checked || !isHumanTurn()) { assistEvals = null; bestMove = null; return; }
+    if (assistEvals) return; // cached for this position
+    assistEvals = AI.evaluateMoves(state, ASSIST_DEPTH);
+    let best = null, bs = -Infinity;
+    for (const e of assistEvals) if (e.score > bs) { bs = e.score; best = e.move; }
+    bestMove = best;
+  }
+
+  function fmtScore(s) {
+    if (s >= AI.MATE - 1000) return "詰";
+    if (s <= -AI.MATE + 1000) return "負";
+    return (s > 0 ? "+" : "") + s;
+  }
+
+  function notation(move) {
+    const side = state.turn === SENTE ? "☗" : "☖";
+    const sq = `${9 - move.to[1]}${RANK_KANJI[move.to[0]]}`;
+    if (move.drop) return `${side}${sq}${BASE[move.drop]}打`;
+    const p = state.board[move.from[0]][move.from[1]];
+    return `${side}${sq}${pieceChar(p)}${move.promote ? "成" : ""}`;
+  }
+
+  // Best cached score for a destination from the selected piece / hand.
+  function assistScoreFor(r, c) {
+    if (!assistEvals || !sel) return null;
+    let best = null;
+    for (const e of assistEvals) {
+      const m = e.move;
+      if (m.to[0] !== r || m.to[1] !== c) continue;
+      if (sel.kind === "board") {
+        if (!m.from || m.from[0] !== sel.r || m.from[1] !== sel.c) continue;
+      } else {
+        if (m.drop !== sel.type) continue;
+      }
+      if (best === null || e.score > best) best = e.score;
+    }
+    return best;
+  }
+
+  // Map of target-key -> rank (0,1,2) among the currently shown destinations.
+  function assistRanks() {
+    const scores = new Map();
+    if (assistEvals && sel) {
+      for (const k of targetSet) {
+        const s = assistScoreFor(Math.floor(k / N), k % N);
+        if (s !== null) scores.set(k, s);
+      }
+    }
+    const uniq = [...new Set(scores.values())].sort((a, b) => b - a);
+    const ranks = new Map();
+    for (const [k, s] of scores) ranks.set(k, { score: s, rank: uniq.indexOf(s) });
+    return ranks;
+  }
+
+  /* ---------- rendering ---------- */
+
+  function render() {
+    const key = (r, c) => r * N + c;
+    ensureAssist();
+    const ranks = assistRanks();
+    const assistOn = assistEl.checked && isHumanTurn();
+    const reco = assistOn ? bestMove : null;
+
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const cell = cells[r][c];
+        const p = state.board[r][c];
+        const k = key(r, c);
+        let cls = "cell";
+        if (sel && sel.kind === "board" && sel.r === r && sel.c === c) cls += " selected";
+        if (lastMove && lastMove.to && lastMove.to[0] === r && lastMove.to[1] === c) cls += " last-move";
+        if (lastMove && lastMove.from && lastMove.from[0] === r && lastMove.from[1] === c) cls += " last-move";
+        if (targetSet.has(k)) {
+          cls += " target";
+          if (p) cls += " capture";
+        }
+        if (isHumanTurn() && p && p.owner === state.turn) cls += " selectable";
+
+        // recommendation highlight
+        if (reco) {
+          if (reco.from && reco.from[0] === r && reco.from[1] === c) cls += " reco-from";
+          if (reco.to[0] === r && reco.to[1] === c) cls += " reco-to";
+        }
+
+        // per-destination evaluation number
+        let hintText = "";
+        const ri = ranks.get(k);
+        if (ri) {
+          cls += " assist";
+          if (ri.rank === 0) cls += " rank1";
+          else if (ri.rank === 1) cls += " rank2";
+          else if (ri.rank === 2) cls += " rank3";
+          hintText = fmtScore(ri.score);
+        }
+
+        cell.className = cls;
+        let inner = "";
+        if (p) {
+          inner += `<div class="piece ${p.owner === GOTE ? "gote" : "sente"}${p.promoted ? " promoted" : ""}">${pieceChar(p)}</div>`;
+        }
+        inner += `<span class="hint-score">${hintText}</span>`;
+        cell.innerHTML = inner;
+      }
+    }
+    renderHand(handSenteEl, SENTE, reco);
+    renderHand(handGoteEl, GOTE, reco);
+    renderTurn();
+    renderAssistHint(reco);
+    undoBtn.disabled = busy || history.length === 0;
+  }
+
+  function renderAssistHint(reco) {
+    if (!reco) { assistHintEl.textContent = ""; return; }
+    const e = assistEvals.find((x) => x.move === reco);
+    const sc = e ? ` (${fmtScore(e.score)})` : "";
+    assistHintEl.textContent = `推奨手: ${notation(reco)}${sc}　— 駒を選ぶと各手の評価値が出ます`;
+  }
+
+  function renderHand(container, owner, reco) {
+    container.innerHTML = "";
+    const canSelect = isHumanTurn() && owner === state.turn;
+    for (const t of HAND_ORDER) {
+      const cnt = state.hands[owner][t];
+      if (cnt <= 0) continue;
+      const el = document.createElement("span");
+      el.className = "hand-piece" + (canSelect ? " selectable" : "");
+      if (sel && sel.kind === "hand" && sel.owner === owner && sel.type === t) {
+        el.className += " selected";
+      }
+      // Recommended move is dropping this piece -> outline it.
+      if (reco && reco.drop === t && owner === state.turn) {
+        el.className += " reco-drop";
+      }
+      el.innerHTML = `${BASE[t]}<span class="cnt">${cnt}</span>`;
+      if (canSelect) el.addEventListener("click", () => onHandClick(owner, t));
+      container.appendChild(el);
+    }
+  }
+
+  function renderTurn() {
+    if (gameOver) { turnEl.textContent = "対局終了"; return; }
+    let txt;
+    if (online) {
+      txt = state.turn === online.myColor ? "あなたの番" : "相手の番";
+    } else {
+      txt = `${sideName(state.turn)}番`;
+      if (isCpu(state.turn) && busy) txt += "（CPU思考中…）";
+    }
+    if (S.inCheck(state.board, state.turn)) {
+      turnEl.innerHTML = `${txt} <span class="check">王手！</span>`;
+    } else {
+      turnEl.textContent = txt;
+    }
+  }
+
+  /* ---------- interaction ---------- */
+
+  function onCellClick(r, c) {
+    if (!isHumanTurn()) return;
+    const k = r * N + c;
+    if (targetSet.has(k)) {
+      if (sel.kind === "board") executeBoardMove(r, c);
+      else executeDrop(r, c);
+      return;
+    }
+    const p = state.board[r][c];
+    if (p && p.owner === state.turn) {
+      selectBoard(r, c);
+    } else {
+      clearSelection();
+      render();
+    }
+  }
+
+  function onHandClick(owner, type) {
+    if (!isHumanTurn() || owner !== state.turn) return;
+    if (sel && sel.kind === "hand" && sel.type === type) {
+      clearSelection();
+      render();
+      return;
+    }
+    sel = { kind: "hand", type, owner };
+    selDetail = null;
+    targetSet = new Set(S.legalDrops(state, type).map(([r, c]) => r * N + c));
+    render();
+  }
+
+  function selectBoard(r, c) {
+    sel = { kind: "board", r, c };
+    selDetail = new Map();
+    targetSet = new Set();
+    for (const m of S.legalFrom(state, r, c)) {
+      const k = m.to[0] * N + m.to[1];
+      targetSet.add(k);
+      selDetail.set(k, { canPromote: m.canPromote, mustPromote: m.mustPromote });
+    }
+    render();
+  }
+
+  async function executeBoardMove(r, c) {
+    const detail = selDetail.get(r * N + c);
+    let promote = false;
+    if (detail.mustPromote) promote = true;
+    else if (detail.canPromote) promote = await askPromotion();
+    const move = { from: [sel.r, sel.c], to: [r, c], promote, drop: null };
+    if (online) online.send({ t: "move", move });
+    doMove(move);
+  }
+
+  function executeDrop(r, c) {
+    const move = { from: null, to: [r, c], promote: false, drop: sel.type };
+    if (online) online.send({ t: "move", move });
+    doMove(move);
+  }
+
+  /* ---------- promotion dialog ---------- */
+
+  let promoResolver = null;
+  function askPromotion() {
+    return new Promise((resolve) => {
+      promoResolver = resolve;
+      promoOverlay.hidden = false;
+    });
+  }
+  function resolvePromo(v) {
+    promoOverlay.hidden = true;
+    if (promoResolver) { const r = promoResolver; promoResolver = null; r(v); }
+  }
+  promoYes.addEventListener("click", () => resolvePromo(true));
+  promoNo.addEventListener("click", () => resolvePromo(false));
+
+  /* ---------- move application ---------- */
+
+  function doMove(move) {
+    history.push({ state: S.cloneState(state), lastMove });
+    state = S.applyMove(state, move);
+    lastMove = { from: move.from, to: move.to };
+    assistEvals = null; // position changed
+    clearSelection();
+
+    if (S.isStuck(state)) {
+      gameOver = true;
+      const loser = state.turn;
+      const winner = S.opp(loser);
+      const checked = S.inCheck(state.board, loser);
+      if (online) {
+        const youWin = winner === online.myColor;
+        const head = checked ? "詰み！ " : "";
+        messageEl.textContent = head + (youWin ? "あなたの勝ち🎉" : "相手の勝ち…");
+      } else {
+        messageEl.textContent = checked
+          ? `詰み！ ${sideName(winner)}の勝ち`
+          : `${sideName(winner)}の勝ち（${sideName(loser)}は指せる手がありません）`;
+      }
+    }
+    render();
+    if (!gameOver) maybeCpu();
+  }
+
+  function maybeCpu() {
+    if (gameOver || !isCpu(state.turn)) return;
+    busy = true;
+    render();
+    setTimeout(() => {
+      const move = AI.chooseMove(state, Number(players[state.turn].level));
+      busy = false;
+      if (!move) { // no legal move
+        gameOver = true;
+        const winner = S.opp(state.turn);
+        messageEl.textContent = `${sideName(winner)}の勝ち`;
+        render();
+        return;
+      }
+      doMove(move);
+    }, 350);
+  }
+
+  function undo() {
+    if (busy || history.length === 0) return;
+    let snap = history.pop();
+    while (isCpu(snap.state.turn) && history.length > 0) snap = history.pop();
+    state = snap.state;
+    lastMove = snap.lastMove;
+    gameOver = false;
+    assistEvals = null;
+    clearSelection();
+    messageEl.textContent = "";
+    render();
+    maybeCpu();
+  }
+
+  undoBtn.addEventListener("click", undo);
+  resetBtn.addEventListener("click", newGame);
+  assistEl.addEventListener("change", () => { assistEvals = null; render(); });
+
+  buildGrid();
+  syncLevels();
+
+  /* ---------- Online API (called by js/online.js) ---------- */
+  window.ShogiGame = {
+    // myColor: 0 (host=sente) or 1 (guest=gote).
+    startOnline(myColor, sendFn) {
+      online = { myColor, send: sendFn };
+      // Guest (後手) sees the board from their own side: rotate 180°. Shogi
+      // pieces already encode owner facing, so they end up correctly oriented;
+      // only the small hint numbers need counter-rotating to stay readable.
+      if (myColor === 1) {
+        boardEl.classList.add("flip-board");
+        const st = document.createElement("style");
+        st.textContent = "#board.flip-board{transform:rotate(180deg)}#board.flip-board .hint-score{display:inline-block;transform:rotate(180deg)}";
+        document.head.appendChild(st);
+      }
+      enterGameScreen();
+    },
+    remoteMove(move) {
+      if (!online || gameOver) return;
+      doMove(move);
+    },
+    peerLeft() {
+      if (!online) return;
+      gameOver = true;
+      messageEl.textContent = "相手の接続が切れました。";
+      render();
+    },
+  };
+})();
+</script>
+<script>
+/* Shogi online wiring — uses the shared OnlineLobby (one room number works
+ * across all games). Host plays 先手(0), guest plays 後手(1). */
+(function () {
+  const Game = window.ShogiGame;
+  window.OnlineLobby.init({
+    gameId: "shogi",
+    hostColor: 0,   // sente
+    guestColor: 1,  // gote
+    basePrefix: "../",
+    startOnline: (myColor, send) => Game.startOnline(myColor, send),
+    applyRemote: (msg) => {
+      if (msg.t === "move") Game.remoteMove(msg.move);
+    },
+    onPeerLeft: () => Game.peerLeft(),
+  });
+})();
+</script>
+</body>
+</html>

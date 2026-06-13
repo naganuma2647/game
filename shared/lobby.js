@@ -18,8 +18,8 @@
   const GAME_PATHS = {
     mahjong: "麻雀ゲーム/index.html",
     othello: "オセロ/index.html",
-    gomoku: "五目並べ/index.html",
-    shogi: "将棋ゲーム/index.html",
+    gomoku: "games/gomoku.html",
+    shogi: "games/shogi.html",
     catan: "カタン/index.html",
     tictactoe: "games/tictactoe.html",
     connect4: "games/connect4.html",

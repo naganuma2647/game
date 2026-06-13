@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>五目並べ / Gomoku</title>
+<style>
+:root {
+  --cell: 34px;
+  --board-bg: #e3b96b;
+  --line: #6b4a23;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0; min-height: 100vh;
+  display: flex; justify-content: center; align-items: flex-start;
+  background: #1c1409; color: #f3ead9;
+  font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+}
+
+.back-link {
+  position: fixed; top: 12px; left: 12px; z-index: 9999;
+  background: rgba(0,0,0,0.55); color: #fff; text-decoration: none;
+  font: 600 14px/1 "Segoe UI", sans-serif; padding: 9px 14px;
+  border-radius: 999px; border: 1px solid rgba(255,255,255,0.25);
+}
+
+.app { width: 100%; max-width: 560px; padding: 24px 12px 48px; text-align: center; }
+h1 { margin: 6px 0 18px; letter-spacing: 0.2em; }
+
+/* Setup */
+.setup { background: rgba(255,255,255,0.05); border-radius: 14px; padding: 22px 18px 26px; }
+.setup h2 { margin: 0 0 18px; font-size: 18px; letter-spacing: 0.1em; }
+.setup-players { display: flex; gap: 14px; justify-content: center; }
+.player-config { flex: 1; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px 12px; }
+.player-head { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; margin-bottom: 14px; }
+.type-options { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; width: fit-content; margin: 0 auto 14px; }
+.type-options label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.type-options input, .level-row select { accent-color: #c8772f; cursor: pointer; }
+.level-row { font-size: 13px; opacity: 0.9; }
+.level-row select { margin-left: 6px; }
+
+select, .btn { font-size: 14px; padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; }
+.btn { background: #c8772f; color: #fff; font-weight: 600; transition: background 0.15s, opacity 0.15s; }
+.btn:hover { background: #dd8a3d; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+select { background: #f3ead9; color: #1c1409; }
+.btn-primary { background: #e0a13a; color: #1c1409; padding: 12px 30px; font-size: 16px; margin-top: 6px; }
+.btn-primary:hover { background: #f0b450; }
+
+/* Stones (legend) */
+.stone { width: 20px; height: 20px; border-radius: 50%; display: inline-block; }
+.stone-black { background: radial-gradient(circle at 35% 30%, #666, #000); }
+.stone-white { background: radial-gradient(circle at 35% 30%, #fff, #c4c4c4); }
+
+/* Scoreboard */
+.scoreboard { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.score { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: center; padding: 8px; border-radius: 10px; background: rgba(255,255,255,0.04); }
+.score.active { background: rgba(255,255,255,0.12); box-shadow: 0 0 0 2px #ffd34d inset; }
+.turn { font-weight: 700; min-width: 110px; }
+
+/* Board: grid lines with stones on intersections */
+.board-wrap { display: flex; justify-content: center; }
+.board {
+  display: grid;
+  grid-template-columns: repeat(15, var(--cell));
+  grid-template-rows: repeat(15, var(--cell));
+  background: var(--board-bg);
+  padding: calc(var(--cell) / 2);
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+.intsec {
+  width: var(--cell); height: var(--cell);
+  position: relative; cursor: pointer;
+}
+/* draw the crossing lines through each intersection center */
+.intsec::before, .intsec::after {
+  content: ""; position: absolute; background: var(--line);
+}
+.intsec::before { left: 50%; top: 0; width: 1px; height: 100%; transform: translateX(-0.5px); }
+.intsec::after { top: 50%; left: 0; height: 1px; width: 100%; transform: translateY(-0.5px); }
+/* trim lines at the outer edges */
+.intsec[data-edge~="top"]::before { top: 50%; height: 50%; }
+.intsec[data-edge~="bottom"]::before { height: 50%; }
+.intsec[data-edge~="left"]::after { left: 50%; width: 50%; }
+.intsec[data-edge~="right"]::after { width: 50%; }
+
+.intsec .dot {
+  position: absolute; left: 50%; top: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--line); transform: translate(-50%, -50%); z-index: 1;
+}
+.intsec .piece {
+  position: absolute; left: 50%; top: 50%;
+  width: 80%; height: 80%; border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.12s ease; z-index: 3;
+}
+.intsec .piece.show { transform: translate(-50%, -50%) scale(1); }
+.intsec .piece.black { background: radial-gradient(circle at 35% 30%, #666, #000); }
+.intsec .piece.white { background: radial-gradient(circle at 35% 30%, #fff, #c4c4c4); }
+.intsec.last::after, .intsec.last::before { background: var(--line); }
+.intsec.last .marker {
+  position: absolute; left: 50%; top: 50%; width: 10px; height: 10px;
+  border: 2px solid #ff5b5b; border-radius: 50%;
+  transform: translate(-50%, -50%); z-index: 4; pointer-events: none;
+}
+
+/* assist hint number */
+.intsec .hint-score {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font-size: 11px; font-weight: 800; color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.85); z-index: 5; pointer-events: none; display: none;
+}
+.intsec.assist .hint-score { display: block; }
+.intsec.assist.rank1 .hint-score { color: #ff4d4d; }
+.intsec.assist.rank2 .hint-score { color: #ff9e2c; }
+.intsec.assist.rank3 .hint-score { color: #ffe04d; }
+.intsec.assist.rank1 .reco-ring { box-shadow: inset 0 0 0 2px #ff4d4d; }
+
+/* Controls / message */
+.controls { display: flex; gap: 10px; justify-content: center; margin: 16px 0 8px; flex-wrap: wrap; }
+.assist-toggle { display: inline-flex; align-items: center; gap: 6px; margin: 4px 0; font-size: 14px; cursor: pointer; }
+.assist-toggle input { accent-color: #c8772f; cursor: pointer; }
+.message { min-height: 24px; font-weight: 700; color: #ffd34d; }
+
+@media (max-width: 560px) {
+  :root { --cell: 22px; }
+}
+
+/* ---- Online play ---- */
+.online-entry { margin-top: 14px; }
+.btn-online { background: #2563c9; font-size: 15px; padding: 11px 22px; }
+.btn-online:hover { background: #2f74e0; }
+.btn-small { padding: 6px 12px; font-size: 13px; }
+
+.overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.overlay[hidden] { display: none; }
+
+.lobby-card {
+  position: relative; background: #2a1d10;
+  border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 16px;
+  padding: 24px 22px; width: 100%; max-width: 360px; text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+.lobby-card h2 { margin: 0 0 6px; font-size: 20px; }
+.lobby-note { font-size: 13px; opacity: 0.85; line-height: 1.6; margin: 0 0 18px; }
+.lobby-close {
+  position: absolute; top: 10px; right: 12px; background: none; border: none;
+  color: #f3ead9; font-size: 24px; line-height: 1; cursor: pointer; opacity: 0.7;
+}
+.lobby-close:hover { opacity: 1; }
+.lobby-section h3 { font-size: 15px; margin: 0 0 10px; }
+.lobby-divider { margin: 18px 0; font-size: 12px; opacity: 0.6; display: flex; align-items: center; gap: 10px; }
+.lobby-divider::before, .lobby-divider::after { content: ""; flex: 1; height: 1px; background: rgba(255, 255, 255, 0.18); }
+.room-code-box {
+  margin-top: 14px; padding: 12px; background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.rc-label { font-size: 12px; opacity: 0.7; }
+.room-code { font-size: 34px; font-weight: 800; letter-spacing: 0.25em; color: #ffd34d; font-family: "Consolas", monospace; }
+.join-row { display: flex; gap: 8px; justify-content: center; }
+.join-input {
+  font-size: 20px; font-weight: 700; letter-spacing: 0.2em; text-align: center;
+  width: 140px; padding: 8px; border-radius: 8px; border: none; background: #f3ead9; color: #1c1409;
+}
+.online-status { min-height: 20px; margin: 16px 0 0; font-size: 13px; font-weight: 600; color: #ffd34d; line-height: 1.5; }
+</style>
+</head>
+<body>
+  <a class="back-link" href="../index.html">← 一覧に戻る</a>
+  <div class="app">
+    <h1>五目並べ</h1>
+
+    <!-- 対戦設定 -->
+    <section id="setup" class="setup">
+      <h2>対戦設定</h2>
+      <div class="setup-players">
+        <div class="player-config">
+          <div class="player-head"><span class="stone stone-black"></span> 黒（先手）</div>
+          <div class="type-options">
+            <label><input type="radio" name="black-type" value="human" checked> 人間</label>
+            <label><input type="radio" name="black-type" value="cpu"> CPU</label>
+          </div>
+          <label class="level-row">強さ:
+            <select id="black-level" disabled>
+              <option value="1">Lv1 入門</option>
+              <option value="2">Lv2 やさしい</option>
+              <option value="3" selected>Lv3 ふつう</option>
+              <option value="4">Lv4 強い</option>
+            </select>
+          </label>
+        </div>
+        <div class="player-config">
+          <div class="player-head"><span class="stone stone-white"></span> 白（後手）</div>
+          <div class="type-options">
+            <label><input type="radio" name="white-type" value="human"> 人間</label>
+            <label><input type="radio" name="white-type" value="cpu" checked> CPU</label>
+          </div>
+          <label class="level-row">強さ:
+            <select id="white-level">
+              <option value="1">Lv1 入門</option>
+              <option value="2">Lv2 やさしい</option>
+              <option value="3" selected>Lv3 ふつう</option>
+              <option value="4">Lv4 強い</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <button id="start" class="btn btn-primary">対戦開始</button>
+      <div class="online-entry">
+        <button id="online-btn" class="btn btn-online">🌐 オンラインで対戦（部屋番号）</button>
+      </div>
+    </section>
+
+    <!-- オンライン対戦ロビー -->
+    <div id="online-lobby" class="overlay" hidden>
+      <div class="lobby-card">
+        <button id="lobby-close" class="lobby-close" aria-label="閉じる">×</button>
+        <h2>オンライン対戦</h2>
+        <p class="lobby-note">2人で同じ部屋番号を共有して対戦します。<br>部屋を作る側は<b>黒（先手）</b>、参加する側は<b>白（後手）</b>です。</p>
+
+        <div class="lobby-section">
+          <h3>部屋を作る</h3>
+          <button id="create-room" class="btn btn-primary">部屋を作成</button>
+          <div id="room-code-box" class="room-code-box" hidden>
+            <span class="rc-label">部屋番号</span>
+            <span id="room-code" class="room-code">-----</span>
+            <button id="copy-code" class="btn btn-small">コピー</button>
+          </div>
+        </div>
+
+        <div class="lobby-divider">または</div>
+
+        <div class="lobby-section">
+          <h3>部屋に参加する</h3>
+          <div class="join-row">
+            <input id="join-code" class="join-input" maxlength="4" placeholder="4桁の番号" inputmode="numeric" pattern="\d*" autocomplete="off">
+            <button id="join-room" class="btn btn-primary">参加</button>
+          </div>
+        </div>
+
+        <p id="online-status" class="online-status"></p>
+        <a href="../index.html" style="display:inline-block;margin-top:14px;color:#cfd6e4;font-size:13px;text-decoration:none;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:7px 16px">← 一覧に戻る</a>
+      </div>
+    </div>
+
+    <!-- ゲーム -->
+    <section id="game" class="game" hidden>
+      <div class="scoreboard">
+        <div class="score" id="score-black">
+          <span class="stone stone-black"></span>
+          <span class="label" id="label-black">黒</span>
+        </div>
+        <div class="turn" id="turn-indicator">黒の番</div>
+        <div class="score" id="score-white">
+          <span class="stone stone-white"></span>
+          <span class="label" id="label-white">白</span>
+        </div>
+      </div>
+
+      <div class="board-wrap">
+        <div id="board" class="board"></div>
+      </div>
+
+      <div class="controls">
+        <button id="undo" class="btn" disabled>一手戻る</button>
+        <button id="reset" class="btn">最初から</button>
+        <button id="back" class="btn">設定を変える</button>
+      </div>
+
+      <label class="assist-toggle">
+        <input type="checkbox" id="assist"> AIアシスタント（評価値を表示）
+      </label>
+
+      <p id="message" class="message"></p>
+    </section>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="../shared/lobby.js?v=6"></script>
+<script>
+/* Gomoku (五目並べ) AI.
+ * Board: size x size array, 0 empty, 1 black (先手), 2 white (後手).
+ * Exposes window.GomokuAI with rules helpers and CPU move selection.
+ */
+(function () {
+  const SIZE = 15;
+  const WIN = 5;
+  const DIRS = [[0, 1], [1, 0], [1, 1], [1, -1]];
+
+  const inside = (r, c) => r >= 0 && r < SIZE && c >= 0 && c < SIZE;
+  const opponent = (p) => (p === 1 ? 2 : 1);
+
+  // Count consecutive stones of `player` through (r,c) along one axis.
+  function lineLength(board, r, c, dr, dc, player) {
+    let n = 1;
+    let rr = r + dr, cc = c + dc;
+    while (inside(rr, cc) && board[rr][cc] === player) { n++; rr += dr; cc += dc; }
+    rr = r - dr; cc = c - dc;
+    while (inside(rr, cc) && board[rr][cc] === player) { n++; rr -= dr; cc -= dc; }
+    return n;
+  }
+
+  // Did placing `player` at (r,c) create five (or more) in a row?
+  function isWin(board, r, c, player) {
+    for (const [dr, dc] of DIRS) {
+      if (lineLength(board, r, c, dr, dc, player) >= WIN) return true;
+    }
+    return false;
+  }
+
+  function isFull(board) {
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (board[r][c] === 0) return false;
+    return true;
+  }
+
+  // Candidate moves: empty cells within distance 2 of an existing stone.
+  function candidateMoves(board) {
+    const res = [];
+    let any = false;
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (board[r][c] !== 0) { any = true; continue; }
+      }
+    }
+    if (!any) return [[Math.floor(SIZE / 2), Math.floor(SIZE / 2)]];
+    const seen = new Set();
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (board[r][c] === 0) continue;
+        for (let dr = -2; dr <= 2; dr++) {
+          for (let dc = -2; dc <= 2; dc++) {
+            const nr = r + dr, nc = c + dc;
+            if (inside(nr, nc) && board[nr][nc] === 0) {
+              const k = nr * SIZE + nc;
+              if (!seen.has(k)) { seen.add(k); res.push([nr, nc]); }
+            }
+          }
+        }
+      }
+    }
+    return res;
+  }
+
+  /* ---------- shape scoring ---------- */
+
+  // Score one line-shape for `player` at (r,c) along (dr,dc).
+  // Returns a value based on run length and how open the ends are.
+  function shapeScore(board, r, c, dr, dc, player) {
+    let count = 1;
+    let openEnds = 0;
+
+    let rr = r + dr, cc = c + dc;
+    while (inside(rr, cc) && board[rr][cc] === player) { count++; rr += dr; cc += dc; }
+    if (inside(rr, cc) && board[rr][cc] === 0) openEnds++;
+
+    rr = r - dr; cc = c - dc;
+    while (inside(rr, cc) && board[rr][cc] === player) { count++; rr -= dr; cc -= dc; }
+    if (inside(rr, cc) && board[rr][cc] === 0) openEnds++;
+
+    if (count >= WIN) return 1000000;
+    if (openEnds === 0) return 0; // blocked both ends, useless
+    const table = {
+      4: openEnds === 2 ? 100000 : 12000,
+      3: openEnds === 2 ? 6000 : 800,
+      2: openEnds === 2 ? 300 : 60,
+      1: openEnds === 2 ? 20 : 5,
+    };
+    return table[count] || 0;
+  }
+
+  // Heuristic value of playing `player` at (r,c): offense + weighted defense.
+  function moveValue(board, r, c, player) {
+    const opp = opponent(player);
+    let attack = 0, defend = 0;
+    for (const [dr, dc] of DIRS) {
+      attack += shapeScore(board, r, c, dr, dc, player);
+      defend += shapeScore(board, r, c, dr, dc, opp);
+    }
+    // Slight central bias to break ties early.
+    const center = SIZE / 2;
+    const bias = -(Math.abs(r - center) + Math.abs(c - center));
+    return attack * 1.05 + defend * 0.95 + bias;
+  }
+
+  /* ---------- move selection ---------- */
+
+  // Find an immediate win or a must-block for `player`.
+  function tacticalMove(board, player) {
+    const opp = opponent(player);
+    const cands = candidateMoves(board);
+    // 1) win now
+    for (const [r, c] of cands) {
+      board[r][c] = player;
+      const win = isWin(board, r, c, player);
+      board[r][c] = 0;
+      if (win) return [r, c];
+    }
+    // 2) block opponent's win
+    for (const [r, c] of cands) {
+      board[r][c] = opp;
+      const win = isWin(board, r, c, opp);
+      board[r][c] = 0;
+      if (win) return [r, c];
+    }
+    return null;
+  }
+
+  // level: 1 easy, 2 normal, 3 strong, 4 very strong (1-ply lookahead).
+  function chooseMove(board, player, level) {
+    if (isFull(board)) return null;
+    const cands = candidateMoves(board);
+
+    if (level >= 2) {
+      const t = tacticalMove(board, player);
+      if (t) return t;
+    }
+
+    if (level === 1) {
+      // Greedy on a noisy heuristic, no deep lookahead.
+      let best = cands[0], bestScore = -Infinity;
+      for (const [r, c] of cands) {
+        const noise = ((r * 7 + c * 13) % 5) * 10;
+        const v = moveValue(board, r, c, player) * 0.6 + noise;
+        if (v > bestScore) { bestScore = v; best = [r, c]; }
+      }
+      return best;
+    }
+
+    if (level <= 3) {
+      let best = cands[0], bestScore = -Infinity;
+      for (const [r, c] of cands) {
+        const v = moveValue(board, r, c, player);
+        if (v > bestScore) { bestScore = v; best = [r, c]; }
+      }
+      return best;
+    }
+
+    // level 4: one-ply lookahead — assume opponent replies with their best move.
+    const opp = opponent(player);
+    let best = cands[0], bestScore = -Infinity;
+    for (const [r, c] of cands) {
+      board[r][c] = player;
+      if (isWin(board, r, c, player)) { board[r][c] = 0; return [r, c]; }
+      // opponent's best immediate threat after our move
+      let worst = -Infinity;
+      for (const [or, oc] of candidateMoves(board)) {
+        const ov = moveValue(board, or, oc, opp);
+        if (ov > worst) worst = ov;
+      }
+      const v = moveValue(board, r, c, player) - worst * 0.9;
+      board[r][c] = 0;
+      if (v > bestScore) { bestScore = v; best = [r, c]; }
+    }
+    return best;
+  }
+
+  // Score every empty candidate for the AI assistant (from player's view).
+  function evaluateMoves(board, player) {
+    const opp = opponent(player);
+    return candidateMoves(board).map(([r, c]) => {
+      let score;
+      board[r][c] = player;
+      if (isWin(board, r, c, player)) score = 1000000;
+      else score = Math.round(moveValue(board, r, c, player));
+      board[r][c] = 0;
+      // mark forced blocks prominently
+      board[r][c] = opp;
+      if (isWin(board, r, c, opp)) score = Math.max(score, 900000);
+      board[r][c] = 0;
+      return { row: r, col: c, score };
+    });
+  }
+
+  window.GomokuAI = {
+    SIZE, WIN,
+    isWin, isFull, opponent, candidateMoves,
+    chooseMove, evaluateMoves,
+  };
+})();
+</script>
+<script>
+/* Gomoku UI controller. */
+(function () {
+  const AI = window.GomokuAI;
+  const SIZE = AI.SIZE;
+  const BLACK = 1, WHITE = 2;
+
+  // Setup
+  const setupEl = document.getElementById("setup");
+  const gameEl = document.getElementById("game");
+  const startBtn = document.getElementById("start");
+  const blackLevel = document.getElementById("black-level");
+  const whiteLevel = document.getElementById("white-level");
+
+  // Game
+  const boardEl = document.getElementById("board");
+  const turnEl = document.getElementById("turn-indicator");
+  const messageEl = document.getElementById("message");
+  const labelBlackEl = document.getElementById("label-black");
+  const labelWhiteEl = document.getElementById("label-white");
+  const scoreBlackEl = document.getElementById("score-black");
+  const scoreWhiteEl = document.getElementById("score-white");
+  const undoBtn = document.getElementById("undo");
+  const resetBtn = document.getElementById("reset");
+  const backBtn = document.getElementById("back");
+  const assistEl = document.getElementById("assist");
+
+  const LEVEL_NAMES = { 1: "入門", 2: "やさしい", 3: "ふつう", 4: "強い" };
+  const players = {
+    [BLACK]: { type: "human", level: "3" },
+    [WHITE]: { type: "cpu", level: "3" },
+  };
+
+  // Online session: null for local play, else { myColor, send(msg) }.
+  let online = null;
+
+  let board, current, busy, gameOver, lastMove;
+  let history = [];
+  const cells = [];
+
+  const colorName = (p) => (p === BLACK ? "黒" : "白");
+  const isCpu = (p) => !online && players[p].type === "cpu";
+  const isCpuTurn = () => !gameOver && isCpu(current);
+  // Can the local human act right now?
+  const isHumanTurn = () => {
+    if (busy || gameOver) return false;
+    if (online) return current === online.myColor;
+    return !isCpu(current);
+  };
+
+  function playerLabel(p) {
+    if (online) {
+      const mine = p === online.myColor ? "あなた" : "相手";
+      return `${colorName(p)}（${mine}）`;
+    }
+    if (players[p].type === "human") return `${colorName(p)}（人間）`;
+    return `${colorName(p)}（CPU・Lv${players[p].level} ${LEVEL_NAMES[players[p].level]}）`;
+  }
+
+  /* setup */
+  function syncLevels() {
+    blackLevel.disabled =
+      document.querySelector('input[name="black-type"]:checked').value !== "cpu";
+    whiteLevel.disabled =
+      document.querySelector('input[name="white-type"]:checked').value !== "cpu";
+  }
+  document.querySelectorAll('input[name="black-type"], input[name="white-type"]')
+    .forEach((el) => el.addEventListener("change", syncLevels));
+
+  function enterGameScreen() {
+    setupEl.hidden = true;
+    gameEl.hidden = false;
+    labelBlackEl.textContent = playerLabel(BLACK);
+    labelWhiteEl.textContent = playerLabel(WHITE);
+    undoBtn.style.display = online ? "none" : "";
+    resetBtn.style.display = online ? "none" : "";
+    if (assistEl) assistEl.parentElement.style.display = online ? "none" : "";
+    newGame();
+  }
+
+  // 人間vsCPUのとき、どちらが黒（先手）かを毎回ランダムに決める。
+  function randomizeFirst() {
+    const b = players[BLACK].type, w = players[WHITE].type;
+    const oneEach = (b === "human" && w === "cpu") || (b === "cpu" && w === "human");
+    if (oneEach && Math.random() < 0.5) {
+      const tmp = players[BLACK];
+      players[BLACK] = players[WHITE];
+      players[WHITE] = tmp;
+    }
+  }
+
+  startBtn.addEventListener("click", () => {
+    online = null;
+    players[BLACK].type = document.querySelector('input[name="black-type"]:checked').value;
+    players[WHITE].type = document.querySelector('input[name="white-type"]:checked').value;
+    players[BLACK].level = blackLevel.value;
+    players[WHITE].level = whiteLevel.value;
+    randomizeFirst();
+    enterGameScreen();
+  });
+  backBtn.addEventListener("click", () => { gameEl.hidden = true; setupEl.hidden = false; });
+
+  /* board */
+  function edgeAttr(r, c) {
+    const e = [];
+    if (r === 0) e.push("top");
+    if (r === SIZE - 1) e.push("bottom");
+    if (c === 0) e.push("left");
+    if (c === SIZE - 1) e.push("right");
+    return e.join(" ");
+  }
+  const STAR = new Set(["3,3", "3,11", "11,3", "11,11", "7,7"]);
+
+  function buildGrid() {
+    boardEl.innerHTML = "";
+    cells.length = 0;
+    for (let r = 0; r < SIZE; r++) {
+      cells.push([]);
+      for (let c = 0; c < SIZE; c++) {
+        const cell = document.createElement("div");
+        cell.className = "intsec";
+        const e = edgeAttr(r, c);
+        if (e) cell.dataset.edge = e;
+        let inner = "";
+        if (STAR.has(`${r},${c}`)) inner += `<span class="dot"></span>`;
+        inner += `<span class="reco-ring" style="position:absolute;inset:8%;border-radius:50%;z-index:2;"></span>`;
+        inner += `<div class="piece"></div><span class="hint-score"></span>`;
+        cell.innerHTML = inner;
+        cell.addEventListener("click", () => onClick(r, c));
+        boardEl.appendChild(cell);
+        cells[r].push(cell);
+      }
+    }
+  }
+
+  function newGame() {
+    board = Array.from({ length: SIZE }, () => new Array(SIZE).fill(0));
+    current = BLACK;
+    busy = false;
+    gameOver = false;
+    lastMove = null;
+    history = [];
+    messageEl.textContent = "";
+    render();
+    maybeCpu();
+  }
+
+  /* assist */
+  function computeAssist() {
+    if (online || !assistEl.checked || !isHumanTurn()) return null;
+    const evals = AI.evaluateMoves(board, current);
+    const map = new Map();
+    for (const e of evals) map.set(e.row * SIZE + e.col, e.score);
+    const uniq = [...new Set(map.values())].sort((a, b) => b - a);
+    return { map, rankOf: (s) => uniq.indexOf(s) };
+  }
+
+  function fmt(score) {
+    if (score >= 900000) return "★";
+    if (score >= 1000) return Math.round(score / 100) + "";
+    return score + "";
+  }
+
+  function render() {
+    const assist = computeAssist();
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const cell = cells[r][c];
+        const v = board[r][c];
+        const piece = cell.querySelector(".piece");
+        const hint = cell.querySelector(".hint-score");
+        piece.classList.toggle("black", v === BLACK);
+        piece.classList.toggle("white", v === WHITE);
+        piece.classList.toggle("show", v !== 0);
+
+        cell.classList.toggle("last", !!lastMove && lastMove[0] === r && lastMove[1] === c);
+        let marker = cell.querySelector(".marker");
+        const isLast = lastMove && lastMove[0] === r && lastMove[1] === c;
+        if (isLast && !marker) { marker = document.createElement("span"); marker.className = "marker"; cell.appendChild(marker); }
+        if (!isLast && marker) marker.remove();
+
+        cell.classList.remove("assist", "rank1", "rank2", "rank3");
+        hint.textContent = "";
+        if (assist && v === 0 && assist.map.has(r * SIZE + c)) {
+          const s = assist.map.get(r * SIZE + c);
+          const rank = assist.rankOf(s);
+          cell.classList.add("assist");
+          if (rank === 0) cell.classList.add("rank1");
+          else if (rank === 1) cell.classList.add("rank2");
+          else if (rank === 2) cell.classList.add("rank3");
+          hint.textContent = fmt(s);
+        }
+      }
+    }
+    scoreBlackEl.classList.toggle("active", !gameOver && current === BLACK);
+    scoreWhiteEl.classList.toggle("active", !gameOver && current === WHITE);
+    if (gameOver) {
+      // message holds result
+    } else if (online) {
+      turnEl.textContent = current === online.myColor ? "あなたの番" : "相手の番";
+    } else if (isCpuTurn()) {
+      turnEl.textContent = `${colorName(current)}の番（CPU思考中…）`;
+    } else {
+      turnEl.textContent = `${colorName(current)}の番`;
+    }
+    undoBtn.disabled = busy || online || history.length === 0;
+  }
+
+  function onClick(r, c) {
+    if (!isHumanTurn() || board[r][c] !== 0) return;
+    if (online) online.send({ t: "move", row: r, col: c });
+    place(r, c);
+  }
+
+  function place(r, c) {
+    history.push({ board: board.map((row) => row.slice()), current, lastMove });
+    board[r][c] = current;
+    lastMove = [r, c];
+    if (AI.isWin(board, r, c, current)) {
+      gameOver = true;
+      render();
+      if (online) {
+        const won = current === online.myColor;
+        messageEl.textContent = won ? "あなたの勝ち！🎉（五目完成）" : "相手の勝ち…（五目完成）";
+      } else {
+        messageEl.textContent = `${colorName(current)}の勝ち！🎉（五目完成）`;
+      }
+      return;
+    }
+    if (AI.isFull(board)) {
+      gameOver = true;
+      render();
+      messageEl.textContent = "引き分け（盤が埋まりました）";
+      return;
+    }
+    current = AI.opponent(current);
+    render();
+    maybeCpu();
+  }
+
+  function maybeCpu() {
+    if (!isCpuTurn()) return;
+    busy = true;
+    render();
+    setTimeout(() => {
+      const mv = AI.chooseMove(board, current, Number(players[current].level));
+      busy = false;
+      if (!mv) { gameOver = true; messageEl.textContent = "引き分け"; render(); return; }
+      place(mv[0], mv[1]);
+    }, 300);
+  }
+
+  function undo() {
+    if (busy || history.length === 0) return;
+    let snap = history.pop();
+    while (isCpu(snap.current) && history.length > 0) snap = history.pop();
+    board = snap.board.map((row) => row.slice());
+    current = snap.current;
+    lastMove = snap.lastMove;
+    gameOver = false;
+    messageEl.textContent = "";
+    render();
+    maybeCpu();
+  }
+
+  undoBtn.addEventListener("click", undo);
+  resetBtn.addEventListener("click", newGame);
+  assistEl.addEventListener("change", render);
+
+  buildGrid();
+  syncLevels();
+
+  /* ---------- Online API (called by js/online.js) ---------- */
+  window.GomokuGame = {
+    startOnline(myColor, sendFn) {
+      online = { myColor, send: sendFn };
+      enterGameScreen();
+    },
+    remoteMove(r, c) {
+      if (!online || gameOver || board[r][c] !== 0) return;
+      place(r, c);
+    },
+    peerLeft() {
+      if (!online) return;
+      gameOver = true;
+      messageEl.textContent = "相手の接続が切れました。";
+      render();
+    },
+  };
+})();
+</script>
+<script>
+/* Gomoku online wiring — uses the shared OnlineLobby (one room number works
+ * across all games). Host plays black (1), guest plays white (2). */
+(function () {
+  const Game = window.GomokuGame;
+  window.OnlineLobby.init({
+    gameId: "gomoku",
+    hostColor: 1,   // black
+    guestColor: 2,  // white
+    basePrefix: "../",
+    startOnline: (myColor, send) => Game.startOnline(myColor, send),
+    applyRemote: (msg) => {
+      if (msg.t === "move") Game.remoteMove(msg.row, msg.col);
+    },
+    onPeerLeft: () => Game.peerLeft(),
+  });
+})();
+</script>
+</body>
+</html>
