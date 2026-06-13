@@ -90,8 +90,9 @@ function emit(a){if(ONLINE){if(!myTurn()||over)return;roomSend(a);}else doAction
 function doAction(a){if(a.k==='roll')_roll();else if(a.k==='keep')_toggleKeep(a.i);else if(a.k==='record')_record(a.id);else if(a.k==='autoturn')_autoturn();}
 // 退出席の代理: 1回振って空き役へ記入し完走させる（ホストのみ送信）
 function _autoturn(){if(rolls===0)_roll();const c=CATS.find(x=>scores()[x.id]===undefined);if(c)_record(c.id);}
-function autoKick(){if(!ONLINE||!OnlineRoom.isHost()||over||np<=1)return;if(!OnlineRoom.isGone(curPlayer))return;
-  setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&!over&&OnlineRoom.isGone(curPlayer))OnlineRoom.send({k:'autoturn'});},700);}
+function isAutoSeat(s){return ONLINE&&window.OnlineRoom&&((OnlineRoom.isCpu&&OnlineRoom.isCpu(s))||(OnlineRoom.isGone&&OnlineRoom.isGone(s)));}
+function autoKick(){if(!ONLINE||!OnlineRoom.isHost()||over||np<=1)return;if(!isAutoSeat(curPlayer))return;
+  setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&!over&&isAutoSeat(curPlayer))OnlineRoom.send({k:'autoturn'});},700);}
 function init(){dice=[1,1,1,1,1];keep=[false,false,false,false,false];rolls=0;
   allScores=Array.from({length:np},()=>({}));turn=0;curPlayer=0;over=false;
   document.getElementById('over').classList.remove('show');

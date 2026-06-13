@@ -158,9 +158,24 @@ function applyGuess(player,g){
   if(hit===N){finishMulti(player);return;}
   curPlayer=(curPlayer+1)%np;guess=[];renderDisp();updateTurnMsg();updatePad();autoKick();}
 function applySkip(){if(over)return;curPlayer=(curPlayer+1)%np;guess=[];renderDisp();updateTurnMsg();updatePad();autoKick();}
-// 退出席の代理: ホストがその席の推理を飛ばす
-function autoKick(){if(!ONLINE||!OnlineRoom.isHost()||over||pmode!=='multi')return;const a=curPlayer;if(!OnlineRoom.isGone(a))return;
-  setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&!over&&curPlayer===a&&OnlineRoom.isGone(a))OnlineRoom.send({k:'skip'});},800);}
+// CPU席・退出席の代理（ホストが送信）: CPUは履歴と矛盾しない候補を推理, 退出席はスキップ
+function isAutoSeat(s){return ONLINE&&window.OnlineRoom&&((OnlineRoom.isCpu&&OnlineRoom.isCpu(s))||(OnlineRoom.isGone&&OnlineRoom.isGone(s)));}
+function cpuGuess(){
+  const syms=symbols();
+  let cands=[[]];
+  for(let pos=0;pos<N;pos++){const next=[];for(const c of cands)for(const s of syms){if(!DUP&&c.includes(s))continue;next.push(c.concat(s));}cands=next;if(cands.length>120000)break;}
+  for(const h of mHist){cands=cands.filter(c=>{const r=evaluate(h.g,c);return r.hit===h.hit&&r.blow===h.blow;});if(cands.length<=1)break;}
+  if(cands.length)return cands[Math.floor(Math.random()*cands.length)];
+  // フォールバック: ランダムな有効推理
+  if(DUP){const g=[];for(let i=0;i<N;i++)g.push(syms[Math.floor(Math.random()*syms.length)]);return g;}
+  const pool=syms.slice();for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}return pool.slice(0,N);
+}
+function autoKick(){if(!ONLINE||!OnlineRoom.isHost()||over||pmode!=='multi')return;const a=curPlayer;if(!isAutoSeat(a))return;
+  if(OnlineRoom.isCpu&&OnlineRoom.isCpu(a)){
+    setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&!over&&curPlayer===a&&isAutoSeat(a))OnlineRoom.send({k:'guess',g:cpuGuess()});},800);
+  }else{
+    setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&!over&&curPlayer===a&&isAutoSeat(a))OnlineRoom.send({k:'skip'});},800);
+  }}
 function applySetup(a){mode=a.mode;N=a.N;DUP=a.DUP;np=a.np;init();}
 function addHistory(g,hit,blow){const r=document.createElement('div');r.className='h-row';
   r.innerHTML=`<span class="h-no">${tries}</span><span class="h-guess">${g.map(symHtml).join(mode==='num'?' ':'')}</span>`+

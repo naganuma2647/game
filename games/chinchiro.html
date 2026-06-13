@@ -237,12 +237,14 @@ function _next(){
   players.forEach(p=>{if(p.chips<=0)p.chips=1000;});
   dealer=(dealer+1)%np;roundNo++;startBetPhase();
 }
-// 退出席の代理: bet相は最小ベット, roll相はrollをホストが送信
+// CPU席・退出席の代理（ホストが送信）: チンチロは運ゲーなのでCPUも適当ベット＋ロール
+function isAutoSeat(s){return ONLINE&&window.OnlineRoom&&((OnlineRoom.isCpu&&OnlineRoom.isCpu(s))||(OnlineRoom.isGone&&OnlineRoom.isGone(s)));}
 function autoKick(){
   if(!ONLINE||!OnlineRoom.isHost())return;
-  const a=curPlayer;if(!OnlineRoom.isGone(a))return;
-  if(mPhase==='bet'){setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&mPhase==='bet'&&curPlayer===a&&OnlineRoom.isGone(a))OnlineRoom.send({k:'bet',amt:Math.max(1,Math.min(50,players[a].chips))});},700);}
-  else if(mPhase==='roll'){setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&mPhase==='roll'&&curPlayer===a&&OnlineRoom.isGone(a))OnlineRoom.send({k:'roll'});},700);}
+  const a=curPlayer;if(!isAutoSeat(a))return;
+  const cpu=OnlineRoom.isCpu&&OnlineRoom.isCpu(a);
+  if(mPhase==='bet'){const amt=cpu?Math.max(1,Math.min(50,Math.ceil(players[a].chips*0.1))):Math.max(1,Math.min(50,players[a].chips));setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&mPhase==='bet'&&curPlayer===a&&isAutoSeat(a))OnlineRoom.send({k:'bet',amt});},700);}
+  else if(mPhase==='roll'){setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&mPhase==='roll'&&curPlayer===a&&isAutoSeat(a))OnlineRoom.send({k:'roll'});},700);}
 }
 function renderMulti(){
   const bd=document.getElementById('mboard');bd.innerHTML='';

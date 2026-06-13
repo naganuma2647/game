@@ -170,12 +170,16 @@ function updateMultiControls(){
   document.getElementById('msg').style.color=(mPhase==='bet'||mPhase==='play')?PCOL[curPlayer]:'var(--gold)';
   if(ONLINE&&window.OnlineRoom&&OnlineRoom.setTurn)OnlineRoom.setTurn(curPlayer===MYSEAT&&(mPhase==='bet'||mPhase==='play'));
 }
-// 退出席の代理: bet相は最小ベット, play相はstandをホストが送信
+// CPU席・退出席の代理（ホストが送信）: CPUは100ベット＋17未満ヒット, 退出席は最小ベット＋スタンド
+function isAutoSeat(s){return ONLINE&&window.OnlineRoom&&((OnlineRoom.isCpu&&OnlineRoom.isCpu(s))||(OnlineRoom.isGone&&OnlineRoom.isGone(s)));}
 function autoKick(){
   if(!ONLINE||!OnlineRoom.isHost())return;
-  const a=curPlayer;if(!OnlineRoom.isGone(a))return;
-  if(mPhase==='bet'){setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&mPhase==='bet'&&curPlayer===a&&OnlineRoom.isGone(a))OnlineRoom.send({k:'bet',amt:Math.max(1,Math.min(50,players[a].chips))});},700);}
-  else if(mPhase==='play'){setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&mPhase==='play'&&curPlayer===a&&OnlineRoom.isGone(a)&&!players[a].done)OnlineRoom.send({k:'stand'});},700);}
+  const a=curPlayer;if(!isAutoSeat(a))return;
+  const cpu=OnlineRoom.isCpu&&OnlineRoom.isCpu(a);
+  if(mPhase==='bet'){const amt=cpu?Math.max(50,Math.min(players[a].chips,100)):Math.max(1,Math.min(50,players[a].chips));setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&mPhase==='bet'&&curPlayer===a&&isAutoSeat(a))OnlineRoom.send({k:'bet',amt});},700);}
+  else if(mPhase==='play'){setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&mPhase==='play'&&curPlayer===a&&isAutoSeat(a)&&!players[a].done){
+    if(cpu&&val(players[a].hand)<17)OnlineRoom.send({k:'hit'});else OnlineRoom.send({k:'stand'});
+  }},700);}
 }
 function _placeBet(amt){
   if(mPhase!=='bet')return;

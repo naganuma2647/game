@@ -61,10 +61,16 @@ function tap(i){if(busy||matched.has(i)||flipped.includes(i))return;
   if(ONLINE){if(turn!==MYSEAT)return;roomSend({k:'tap',i});return;}
   _tap(i);}
 function doAction(a){if(a.k==='tap')_tap(a.i);else if(a.k==='setup')applySetup(a);else if(a.k==='skip'){if(mode==='pvp')turn=(turn+1)%np;setStatus();autoKick();}}
-function _tap(i){if(busy||matched.has(i)||flipped.includes(i))return;cardEl(i).classList.add('flip');flipped.push(i);if(flipped.length===2){busy=true;moves++;const[a,b]=flipped;if(deck[a].k===deck[b].k){matched.add(a);matched.add(b);if(mode==='pvp')score[turn]++;setTimeout(()=>{cardEl(a).classList.add('done');cardEl(b).classList.add('done');flipped=[];busy=false;setStatus();checkEnd();autoKick();},420);}else{setTimeout(()=>{cardEl(a).classList.remove('flip');cardEl(b).classList.remove('flip');flipped=[];busy=false;if(mode==='pvp'){turn=(turn+1)%np;}setStatus();autoKick();},820);}}else{setStatus();}}
-// 退出したプレイヤーの手番はホストがスキップを代理送信
-function autoKick(){if(!ONLINE||!OnlineRoom.isHost()||mode!=='pvp'||matched.size===N)return;const a=turn;if(!OnlineRoom.isGone(a))return;
-  setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&matched.size<N&&turn===a&&OnlineRoom.isGone(a)&&!busy)OnlineRoom.send({k:'skip'});},800);}
+function _tap(i){if(busy||matched.has(i)||flipped.includes(i))return;cardEl(i).classList.add('flip');flipped.push(i);if(flipped.length===2){busy=true;moves++;const[a,b]=flipped;if(deck[a].k===deck[b].k){matched.add(a);matched.add(b);if(mode==='pvp')score[turn]++;setTimeout(()=>{cardEl(a).classList.add('done');cardEl(b).classList.add('done');flipped=[];busy=false;setStatus();checkEnd();autoKick();},420);}else{setTimeout(()=>{cardEl(a).classList.remove('flip');cardEl(b).classList.remove('flip');flipped=[];busy=false;if(mode==='pvp'){turn=(turn+1)%np;}setStatus();autoKick();},820);}}else{setStatus();autoKick();}}
+// CPU席・退出席の代理（ホストが送信）: CPUは2枚めくる, 退出席はスキップ
+function isAutoSeat(s){return ONLINE&&window.OnlineRoom&&((OnlineRoom.isCpu&&OnlineRoom.isCpu(s))||(OnlineRoom.isGone&&OnlineRoom.isGone(s)));}
+function cpuPickCard(){const avail=[];for(let i=0;i<N;i++)if(!matched.has(i)&&!flipped.includes(i))avail.push(i);return avail.length?avail[Math.floor(Math.random()*avail.length)]:-1;}
+function autoKick(){if(!ONLINE||!OnlineRoom.isHost()||mode!=='pvp'||matched.size===N)return;const a=turn;if(!isAutoSeat(a)||busy)return;
+  if(OnlineRoom.isCpu&&OnlineRoom.isCpu(a)){
+    setTimeout(()=>{if(!(ONLINE&&OnlineRoom.isHost()&&matched.size<N&&turn===a&&isAutoSeat(a)&&!busy)||flipped.length>=2)return;const i=cpuPickCard();if(i>=0)OnlineRoom.send({k:'tap',i});},700);
+  }else{
+    setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&matched.size<N&&turn===a&&isAutoSeat(a)&&!busy)OnlineRoom.send({k:'skip'});},800);
+  }}
 function checkEnd(){if(matched.size===N){const s=document.getElementById('status');if(mode==='solo')s.innerHTML='クリア！ <b>'+moves+'回</b>でそろえました 🎉';else{const max=Math.max(...score);const winners=score.map((v,i)=>v===max?i+1:null).filter(x=>x);const r=winners.length>1?'引き分け（P'+winners.join(', P')+'）':'プレイヤー'+winners[0]+'の勝ち！';const sc=score.map((v,i)=>'P'+(i+1)+': '+v).join(' / ');s.innerHTML='<b>'+r+'</b>（'+sc+'）';}}}
 document.getElementById('reset').addEventListener('click',init);
 document.getElementById('mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;document.querySelectorAll('#mode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.getElementById('np').style.display=mode==='pvp'?'flex':'none';init();});
