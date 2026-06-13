@@ -163,7 +163,7 @@
               const path = GAME_PATHS[msg.game];
               if (!path) { fail("不明なゲームの部屋です。"); return; }
               try { peer.destroy(); } catch (e) {}
-              location.href = urlFromHere(path, cfg.basePrefix) + "?autojoin=" + code;
+              location.href = urlFromHere(path, cfg.basePrefix) + "?autojoin=" + code + "&_v=2";
             }
           }
         });

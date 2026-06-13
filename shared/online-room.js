@@ -372,7 +372,7 @@
               const path = (window.OnlineLobby && OnlineLobby.GAME_PATHS) ? OnlineLobby.GAME_PATHS[m.game] : null;
               if (!path) { setStatus('不明なゲームの部屋です。'); return; }
               try { peer.destroy(); } catch (_) {}
-              location.href = (cfg.basePrefix || '../') + path + '?autojoin=' + code;
+              location.href = (cfg.basePrefix || '../') + path + '?autojoin=' + code + '&_v=2';
             }
           } else if (m.t === 'seat') {
             settled = true; mySeat = m.seat;
