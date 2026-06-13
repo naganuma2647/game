@@ -179,6 +179,12 @@
         const p = state.board[rr][c];
         if (p && p.owner === owner && p.type === "P" && !p.promoted) return false;
       }
+      // 打ち歩詰め: a pawn drop must not be immediate checkmate.
+      const test = cloneState(state);
+      test.board[r][c] = { type: "P", owner, promoted: false };
+      test.hands[owner].P -= 1;
+      test.turn = opp(owner);
+      if (isCheckmate(test)) return false;
     }
     return true;
   }
