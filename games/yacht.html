@@ -160,15 +160,25 @@ function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
   document.getElementById('np').style.display='none';
   document.getElementById('again').style.display='none';
   init();}
+// 再接続: 現在状態の書き出し/復元
+function getState(){return {dice,keep,rolls,allScores,turn,curPlayer,over};}
+function applyState(o){ONLINE=true;MYSEAT=o.seat;roomSend=o.send;np=o.n;
+  document.getElementById('np').style.display='none';
+  document.getElementById('again').style.display='none';
+  const s=o.state;dice=s.dice;keep=s.keep;rolls=s.rolls;allScores=s.allScores;turn=s.turn;curPlayer=s.curPlayer;over=s.over;
+  document.getElementById('curp').style.display=np>1?'block':'none';
+  updateCurP();renderDice();renderSheet();updateRollBtn();
+  if(over)finish();}
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=3"></script>
-<script src="../shared/online-room.js?v=4"></script>
+<script src="../shared/online-room.js?v=5"></script>
 <script>
 OnlineRoom.init({gameId:'yacht',minPlayers:2,maxPlayers:4,note:'全員で同じ問題を解いてスコアを競います。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),
   onMessage:(from,msg)=>doAction(msg),
-  onLeft:(seat)=>autoKick()});
+  onLeft:(seat)=>autoKick(),
+  getState,applyState});
 </script>
 </body>
 </html>

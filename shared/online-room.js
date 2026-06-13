@@ -33,16 +33,18 @@
   function randomCode() { let s = ""; for (let i = 0; i < 4; i++) s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)]; return s; }
   const roomId = (code) => ROOM_PREFIX + code;
 
-  function mulberry32(a) {
-    return function () {
-      a |= 0; a = a + 0x6D2B79F5 | 0;
+  function init(cfg) {
+    // Seeded RNG whose state is a single int we can read/restore, so a
+    // reconnecting player can resume the exact same random sequence.
+    let _rngA = 0;
+    function stepRng() {
+      let a = _rngA | 0; a = a + 0x6D2B79F5 | 0;
       let t = Math.imul(a ^ a >>> 15, 1 | a);
       t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      _rngA = a;
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
-
-  function init(cfg) {
+    }
+    function seedRng(seed) { _rngA = seed | 0; Math.random = stepRng; }
     const MIN = cfg.minPlayers || 2, MAX = cfg.maxPlayers || 4;
     let peer = null;
     let isHost = false, started = false, mySeat = 0, nPlayers = 0, nCpus = 0;
@@ -111,6 +113,7 @@
     <p id="oc-roster"></p>
     <div id="cpu-row" hidden><span class="lab">CPUを追加:</span><span id="cpu-btns"></span></div>
     <button id="start-room" class="oc-btn" hidden>この人数で開始</button>
+    <button id="reclaim-room" class="oc-btn" hidden style="background:#3a8f5a;color:#fff;margin-top:10px">🔄 前の対局に再接続</button>
     <p id="online-status"></p>
   </div>
 </div>
@@ -231,6 +234,20 @@
           gone.delete(m.seat);
           broadcastRoster();
         }
+      } else if (m.t === 'reclaim') {
+        // a previously-departed human is reconnecting to reclaim their seat
+        const seat = m.seat;
+        if (started && gone.has(seat) && m.game === cfg.gameId) {
+          gone.delete(seat);
+          const ex = guests.find(g => g.seat === seat);
+          if (ex) { ex.conn = c; ex.alive = true; } else guests.push({ conn: c, seat, alive: true });
+          roster.add(seat);
+          try { c.send({ t: 'resume', seat, snap: snapshot(), relaySeat, gen }); } catch (_) {}
+          broadcastRoster();
+          showBadge('🌐 プレイヤー' + (seat + 1) + 'が再接続しました');
+        } else {
+          try { c.send({ t: 'full' }); } catch (_) {}
+        }
       } else if (m.t === 'action') {
         const g = guests.find(x => x.conn === c && x.alive);
         if (g && started) hostBroadcast(g.seat, m.msg);
@@ -327,12 +344,20 @@
     /* ---------- match start ---------- */
     function beginMatch(seat, n, seed, cpusIn) {
       started = true; mySeat = seat; nPlayers = n; nCpus = cpusIn || 0;
-      Math.random = mulberry32(seed);
+      seedRng(seed);
+      saveSession();
       hideLobby();
       $('online-btn').style.display = 'none';
       const cpuTxt = nCpus > 0 ? ` / CPU×${nCpus}` : '';
       showBadge('🌐 オンライン（あなたはP' + (seat + 1) + cpuTxt + '）');
       try { cfg.onStart && cfg.onStart(seat, n, send); } catch (e) { console.error(e); }
+    }
+    function saveSession() {
+      try { sessionStorage.setItem('ngRoom:' + cfg.gameId, JSON.stringify({ code, seat: mySeat })); } catch (_) {}
+    }
+    // Snapshot of the live game for a reconnecting player (relay side).
+    function snapshot() {
+      return { rng: _rngA, n: nPlayers, cpus: nCpus, state: (cfg.getState ? cfg.getState() : null) };
     }
 
     /* ---------- host migration (relay left) ---------- */
@@ -386,6 +411,52 @@
       else go();
     }
 
+    /* ---------- reconnect (a departed human reclaims their seat) ---------- */
+    function reclaim(savedCode, savedSeat) {
+      if (typeof Peer === 'undefined') { setStatus('通信ライブラリの読み込みに失敗しました。'); return; }
+      code = savedCode; mySeat = savedSeat;
+      setStatus('前の対局に再接続しています…');
+      peer = new Peer();
+      peer.on('open', () => probeGen(0));
+      peer.on('error', () => setStatus('再接続できませんでした。'));
+    }
+    // The current relay sits at roomId(code) (gen 0) or roomId(code)-N after
+    // migrations; we don't know N, so probe a few generations.
+    function probeGen(g) {
+      if (g > MAX + 1) { setStatus('部屋が見つかりませんでした（対局が終了した可能性があります）。'); return; }
+      const id = g === 0 ? roomId(code) : roomId(code) + '-' + g;
+      const c = peer.connect(id, { reliable: true });
+      let done = false;
+      c.on('open', () => { try { c.send({ t: 'reclaim', seat: mySeat, game: cfg.gameId }); } catch (_) {} });
+      c.on('data', (m) => {
+        if (!m || typeof m !== 'object' || done) { if (m && m.t && started) guestApply(m); return; }
+        if (m.t === 'resume') {
+          done = true; _hostConn = c; relaySeat = m.relaySeat; gen = m.gen;
+          c.on('close', () => { if (started) migrate(); });
+          applyResume(m);
+        } else if (m.t === 'full') {
+          done = true; setStatus('再接続できません（席が空いていない、または対局終了）。');
+        }
+        // ignore hello; reclaim was already sent on open
+      });
+      c.on('error', () => { if (!done) probeGen(g + 1); });
+      setTimeout(() => { if (!done) { try { c.close(); } catch (_) {} probeGen(g + 1); } }, 2500);
+    }
+    function applyResume(m) {
+      const snap = m.snap;
+      started = true; mySeat = m.seat; nPlayers = snap.n; nCpus = snap.cpus || 0;
+      Math.random = stepRng; _rngA = snap.rng | 0; // resume the exact RNG stream
+      saveSession();
+      hideLobby();
+      $('online-btn').style.display = 'none';
+      showBadge('🌐 再接続しました（あなたはP' + (mySeat + 1) + '）');
+      try { cfg.applyState && cfg.applyState({ seat: mySeat, n: nPlayers, send, state: snap.state }); }
+      catch (e) { console.error(e); }
+    }
+    function savedSession() {
+      try { const s = sessionStorage.getItem('ngRoom:' + cfg.gameId); return s ? JSON.parse(s) : null; } catch (_) { return null; }
+    }
+
     /* ---------- wire DOM ---------- */
     $('online-btn').addEventListener('click', openLobby);
     $('lobby-close').addEventListener('click', () => { if (!started && peer) { try { peer.destroy(); } catch (_) {} peer = null; isHost = false; $('create-room').disabled = false; $('join-room').disabled = false; $('room-code-box').hidden = true; $('start-room').hidden = true; setStatus(''); } hideLobby(); });
@@ -393,6 +464,16 @@
     $('join-room').addEventListener('click', () => joinCode(($('join-code').value || '').trim()));
     $('join-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinCode(($('join-code').value || '').trim()); });
     $('start-room').addEventListener('click', hostStart);
+    // Offer reconnect if a previous session for this game is remembered.
+    (function () {
+      const saved = savedSession();
+      const btn = $('reclaim-room');
+      if (saved && cfg.applyState && /^\d{4}$/.test(saved.code || '')) {
+        btn.hidden = false;
+        btn.textContent = '🔄 前の対局に再接続（P' + ((saved.seat | 0) + 1) + '）';
+        btn.addEventListener('click', () => { btn.disabled = true; reclaim(saved.code, saved.seat | 0); });
+      }
+    })();
     $('copy-code').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('room-code').textContent); $('copy-code').textContent = 'コピー済み'; setTimeout(() => $('copy-code').textContent = 'コピー', 1500); } catch (_) {} });
 
     // Hub shortcuts: ?create / ?autojoin / ?online

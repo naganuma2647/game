@@ -93,7 +93,7 @@ const COLORS=[
   {id:4,name:'緑',css:'#5cb568'},{id:5,name:'紫',css:'#a濃'.replace('a濃','9a6dd0')}
 ];
 let mode='num',N=4,DUP=false,MAX=10,secret,guess,tries,over;
-let pmode='solo',np=2,curPlayer=0,winner=-1;
+let pmode='solo',np=2,curPlayer=0,winner=-1,mHist=[];
 let ONLINE=false,MYSEAT=0,roomSend=null;
 const PCOL=['#3e87d6','#e0473a','#5cb568','#e8c244'];
 function myTurn(){return !ONLINE||curPlayer===MYSEAT;}
@@ -107,7 +107,7 @@ function genSecret(){
   else{const pool=syms.slice();for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}return pool.slice(0,N);}
   return out;
 }
-function init(){MAX=maxTries();secret=genSecret();guess=[];tries=0;over=false;winner=-1;curPlayer=0;hist.innerHTML='';
+function init(){MAX=maxTries();secret=genSecret();guess=[];tries=0;over=false;winner=-1;curPlayer=0;mHist=[];hist.innerHTML='';
   document.getElementById('over').classList.remove('show');buildPad();renderDisp();renderRule();updatePad();updateTurnMsg();}
 function turnLabel(){return ONLINE?(curPlayer===MYSEAT?'★あなた(P'+(curPlayer+1)+')':'相手(P'+(curPlayer+1)+')'):'プレイヤー'+(curPlayer+1);}
 function updateTurnMsg(){
@@ -151,6 +151,7 @@ function emit(a){if(ONLINE){if(!myTurn())return;roomSend(a);}else doAction(a);}
 function doAction(a){if(a.k==='guess')applyGuess(curPlayer,a.g);else if(a.k==='setup')applySetup(a);else if(a.k==='skip')applySkip();}
 function applyGuess(player,g){
   const{hit,blow}=evaluate(g,secret);tries++;
+  mHist.push({player,g:g.slice(),hit,blow});
   addHistoryMulti(player,g,hit,blow);
   if(hit===N){finishMulti(player);return;}
   curPlayer=(curPlayer+1)%np;guess=[];renderDisp();updateTurnMsg();updatePad();autoKick();}
@@ -209,15 +210,35 @@ function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;pmo
   document.getElementById('new').parentElement.classList.add('hidden');
   if(seat===0){roomSend({k:'setup',mode,N,DUP,np:n});msg('開始しています…');}
   else msg('ホストの設定を待っています…');}
+// 再接続: 現在状態の書き出し/復元
+function getState(){return {secret,curPlayer,mode,N,DUP,tries,over,winner,mHist};}
+function applyState(o){ONLINE=true;MYSEAT=o.seat;roomSend=o.send;np=o.n;pmode='multi';
+  document.querySelectorAll('#pmode,#nprow,#mode,#len,#dup').forEach(el=>el.classList.add('hidden'));
+  document.getElementById('new').parentElement.classList.add('hidden');
+  const s=o.state;secret=s.secret;curPlayer=s.curPlayer;mode=s.mode;N=s.N;DUP=s.DUP;tries=s.tries;over=s.over;winner=s.winner;mHist=s.mHist||[];
+  MAX=maxTries();guess=[];
+  buildPad();renderDisp();renderRule();
+  hist.innerHTML='';
+  // 履歴を再構築（新しい順に表示されるよう先頭挿入）
+  mHist.forEach(h=>{const r=document.createElement('div');r.className='h-row';
+    const nm=ONLINE&&h.player===MYSEAT?'あなた':'P'+(h.player+1);
+    r.innerHTML=`<span class="h-pl" style="color:${PCOL[h.player]};border-color:${PCOL[h.player]}">${nm}</span>`+
+      `<span class="h-guess">${h.g.map(symHtml).join(mode==='num'?' ':'')}</span>`+
+      `<span class="h-res"><span class="hit">${h.hit} H</span><span class="blow">${h.blow} B</span></span>`;
+    hist.insertBefore(r,hist.firstChild);});
+  if(over&&winner>=0)finishMulti(winner);
+  else{updateTurnMsg();updatePad();}
+  autoKick();}
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=3"></script>
-<script src="../shared/online-room.js?v=4"></script>
+<script src="../shared/online-room.js?v=5"></script>
 <script>
 OnlineRoom.init({gameId:'hitblow',minPlayers:2,maxPlayers:4,note:'同じ秘密の番号を全員で当て、最速正解者が勝ち。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),
   onMessage:(from,msg)=>doAction(msg),
-  onLeft:(seat)=>autoKick()});
+  onLeft:(seat)=>autoKick(),
+  getState,applyState});
 </script>
 </body>
 </html>

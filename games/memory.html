@@ -77,14 +77,28 @@ function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;mod
   if(seat===0)roomSend({k:'setup',N,np:n});
   else document.getElementById('status').textContent='ホストの設定を待っています…';}
 function applySetup(a){N=a.N;np=a.np;mode='pvp';init();}
+// 再接続: 現在状態の書き出し/復元（盤DOMを再構築）
+function getState(){return {N,deck,matched:[...matched],score,turn,moves};}
+function applyState(o){ONLINE=true;MYSEAT=o.seat;roomSend=o.send;np=o.n;mode='pvp';
+  document.getElementById('mode').classList.add('hidden');
+  document.getElementById('np').classList.add('hidden');
+  document.getElementById('size').classList.add('hidden');
+  document.querySelector('.foot').classList.add('hidden');
+  const s=o.state;N=s.N;deck=s.deck;matched=new Set(s.matched);score=s.score;turn=s.turn;moves=s.moves;flipped=[];busy=false;
+  const cols=N<=16?4:N<=20?5:8;bd.style.gridTemplateColumns='repeat('+cols+',1fr)';
+  bd.classList.toggle('trump',N===52);
+  bd.innerHTML='';deck.forEach((c,i)=>{const el=document.createElement('div');el.className='card';const face=N===52?'<span class="'+(c.red?'red':'blk')+'">'+c.e+'</span>':c.e;el.innerHTML='<div class="back">?</div><div class="face">'+face+'</div>';el.addEventListener('click',()=>tap(i));bd.appendChild(el);});
+  matched.forEach(i=>{const el=cardEl(i);if(el)el.classList.add('flip','done');});
+  setStatus();checkEnd();autoKick();}
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=3"></script>
-<script src="../shared/online-room.js?v=4"></script>
+<script src="../shared/online-room.js?v=5"></script>
 <script>
 OnlineRoom.init({gameId:'memory',minPlayers:2,maxPlayers:4,note:'全員でペアを取り合います（最大4人）。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),
   onMessage:(from,msg)=>doAction(msg),
-  onLeft:(seat)=>{setStatus();autoKick();}});
+  onLeft:(seat)=>{setStatus();autoKick();},
+  getState,applyState});
 </script>
 </body></html>
