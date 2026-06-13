@@ -126,12 +126,16 @@
       // The host accepts incoming connections. Each guest first learns the
       // game via "hello"; a matching guest then sends "join" to start.
       peer.on("connection", (c) => {
-        const sayHello = () => { try { c.send({ t: "hello", game: cfg.gameId }); } catch (e) {} };
+        // 先攻ランダム化: ホストが coin を振り hello で伝える。色基準のゲーム
+        // (五目/将棋/オセロ) はこれで先攻が入れ替わる。online-core は seat0 が
+        // seed を作る前提なので noSwap 指定で入れ替えない。
+        const swap = (!cfg.noSwap && Math.random() < 0.5) ? 1 : 0;
+        const sayHello = () => { try { c.send({ t: "hello", game: cfg.gameId, swap: swap }); } catch (e) {} };
         if (c.open) sayHello(); else c.on("open", sayHello);
         c.on("data", (msg) => {
           if (msg && msg.t === "join") {
             setStatus("相手が参加しました。対局を開始します。");
-            bindGame(c, cfg.hostColor);
+            bindGame(c, swap ? cfg.guestColor : cfg.hostColor);
           }
         });
       });
@@ -159,9 +163,9 @@
           if (msg.t === "hello") {
             settled = true;
             if (msg.game === cfg.gameId) {
-              // Same game: ask to start, then run.
+              // Same game: ask to start, then run（ホストの swap に従い色を決定）。
               try { c.send({ t: "join" }); } catch (e) {}
-              bindGame(c, cfg.guestColor);
+              bindGame(c, msg.swap ? cfg.hostColor : cfg.guestColor);
             } else {
               // Different game: go to that game's page and auto-join there.
               const path = GAME_PATHS[msg.game];

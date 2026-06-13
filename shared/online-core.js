@@ -26,6 +26,7 @@
 
   function init(cfg) {
     let online = false, mySeat = 0, sendFn = null, sticky = 0, replaying = false;
+    let firstSeat = 0; // 先攻の席（共有シードでランダムに決定）。先攻=hostMark側
 
     /* ---- lobby UI (ids match shared/lobby.js) ---- */
     const ui = document.createElement('div');
@@ -80,8 +81,8 @@
     function updateSticky() {
       const el = document.querySelector(cfg.statusSel);
       const t = el ? el.textContent : '';
-      if (cfg.hostMark && t.includes(cfg.hostMark)) sticky = 0;
-      else if (cfg.guestMark && t.includes(cfg.guestMark)) sticky = 1;
+      if (cfg.hostMark && t.includes(cfg.hostMark)) sticky = firstSeat;
+      else if (cfg.guestMark && t.includes(cfg.guestMark)) sticky = 1 - firstSeat;
     }
     function updateBadge(msg) {
       if (!online) return;
@@ -126,7 +127,8 @@
     function beginMatch(seed) {
       Math.random = mulberry32(seed);
       online = true;
-      sticky = 0;
+      firstSeat = seed & 1;   // 先攻をランダム化（両者同じシードなので一致）
+      sticky = firstSeat;
       if (cfg.hideSel) document.querySelectorAll(cfg.hideSel).forEach(el => el.style.display = 'none');
       if (cfg.pvpSel) {
         const b = document.querySelector(cfg.pvpSel);
@@ -149,7 +151,7 @@
       // (seat 1) のときだけ中身を入れる。
       const b = cfg.flip.board, u = cfg.flip.upright;
       const st = document.createElement('style');
-      if (mySeat === 1) {
+      if (mySeat !== firstSeat) {   // 後手側（＝先攻でない方）が盤を180°回転
         st.textContent =
           `${b}{transform:rotate(180deg)}` +
           (u ? `${b} ${u}{transform:rotate(180deg);transform-box:fill-box;transform-origin:center}` : '');
@@ -162,6 +164,7 @@
       gameId: cfg.gameId,
       hostColor: 0,
       guestColor: 1,
+      noSwap: true,        // 先攻ランダムは online-core 側の firstSeat で行う（seat0=ホスト固定）
       basePrefix: '../',
       startOnline: (seat, send) => {
         mySeat = seat; sendFn = send; _send = send;
