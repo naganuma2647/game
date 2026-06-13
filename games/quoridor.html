@@ -53,6 +53,7 @@ svg{display:block;width:min(95vw,440px);height:auto}
 <b>ルール:</b> 自分の手番に「駒を1マス進める」か「壁を1枚置く」を選択。駒の前に相手駒があれば飛び越え可（直線が塞がっていれば斜めへ）。壁は誰かのゴール経路を完全に塞ぐ位置には置けない。先に対面の端へ到達した人が勝ち。<br>
 <b>ゴール:</b> 2人=対面の辺 / 4人=自分と向かい合う辺。壁は2人モード10枚、4人モード5枚ずつ。
 </div>
+<div style="display:flex;gap:8px;justify-content:center;margin-top:8px"><button id="undo" style="background:transparent;border:1px solid #3a5a6a;color:#EDE6D6;font-weight:700;padding:7px 16px;border-radius:6px;font-size:12.5px;cursor:pointer;font-family:inherit">待った</button><button id="reset" style="background:transparent;border:1px solid #3a5a6a;color:#EDE6D6;font-weight:700;padding:7px 16px;border-radius:6px;font-size:12.5px;cursor:pointer;font-family:inherit">最初から</button></div>
 <div class="over" id="over"><div class="c"><div class="t" id="ovt">勝利</div><button id="again">もう一度</button></div></div>
 <script>
 const N=9, NS='http://www.w3.org/2000/svg';
@@ -67,7 +68,9 @@ const SETUPS={
   4:{starts:[[8,4],[0,4],[4,0],[4,8]], goals:['r0','r8','c8','c0'], walls:5}
 };
 let np=2, mode='cpu';
-let pawns, walls, turn, over, winners, wallsLeft, action='move';
+let pawns, walls, turn, over, winners, wallsLeft, action='move', hist=[];
+function snapQ(){return JSON.stringify({pawns,walls,turn,over,winners,wallsLeft,action});}
+function restoreQ(s){const o=JSON.parse(s);pawns=o.pawns;walls=o.walls;turn=o.turn;over=o.over;winners=o.winners;wallsLeft=o.wallsLeft;action=o.action;}
 let ONLINE=false,MYSEAT=0,roomSend=null;
 function myTurn(){return !ONLINE||turn===MYSEAT;}
 const svg=document.getElementById('bd');
@@ -75,7 +78,7 @@ const svg=document.getElementById('bd');
 function init(){
   const su=SETUPS[np];
   pawns=su.starts.map(p=>({r:p[0],c:p[1]}));
-  walls=[]; turn=0; over=false; winners=[];
+  walls=[]; turn=0; over=false; winners=[]; hist=[];
   wallsLeft=new Array(np).fill(su.walls);
   action='move';
   document.getElementById('over').classList.remove('show');
@@ -242,10 +245,12 @@ function doAction(a){
   if(a.k==='move'){
     const moves=pawnMoves(turn);
     if(!moves.some(m=>m[0]===a.r&&m[1]===a.c))return;
+    if(!ONLINE)hist.push(snapQ());
     pawns[turn]={r:a.r,c:a.c};finishTurn();
   } else if(a.k==='wall'){
     if(wallsLeft[turn]<=0)return;
     if(!canPlaceWall(a.r,a.c,a.d))return;
+    if(!ONLINE)hist.push(snapQ());
     walls.push({r:a.r,c:a.c,d:a.d});wallsLeft[turn]--;finishTurn();
   }
 }
@@ -317,6 +322,8 @@ let cpuLv=2;
 document.getElementById('lv').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cpuLv=+b.dataset.lv;document.querySelectorAll('#lv button').forEach(x=>x.classList.remove('on'));b.classList.add('on');});
 document.querySelector('.actbar').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;action=b.dataset.a;setActionUI();render();});
 document.getElementById('again').addEventListener('click',init);
+document.getElementById('reset').addEventListener('click',init);
+document.getElementById('undo').addEventListener('click',()=>{if(!hist.length||ONLINE)return;let s=hist.pop();if(mode==='cpu'){while(hist.length&&JSON.parse(s).turn!==0)s=hist.pop();}restoreQ(s);setActionUI();document.getElementById('over').classList.remove('show');render();updateTurn();updateStock();});
 init();
 
 function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;

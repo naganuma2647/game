@@ -57,7 +57,7 @@ function init(){
   h=Array.from({length:SZ+1},()=>new Array(SZ).fill(-1));
   v=Array.from({length:SZ},()=>new Array(SZ+1).fill(-1));
   owner=Array.from({length:SZ},()=>new Array(SZ).fill(-1));
-  turn=0;score=[0,0];over=false;busy=false;
+  turn=0;score=[0,0];over=false;busy=false;hist=[];
   document.getElementById('over').classList.remove('show');
   document.getElementById('cpulabel').firstChild.textContent=mode==='pvp'?'相手 ':'CPU ';
   build();render();msg('線をタップして箱を作ろう。箱を取ると続けて打てます。');
@@ -133,6 +133,7 @@ function setEdge(t,r,c,who){
 function tap(t,r,c){
   if(over||busy||!isHuman())return;
   if((t==='h'?h[r][c]:v[r][c])>=0)return;
+  hist.push(snapDots());
   const got=setEdge(t,r,c,turn);
   afterMove(got);
 }
@@ -158,6 +159,7 @@ function completesBox(t,r,c){ // この線で4辺になる箱があるか
   return check.some(([br,bc])=>owner[br][bc]<0&&sidesOf(br,bc)===3);}
 function cpuMove(){
   busy=false;if(over)return;
+  hist.push(snapDots());
   const edges=freeEdges();
   // 弱: 完全ランダム
   if(cpuLv===1){const[t,r,c]=edges[Math.floor(Math.random()*edges.length)];const got=setEdge(t,r,c,1);afterMove(got);return;}
@@ -177,6 +179,7 @@ function endGame(){over=true;render();const t=document.getElementById('ov-t'),s=
   s.textContent=score[0]+' 対 '+score[1];
   document.getElementById('over').classList.add('show');}
 document.getElementById('new').addEventListener('click',init);
+document.getElementById('undo').addEventListener('click',()=>{if(!hist.length||busy)return;let s=hist.pop();if(mode==='cpu'){while(hist.length&&JSON.parse(s).turn!==0)s=hist.pop();}restoreDots(s);document.getElementById('over').classList.remove('show');render();});
 document.getElementById('again').addEventListener('click',init);
 document.getElementById('mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.m;document.querySelectorAll('#mode button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});
 document.getElementById('size').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;SZ=+b.dataset.s;document.querySelectorAll('#size button').forEach(x=>x.classList.remove('on'));b.classList.add('on');init();});

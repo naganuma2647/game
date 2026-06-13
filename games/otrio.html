@@ -53,6 +53,7 @@ svg{display:block;width:min(92vw,400px);height:auto}
 <b>勝利条件:</b> 自分の色で以下のいずれかを作る ①縦/横/斜めに同じサイズ3つ ②縦/横/斜めに小→中→大の順 ③1マスに小・中・大の同心円<br>
 <b>持ち駒:</b> 各サイズ3個ずつ（計9個）。空いているサイズ枠ならどこでも置ける。
 </div>
+<div style="display:flex;gap:8px;justify-content:center;margin-top:8px"><button id="undo" style="background:transparent;border:1px solid #352C20;color:#EDE6D6;font-weight:700;padding:7px 16px;border-radius:6px;font-size:12.5px;cursor:pointer;font-family:inherit">待った</button><button id="reset" style="background:transparent;border:1px solid #352C20;color:#EDE6D6;font-weight:700;padding:7px 16px;border-radius:6px;font-size:12.5px;cursor:pointer;font-family:inherit">最初から</button></div>
 <div class="over" id="over"><div class="c"><div class="t" id="ovt">勝利</div><button id="again">もう一度</button></div></div>
 <script>
 const NS='http://www.w3.org/2000/svg';
@@ -68,7 +69,9 @@ const LINES=(()=>{const L=[];
   L.push([[0,0],[1,1],[2,2]]);L.push([[0,2],[1,1],[2,0]]);
   return L;})();
 let np=2,mode='cpu';
-let board,stock,turn,over,winner,winInfo;
+let board,stock,turn,over,winner,winInfo,hist=[];
+function snapOtrio(){return JSON.stringify({board,stock,turn,over,winner,winInfo});}
+function restoreOtrio(s){const o=JSON.parse(s);board=o.board;stock=o.stock;turn=o.turn;over=o.over;winner=o.winner;winInfo=o.winInfo;}
 let ONLINE=false,MYSEAT=0,roomSend=null;
 function myTurn(){return !ONLINE||turn===MYSEAT;}
 const svg=document.getElementById('bd');
@@ -76,7 +79,7 @@ const svg=document.getElementById('bd');
 function init(){
   board=Array.from({length:3},()=>Array.from({length:3},()=>[-1,-1,-1]));
   stock=Array.from({length:np},()=>[3,3,3]);
-  turn=Math.floor(Math.random()*np);over=false;winner=null;winInfo=null; // 先手ランダム
+  turn=Math.floor(Math.random()*np);over=false;winner=null;winInfo=null;hist=[]; // 先手ランダム
   document.getElementById('over').classList.remove('show');
   document.getElementById('msg').textContent='';
   render();updateTurn();updateStock();
@@ -189,6 +192,7 @@ function doAction(a){
   if(over)return;
   if(a.k==='place'){
     if(!placeable(a.r,a.c,a.s,turn))return;
+    if(!ONLINE)hist.push(snapOtrio());
     place(a.r,a.c,a.s,turn);
     const w=checkWinFor(turn);
     if(w){winner=turn;winInfo=w;over=true;render();finish();return;}
@@ -262,6 +266,8 @@ document.getElementById('mode').addEventListener('click',e=>{const b=e.target.cl
 let cpuLv=2;
 document.getElementById('lv').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cpuLv=+b.dataset.lv;document.querySelectorAll('#lv button').forEach(x=>x.classList.remove('on'));b.classList.add('on');});
 document.getElementById('again').addEventListener('click',init);
+document.getElementById('reset').addEventListener('click',init);
+document.getElementById('undo').addEventListener('click',()=>{if(!hist.length||ONLINE)return;let s=hist.pop();if(mode==='cpu'){while(hist.length&&JSON.parse(s).turn!==0)s=hist.pop();}restoreOtrio(s);document.getElementById('over').classList.remove('show');render();updateTurn();updateStock();});
 init();
 
 function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;

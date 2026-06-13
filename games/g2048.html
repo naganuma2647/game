@@ -33,6 +33,7 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:30px;letter-spacing:.1em;m
     <div class="sc"><div class="l">SCORE</div><div class="v" id="score">0</div></div>
     <div class="sc"><div class="l">BEST</div><div class="v" id="best">0</div></div>
   </div>
+  <button class="newbtn" id="undobtn" style="margin-right:6px">待った</button>
   <button class="newbtn" id="newbtn">新しいゲーム</button>
 </div>
 <div id="wrap">
@@ -42,20 +43,20 @@ h1{font-family:"Hiragino Mincho ProN",serif;font-size:30px;letter-spacing:.1em;m
 </div>
 <div class="hint">スワイプ（スマホ）／矢印キー（PC）で動かす<br>同じ数字がぶつかると合体します</div>
 <script>
-const N=4;let board,score,best=+(localStorage.getItem('p2048best')||0),won=false,over=false;
+const N=4;let board,score,best=+(localStorage.getItem('p2048best')||0),won=false,over=false,hist=[];
 const COLORS={2:'#3A3225,#EDE6D6',4:'#4A3E2A,#EDE6D6',8:'#B07A3A,#fff',16:'#C9762A,#fff',32:'#D45F38,#fff',64:'#E04A2E,#fff',128:'#C9A227,#fff',256:'#D4A91E,#fff',512:'#E0B81A,#fff',1024:'#E6C418,#fff',2048:'#F0CE10,#15120E'};
 const tilesEl=document.getElementById('tiles');
 const gridEl=document.getElementById('grid');
 for(let i=0;i<16;i++){const d=document.createElement('div');d.className='bg';gridEl.appendChild(d);}
 document.getElementById('best').textContent=best;
-function init(){board=[];for(let r=0;r<N;r++)board.push([0,0,0,0]);score=0;won=false;over=false;document.getElementById('over').classList.remove('show');addRandom();addRandom();render(true);updateScore();}
+function init(){board=[];for(let r=0;r<N;r++)board.push([0,0,0,0]);score=0;won=false;over=false;hist=[];document.getElementById('over').classList.remove('show');addRandom();addRandom();render(true);updateScore();}
 function addRandom(){const e=[];for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(!board[r][c])e.push([r,c]);if(!e.length)return;const[r,c]=e[Math.floor(Math.random()*e.length)];board[r][c]=Math.random()<.9?2:4;}
 function cellSize(){const w=tilesEl.clientWidth;return (w-30)/4;}
 function render(fresh){tilesEl.innerHTML='';const s=cellSize();for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=board[r][c];if(!v)continue;const t=document.createElement('div');t.className='tile'+(fresh?' pop':'');const col=(COLORS[v]||'#F0CE10,#15120E').split(',');t.style.background=col[0];t.style.color=col[1];t.style.width=s+'px';t.style.height=s+'px';t.style.left=(c*(s+10))+'px';t.style.top=(r*(s+10))+'px';t.style.fontSize=(v<100?s*.42:v<1000?s*.34:s*.27)+'px';t.textContent=v;tilesEl.appendChild(t);}}
 function updateScore(){document.getElementById('score').textContent=score;if(score>best){best=score;localStorage.setItem('p2048best',best);document.getElementById('best').textContent=best;}}
 function slide(row){let a=row.filter(x=>x);for(let i=0;i<a.length-1;i++){if(a[i]===a[i+1]){a[i]*=2;score+=a[i];if(a[i]===2048)won=true;a.splice(i+1,1);}}while(a.length<N)a.push(0);return a;}
 function rotate(b){const n=[];for(let c=0;c<N;c++){n.push([]);for(let r=N-1;r>=0;r--)n[c].push(b[r][c]);}return n;}
-function move(dir){if(over)return;let b=board.map(r=>r.slice());for(let i=0;i<dir;i++)b=rotate(b);let moved=false;for(let r=0;r<N;r++){const ns=slide(b[r]);if(ns.join()!==b[r].join())moved=true;b[r]=ns;}for(let i=0;i<(4-dir)%4;i++)b=rotate(b);if(!moved)return;board=b;addRandom();render();updateScore();setTimeout(()=>render(),120);if(won){showOver(true);}else if(isStuck()){showOver(false);}}
+function move(dir){if(over)return;const prev={board:board.map(r=>r.slice()),score,won};let b=board.map(r=>r.slice());for(let i=0;i<dir;i++)b=rotate(b);let moved=false;for(let r=0;r<N;r++){const ns=slide(b[r]);if(ns.join()!==b[r].join())moved=true;b[r]=ns;}for(let i=0;i<(4-dir)%4;i++)b=rotate(b);if(!moved)return;hist.push(prev);if(hist.length>20)hist.shift();board=b;addRandom();render();updateScore();setTimeout(()=>render(),120);if(won){showOver(true);}else if(isStuck()){showOver(false);}}
 function isStuck(){for(let r=0;r<N;r++)for(let c=0;c<N;c++){if(!board[r][c])return false;if(c<N-1&&board[r][c]===board[r][c+1])return false;if(r<N-1&&board[r][c]===board[r+1][c])return false;}return true;}
 function showOver(win){over=true;const t=document.getElementById('ovt');t.textContent=win?'2048達成！':'GAME OVER';t.className='t'+(win?' win':'');document.getElementById('over').classList.add('show');}
 window.addEventListener('keydown',e=>{const k={ArrowLeft:0,ArrowUp:3,ArrowRight:2,ArrowDown:1}[e.key];if(k!==undefined){e.preventDefault();move(k);}});
@@ -64,6 +65,7 @@ w.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clie
 w.addEventListener('touchend',e=>{if(sx==null)return;const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;if(Math.abs(dx)<24&&Math.abs(dy)<24)return;if(Math.abs(dx)>Math.abs(dy))move(dx>0?2:0);else move(dy>0?1:3);sx=sy=null;},{passive:true});
 document.getElementById('newbtn').addEventListener('click',init);
 document.getElementById('again').addEventListener('click',init);
+document.getElementById('undobtn').addEventListener('click',()=>{if(!hist.length)return;const p=hist.pop();board=p.board;score=p.score;won=p.won;over=false;document.getElementById('over').classList.remove('show');render();updateScore();});
 window.addEventListener('resize',()=>render());
 init();
 </script></body></html>
