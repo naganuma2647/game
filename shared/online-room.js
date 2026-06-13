@@ -340,7 +340,7 @@
           } else { guestApply(m); }
         });
         c.on('error', () => { if (!settled) setStatus('接続できませんでした。番号を確認してください。'); });
-        c.on('close', () => { if (started) migrate(); });
+        c.on('close', () => { if (started) guestRelayLost(); });
         setTimeout(() => { if (!settled) setStatus('応答がありません。番号を確認して再試行してください。'); }, 8000);
       });
       peer.on('error', (err) => {
@@ -362,12 +362,53 @@
       showBadge('🌐 オンライン（あなたはP' + (seat + 1) + cpuTxt + '）');
       try { cfg.onStart && cfg.onStart(seat, n, send); } catch (e) { console.error(e); }
     }
+    // 再接続用セッションは localStorage に保存（タブを閉じても残る。60分で失効）
+    const SESSION_TTL = 60 * 60 * 1000;
     function saveSession() {
-      try { sessionStorage.setItem('ngRoom:' + cfg.gameId, JSON.stringify({ code, seat: mySeat })); } catch (_) {}
+      try { localStorage.setItem('ngRoom:' + cfg.gameId, JSON.stringify({ code, seat: mySeat, ts: Date.now() })); } catch (_) {}
     }
+    function clearSession() { try { localStorage.removeItem('ngRoom:' + cfg.gameId); } catch (_) {} }
     // Snapshot of the live game for a reconnecting player (relay side).
     function snapshot() {
       return { rng: _rngA, n: nPlayers, cpus: nCpus, state: (cfg.getState ? cfg.getState() : null) };
+    }
+
+    /* ---------- guest lost its link to the relay ---------- */
+    // A closed DataConnection can mean either (a) the relay really left, or
+    // (b) just our own network blipped. Try to reconnect to the SAME relay
+    // (reclaim our seat) first; only fall back to host-migration if the relay
+    // is genuinely unreachable. This is what makes a transient drop recoverable.
+    function guestRelayLost() {
+      if (isHost || !started || migrating) return;
+      migrating = true;            // block re-entry while we attempt recovery
+      reconnectRelay(0);
+    }
+    function reconnectRelay(tries) {
+      if (isHost || !started) { migrating = false; return; }
+      if (tries >= 3) { migrating = false; migrate(); return; } // relay unreachable → it left
+      showBadge('🌐 接続が切れました — 再接続中…(' + (tries + 1) + ')');
+      const id = gen === 0 ? roomId(code) : roomId(code) + '-' + gen;
+      const tryConnect = () => {
+        const c = peer.connect(id, { reliable: true });
+        let ok = false;
+        c.on('open', () => { try { c.send({ t: 'reclaim', seat: mySeat, game: cfg.gameId }); } catch (_) {} });
+        c.on('data', (m) => {
+          if (!m || typeof m !== 'object') return;
+          if (m.t === 'resume') {
+            ok = true; migrating = false; _hostConn = c; relaySeat = m.relaySeat; gen = m.gen;
+            c.on('close', guestRelayLost);
+            applyResume(m); showBadge('🌐 再接続しました（あなたはP' + (mySeat + 1) + '）');
+          } else if (m.t === 'full') {
+            // relay alive but hasn't freed our seat yet → wait & retry
+            try { c.close(); } catch (_) {}
+            setTimeout(() => reconnectRelay(tries + 1), 800);
+          } else if (m.t) { guestApply(m); }
+        });
+        c.on('error', () => { if (!ok) setTimeout(() => reconnectRelay(tries + 1), 700); });
+        setTimeout(() => { if (!ok) { try { c.close(); } catch (_) {} reconnectRelay(tries + 1); } }, 2600);
+      };
+      if (!peer || peer.destroyed) { peer = new Peer(); peer.on('open', tryConnect); peer.on('error', () => setTimeout(() => reconnectRelay(tries + 1), 700)); }
+      else tryConnect();
     }
 
     /* ---------- host migration (relay left) ---------- */
@@ -412,7 +453,7 @@
         let ok = false;
         c.on('open', () => { ok = true; migrating = false; try { c.send({ t: 'rejoin', seat: mySeat }); } catch (_) {} showBadge('🌐 新ホストに再接続しました'); });
         c.on('data', (m) => { if (m && typeof m === 'object') guestApply(m); });
-        c.on('close', () => { if (started) migrate(); });
+        c.on('close', () => { if (started) guestRelayLost(); });
         c.on('error', () => {});
         // successor never showed up → drop it and re-elect
         setTimeout(() => { if (!ok && started) { roster.delete(succ); migrating = false; migrate(); } }, 5000);
@@ -442,7 +483,7 @@
         if (!m || typeof m !== 'object' || done) { if (m && m.t && started) guestApply(m); return; }
         if (m.t === 'resume') {
           done = true; _hostConn = c; relaySeat = m.relaySeat; gen = m.gen;
-          c.on('close', () => { if (started) migrate(); });
+          c.on('close', () => { if (started) guestRelayLost(); });
           applyResume(m);
         } else if (m.t === 'full') {
           done = true; setStatus('再接続できません（席が空いていない、または対局終了）。');
@@ -464,7 +505,12 @@
       catch (e) { console.error(e); }
     }
     function savedSession() {
-      try { const s = sessionStorage.getItem('ngRoom:' + cfg.gameId); return s ? JSON.parse(s) : null; } catch (_) { return null; }
+      try {
+        const s = localStorage.getItem('ngRoom:' + cfg.gameId); if (!s) return null;
+        const o = JSON.parse(s);
+        if (o && o.ts && Date.now() - o.ts > SESSION_TTL) { clearSession(); return null; } // 失効
+        return o;
+      } catch (_) { return null; }
     }
 
     /* ---------- wire DOM ---------- */
@@ -475,13 +521,18 @@
     $('join-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinCode(($('join-code').value || '').trim()); });
     $('start-room').addEventListener('click', hostStart);
     // Offer reconnect if a previous session for this game is remembered.
+    // Within 2 min of the last save we also auto-try (a fresh reload / reopen
+    // after a drop should just put you back in); older sessions show a button.
     (function () {
       const saved = savedSession();
       const btn = $('reclaim-room');
       if (saved && cfg.applyState && /^\d{4}$/.test(saved.code || '')) {
         btn.hidden = false;
         btn.textContent = '🔄 前の対局に再接続（P' + ((saved.seat | 0) + 1) + '）';
-        btn.addEventListener('click', () => { btn.disabled = true; reclaim(saved.code, saved.seat | 0); });
+        btn.addEventListener('click', () => { btn.disabled = true; openLobby(); reclaim(saved.code, saved.seat | 0); });
+        const fresh = saved.ts && (Date.now() - saved.ts < 2 * 60 * 1000);
+        const noHubIntent = !(new URLSearchParams(location.search)).has('create');
+        if (fresh && noHubIntent) { btn.disabled = true; openLobby(); reclaim(saved.code, saved.seat | 0); }
       }
     })();
     $('copy-code').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('room-code').textContent); $('copy-code').textContent = 'コピー済み'; setTimeout(() => $('copy-code').textContent = 'コピー', 1500); } catch (_) {} });
