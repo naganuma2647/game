@@ -1310,17 +1310,30 @@ const AI = (() => {
   // ---------- オンライン対戦 ----------
   let ONLINE = false, MYSEAT = 0;
   const _pending = {};
+  const _fallback = {}; // key -> () => host emits a CPU decision (used when a human leaves)
   function _waitNet(key) { return new Promise(r => { _pending[key] = r; }); }
   function _net(msg) {
     const k = msg.k + ':' + msg.seat;
+    delete _fallback[k];
     if (_pending[k]) { const r = _pending[k]; delete _pending[k]; r(msg.payload); }
   }
   function _emit(kind, seat, payload) {
     if (ONLINE && window.OnlineRoom && OnlineRoom.send) OnlineRoom.send({ k: kind, seat, payload });
   }
+  // 退出した席の保留中の決定を、ホストがCPUとして肩代わりする
+  function _coverSeat(seat) {
+    if (!isOnlineHost()) return;
+    Object.keys(_pending).forEach(k => { if (k.endsWith(':' + seat) && _fallback[k]) { const f = _fallback[k]; delete _fallback[k]; try { f(); } catch (e) {} } });
+  }
+  // ホスト交代直後など、CPU/退出席の保留決定をすべて埋め直す（二重送信は無害）
+  function _coverAuto() {
+    if (!isOnlineHost() || !window.OnlineRoom || !OnlineRoom.isAuto) return;
+    Object.keys(_pending).forEach(k => { const s = +k.split(':')[1]; if (OnlineRoom.isAuto(s) && _fallback[k]) { const f = _fallback[k]; delete _fallback[k]; try { f(); } catch (e) {} } });
+  }
   function isMySeat(p) { return ONLINE ? p === MYSEAT : p === 0; }
   function domSeat(p) { return ONLINE ? ((p - MYSEAT + 4) % 4) : p; }
-  function isOnlineCpu(p) { return ONLINE && window.OnlineRoom && OnlineRoom.isCpu && OnlineRoom.isCpu(p); }
+  // CPU席＋退出席（isAuto）はホストが代理操作する
+  function isOnlineCpu(p) { return ONLINE && window.OnlineRoom && ((OnlineRoom.isAuto && OnlineRoom.isAuto(p)) || (OnlineRoom.isCpu && OnlineRoom.isCpu(p))); }
   function isOnlineHost() { return ONLINE && window.OnlineRoom && OnlineRoom.isHost && OnlineRoom.isHost(); }
   const AUTO_NEXT_SEC = 10;
 
@@ -1490,6 +1503,7 @@ const AI = (() => {
     const full = pl.hand.concat(pl.drawn !== null ? [pl.drawn] : []);
     let decision;
     if (ONLINE) {
+      _fallback['turn:' + p] = () => _emit('turn', p, cpuTurn(p, pl.drawn, full, haitei));
       if (isOnlineCpu(p)) {
         if (isOnlineHost()) setTimeout(() => _emit('turn', p, cpuTurn(p, pl.drawn, full, haitei)), cpuDelay());
       } else if (isMySeat(p)) {
@@ -1598,6 +1612,7 @@ const AI = (() => {
       if (!res) continue;
       let ok;
       if (ONLINE) {
+        _fallback['ron:' + q] = () => _emit('ron', q, false); // 退出者はロンせず見送り
         if (isOnlineCpu(q)) {
           if (isOnlineHost()) _emit('ron', q, true);
         } else if (isMySeat(q)) {
@@ -1811,6 +1826,7 @@ const AI = (() => {
       const pl = state.players[c.q];
       let dec;
       if (ONLINE) {
+        _fallback['call:' + c.q] = () => _emit('call', c.q, null); // 退出者は鳴かず見送り
         if (isOnlineCpu(c.q)) {
           if (isOnlineHost()) _emit('call', c.q, cpuCallDecision(c.q, tile, c.opts));
         } else if (isMySeat(c.q)) {
@@ -2393,13 +2409,15 @@ const AI = (() => {
       newGame();
       playKyoku();
     },
-    onMessage(from, msg) { _net(msg); }
+    onMessage(from, msg) { _net(msg); },
+    // 退出した席はホストがCPUとして肩代わり（保留中の決定を埋める）
+    onLeft(seat) { setTimeout(() => { _coverSeat(seat); _coverAuto(); }, 400); }
   };
 })();
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=3"></script>
-<script src="../shared/online-room.js?v=2"></script>
+<script src="../shared/online-room.js?v=5"></script>
 <script>
 OnlineRoom.init({
   gameId: 'mahjong',
@@ -2409,7 +2427,8 @@ OnlineRoom.init({
     if (n !== 4) { alert('4人ちょうどでないと開始できません（CPUで補ってください）'); return; }
     window.MahjongGame.startOnline(seat, n);
   },
-  onMessage: (from, msg) => window.MahjongGame.onMessage(from, msg)
+  onMessage: (from, msg) => window.MahjongGame.onMessage(from, msg),
+  onLeft: (seat) => window.MahjongGame.onLeft(seat)
 });
 </script>
 </body>

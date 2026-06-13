@@ -16,6 +16,7 @@
 
   // gameId -> path from the game/ root (used for cross-game redirect).
   const GAME_PATHS = {
+    mahjong: "麻雀ゲーム/index.html",
     othello: "オセロ/index.html",
     gomoku: "五目並べ/index.html",
     shogi: "将棋ゲーム/index.html",
