@@ -136,13 +136,13 @@
     const b = Array.from({ length: N }, () => new Array(N).fill(null));
     const back = ["L", "N", "S", "G", "K", "G", "S", "N", "L"];
     const pc = (type, owner, promoted = false) => ({ type, owner, promoted });
-    // Gote (top, owner 1)
+    // Gote (top, owner 1) — gote 飛 at 8筋 = col 1, gote 角 at 2筋 = col 7
     for (let c = 0; c < N; c++) b[0][c] = pc(back[c], GOTE);
-    b[1][1] = pc("B", GOTE); b[1][7] = pc("R", GOTE);
+    b[1][1] = pc("R", GOTE); b[1][7] = pc("B", GOTE);
     for (let c = 0; c < N; c++) b[2][c] = pc("P", GOTE);
-    // Sente (bottom, owner 0)
+    // Sente (bottom, owner 0) — sente 角 at 8筋 = col 1 (左), sente 飛 at 2筋 = col 7 (右)
     for (let c = 0; c < N; c++) b[6][c] = pc("P", SENTE);
-    b[7][1] = pc("R", SENTE); b[7][7] = pc("B", SENTE);
+    b[7][1] = pc("B", SENTE); b[7][7] = pc("R", SENTE);
     for (let c = 0; c < N; c++) b[8][c] = pc(back[c], SENTE);
     return b;
   }
