@@ -112,7 +112,7 @@
       if (!online || replaying) return;
       if (cfg.blockRelay && cfg.blockRelay()) return;
       const t = e.target;
-      if (t.closest && t.closest('#online-lobby,#online-btn,#oc-badge')) return; // local-only UI
+      if (t.closest && t.closest('#online-lobby,#online-btn,#oc-badge,a[href]')) return; // local-only UI / 画面遷移リンク（一覧に戻る等）は常に通す
       updateSticky();
       if (sticky !== mySeat) {
         e.preventDefault(); e.stopPropagation();
@@ -142,12 +142,18 @@
     /* ---- guest sees the board from their own side (rotate 180°), keeping
        piece labels upright. cfg.flip = { board: '<sel>', upright: '<sel>' } ---- */
     function applyFlip() {
-      if (mySeat !== 1 || !cfg.flip) return;
+      if (!cfg.flip) return;
+      // クリック中継は document 全体の要素インデックスで再生するため、ゲスト側
+      // だけ <style> を1つ足すと <body> 以降のインデックスが全部ズレて同期が
+      // 壊れる。要素数を両者で揃えるため style 要素は常に追加し、回転はゲスト
+      // (seat 1) のときだけ中身を入れる。
       const b = cfg.flip.board, u = cfg.flip.upright;
       const st = document.createElement('style');
-      st.textContent =
-        `${b}{transform:rotate(180deg)}` +
-        (u ? `${b} ${u}{transform:rotate(180deg);transform-box:fill-box;transform-origin:center}` : '');
+      if (mySeat === 1) {
+        st.textContent =
+          `${b}{transform:rotate(180deg)}` +
+          (u ? `${b} ${u}{transform:rotate(180deg);transform-box:fill-box;transform-origin:center}` : '');
+      }
       document.head.appendChild(st);
     }
 
