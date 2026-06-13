@@ -52,31 +52,90 @@
       background: rgba(108,208,138,0.18); color: #8fe3a2;
     }
 
-    /* Online panel */
+    /* Online panel — redesigned */
     .online-panel {
-      background: rgba(60, 110, 220, 0.12);
-      border: 1px solid rgba(80, 150, 255, 0.4);
-      border-radius: 16px; padding: 20px 18px;
-      position: static;
+      background: linear-gradient(135deg, rgba(10,18,50,0.96), rgba(16,28,72,0.92));
+      border: 1px solid rgba(80,150,255,0.32);
+      border-radius: 20px; padding: 26px 28px 20px;
+      position: relative; overflow: hidden;
+      box-shadow: 0 4px 40px rgba(30,80,220,0.18), inset 0 0 70px rgba(80,150,255,0.04);
     }
-    .online-panel h2 {
-      margin: 0 0 4px; font-size: 18px;
-      display: flex; align-items: center; gap: 8px;
+    .online-panel::before {
+      content: ''; position: absolute; top: -60px; right: -60px;
+      width: 260px; height: 260px;
+      background: radial-gradient(circle, rgba(80,150,255,0.13), transparent 65%);
+      pointer-events: none;
     }
-    .online-panel .pdesc { font-size: 12px; opacity: 0.75; margin: 0 0 16px; line-height: 1.5; }
-    .online-link {
-      display: flex; align-items: center; gap: 10px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(80, 150, 255, 0.25);
-      border-radius: 10px; padding: 12px 14px; margin-bottom: 10px;
-      text-decoration: none; color: inherit;
+    .op-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .op-icon { font-size: 26px; line-height: 1; }
+    .op-title { font-size: 17px; font-weight: 800; letter-spacing: 0.06em; }
+    .op-sub { font-size: 11px; opacity: 0.55; margin-top: 3px; line-height: 1.5; }
+    .op-body { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+    .op-section { flex: 1 1 180px; }
+    .op-section:first-child { padding-right: 20px; }
+    .op-section:last-child { padding-left: 20px; }
+    .op-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
+      opacity: 0.45; margin-bottom: 10px; text-transform: uppercase;
+    }
+    .op-create-btn {
+      width: 100%; padding: 13px 16px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #2563c9 0%, #1a46a8 100%);
+      color: #fff; font: 700 15px/1 'Segoe UI',sans-serif; cursor: pointer;
+      box-shadow: 0 4px 16px rgba(37,99,201,0.45);
+      transition: transform 0.15s, box-shadow 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .op-create-btn:hover { transform: translateY(-2px); box-shadow: 0 7px 22px rgba(37,99,201,0.55); }
+    .op-divider {
+      width: 1px; background: rgba(255,255,255,0.1);
+      flex-shrink: 0; margin: 0 4px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .op-divider::after {
+      content: 'or'; position: absolute;
+      background: #111c40; color: rgba(255,255,255,0.25);
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+      padding: 4px 2px;
+    }
+    .op-join-row { display: flex; gap: 8px; }
+    .op-input {
+      flex: 1; min-width: 0; font-size: 22px; font-weight: 800;
+      letter-spacing: 0.28em; text-align: center; padding: 11px 8px;
+      border-radius: 12px; border: 1.5px solid rgba(80,150,255,0.28);
+      background: rgba(255,255,255,0.06); color: #eef3fb;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .op-input:focus { outline: none; border-color: rgba(80,150,255,0.65); box-shadow: 0 0 0 3px rgba(80,150,255,0.14); }
+    .op-input::placeholder { opacity: 0.25; letter-spacing: 0.2em; }
+    .op-join-btn {
+      border: 1px solid rgba(80,150,255,0.35); border-radius: 12px;
+      padding: 11px 16px; cursor: pointer;
+      background: rgba(80,150,255,0.18); color: #9cc4ff;
+      font: 700 14px/1 'Segoe UI',sans-serif;
       transition: background 0.15s, transform 0.15s;
+      white-space: nowrap;
     }
-    .online-link:hover { background: rgba(80, 150, 255, 0.18); transform: translateX(3px); }
-    .online-link .oi { font-size: 24px; }
-    .online-link .on { font-weight: 700; }
-    .online-link .od { font-size: 11px; opacity: 0.7; }
-    .online-note { font-size: 11px; opacity: 0.6; margin: 8px 2px 0; line-height: 1.5; }
+    .op-join-btn:hover { background: rgba(80,150,255,0.32); transform: translateY(-1px); }
+    .op-join-btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+    .jb-msg { min-height: 16px; font-size: 11px; color: #9cc4ff; margin: 8px 2px 0; }
+    .op-hint { font-size: 11px; opacity: 0.4; margin: 8px 0 0; }
+    .op-note { font-size: 11px; opacity: 0.38; margin: 18px 0 0; line-height: 1.65; }
+    .op-reconnect {
+      width: 100%; margin-top: 10px; background: rgba(58,143,90,0.18);
+      color: #7dd4a0; border: 1px solid rgba(58,143,90,0.32);
+      border-radius: 10px; padding: 10px; cursor: pointer;
+      font: 700 13px/1 'Segoe UI',sans-serif;
+      transition: background 0.15s;
+    }
+    .op-reconnect:hover { background: rgba(58,143,90,0.32); }
+    @media (max-width: 560px) {
+      .op-section:first-child { padding-right: 0; padding-bottom: 18px; }
+      .op-section:last-child { padding-left: 0; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 18px; }
+      .op-divider { display: none; }
+      .online-panel { padding: 22px 20px 18px; }
+    }
     /* カード内の「プレイする／オンライン」ボタン列 */
     .tagrow { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
     .tagrow .tag { margin-top: 0; }
@@ -168,25 +227,31 @@
     <!-- 最上部：オンライン対戦 -->
     <div class="col-online">
       <div class="online-panel">
-        <h2>🌐 オンライン対戦</h2>
-        <p class="pdesc">4桁の部屋番号を共有して、離れた相手と対戦できます。番号は<b>ゲーム共通</b>です。</p>
-        <div class="ob-grid">
-          <div class="join-block">
-            <div class="jb-title">部屋を作る</div>
-            <button id="hub-create-btn" class="jb-btn" style="width:100%">＋ 部屋を作成</button>
-            <p class="jb-msg">押すとゲーム選択 → 部屋番号を発行します</p>
+        <div class="op-header">
+          <span class="op-icon">🌐</span>
+          <div>
+            <div class="op-title">オンライン対戦</div>
+            <div class="op-sub">4桁の部屋番号を共有して、離れた相手と対戦できます</div>
           </div>
-          <div class="join-block">
-            <div class="jb-title">番号で参加する</div>
-            <div class="jb-row">
-              <input id="hub-join-code" class="jb-input" maxlength="4" placeholder="4桁の番号" inputmode="numeric" pattern="\d*" autocomplete="off">
-              <button id="hub-join-btn" class="jb-btn">参加</button>
+        </div>
+        <div class="op-body">
+          <div class="op-section">
+            <div class="op-label">部屋を作る</div>
+            <button id="hub-create-btn" class="op-create-btn">＋ 部屋を作成</button>
+            <p class="op-hint">ゲームを選んで部屋番号を発行します</p>
+          </div>
+          <div class="op-divider"></div>
+          <div class="op-section">
+            <div class="op-label">番号で参加する</div>
+            <div class="op-join-row">
+              <input id="hub-join-code" class="op-input" maxlength="4" placeholder="0000" inputmode="numeric" pattern="\d*" autocomplete="off">
+              <button id="hub-join-btn" class="op-join-btn">参加 →</button>
             </div>
             <p id="hub-join-msg" class="jb-msg"></p>
           </div>
         </div>
-        <p class="online-note">※ 先攻・後攻はランダムで決まります。参加は番号だけでOK（ホストが選んだゲームに自動で入ります）。カタンは試験対応です。</p>
-        <button id="hub-reconnect" hidden style="width:100%;margin-top:12px;background:rgba(58,143,90,.9);color:#fff;border:none;border-radius:8px;padding:11px;font:700 14px/1 'Segoe UI',sans-serif;cursor:pointer">🔄 中断した対局に再接続</button>
+        <p class="op-note">※ 先攻・後攻はランダムで決まります。番号だけでOK（ホストのゲームに自動で入ります）。カタンは試験対応です。</p>
+        <button id="hub-reconnect" hidden class="op-reconnect">🔄 中断した対局に再接続</button>
       </div>
     </div>
 
