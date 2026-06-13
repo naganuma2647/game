@@ -43,6 +43,8 @@
 .oc-div{margin:14px 0;font-size:11px;opacity:.6;display:flex;align-items:center;gap:8px}
 .oc-div::before,.oc-div::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.18)}
 .oc-btn{background:#e0a13a;border:none;color:#1d2330;font-weight:700;padding:9px 20px;border-radius:8px;cursor:pointer;font-size:14px}
+.oc-home{display:inline-block;margin-top:14px;color:#cfd6e4;font-size:13px;text-decoration:none;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:7px 16px}
+.oc-home:hover{background:rgba(255,255,255,.08)}
 #room-code-box{margin-top:10px;padding:10px;background:rgba(255,255,255,.06);border-radius:9px}
 #room-code-box[hidden]{display:none}
 #room-code{font-size:30px;font-weight:800;letter-spacing:.22em;color:#ffd34d;font-family:Consolas,monospace;display:block;margin:4px 0}
@@ -67,6 +69,7 @@
       <div class="oc-join"><input id="join-code" maxlength="4" placeholder="4桁の番号" inputmode="numeric" autocomplete="off"><button id="join-room" class="oc-btn">参加</button></div>
     </div>
     <p id="online-status"></p>
+    <a href="../index.html" class="oc-home">← 一覧に戻る</a>
   </div>
 </div>
 <div id="oc-badge">🌐</div>`;
