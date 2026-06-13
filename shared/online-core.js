@@ -60,11 +60,11 @@
     <p class="oc-note">2人で同じ部屋番号を共有して対戦します。${cfg.note || ''}</p>
     <div class="oc-sec"><h3>部屋を作る</h3>
       <button id="create-room" class="oc-btn">部屋を作成</button>
-      <div id="room-code-box" hidden><span style="font-size:11px;opacity:.7">部屋番号</span><span id="room-code">-----</span><button id="copy-code">コピー</button></div>
+      <div id="room-code-box" hidden><span style="font-size:11px;opacity:.7">部屋番号</span><span id="room-code">----</span><button id="copy-code">コピー</button></div>
     </div>
     <div class="oc-div">または</div>
     <div class="oc-sec"><h3>部屋に参加する</h3>
-      <div class="oc-join"><input id="join-code" maxlength="5" placeholder="5桁の番号" inputmode="numeric" autocomplete="off"><button id="join-room" class="oc-btn">参加</button></div>
+      <div class="oc-join"><input id="join-code" maxlength="4" placeholder="4桁の番号" inputmode="numeric" autocomplete="off"><button id="join-room" class="oc-btn">参加</button></div>
     </div>
     <p id="online-status"></p>
   </div>

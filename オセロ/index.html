@@ -69,7 +69,7 @@
           <button id="create-room" class="btn btn-primary">部屋を作成</button>
           <div id="room-code-box" class="room-code-box" hidden>
             <span class="rc-label">部屋番号</span>
-            <span id="room-code" class="room-code">-----</span>
+            <span id="room-code" class="room-code">----</span>
             <button id="copy-code" class="btn btn-small">コピー</button>
           </div>
         </div>
@@ -79,7 +79,7 @@
         <div class="lobby-section">
           <h3>部屋に参加する</h3>
           <div class="join-row">
-            <input id="join-code" class="join-input" maxlength="5" placeholder="5桁の番号" inputmode="numeric" pattern="\d*" autocomplete="off">
+            <input id="join-code" class="join-input" maxlength="4" placeholder="4桁の番号" inputmode="numeric" pattern="\d*" autocomplete="off">
             <button id="join-room" class="btn btn-primary">参加</button>
           </div>
         </div>
@@ -124,7 +124,7 @@
   </div>
 
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-  <script src="../shared/lobby.js?v=2"></script>
+  <script src="../shared/lobby.js?v=3"></script>
   <script src="js/ai.js"></script>
   <script src="js/game.js"></script>
   <script src="js/online.js"></script>

@@ -168,7 +168,7 @@
     <div class="col-online">
       <div class="online-panel">
         <h2>🌐 オンライン対戦</h2>
-        <p class="pdesc">5桁の部屋番号を共有して、離れた相手と対戦できます。番号は<b>ゲーム共通</b>です。</p>
+        <p class="pdesc">4桁の部屋番号を共有して、離れた相手と対戦できます。番号は<b>ゲーム共通</b>です。</p>
         <div class="ob-grid">
           <div class="join-block">
             <div class="jb-title">部屋を作る</div>
@@ -178,7 +178,7 @@
           <div class="join-block">
             <div class="jb-title">番号で参加する</div>
             <div class="jb-row">
-              <input id="hub-join-code" class="jb-input" maxlength="5" placeholder="5桁の番号" inputmode="numeric" pattern="\d*" autocomplete="off">
+              <input id="hub-join-code" class="jb-input" maxlength="4" placeholder="4桁の番号" inputmode="numeric" pattern="\d*" autocomplete="off">
               <button id="hub-join-btn" class="jb-btn">参加</button>
             </div>
             <p id="hub-join-msg" class="jb-msg"></p>
@@ -497,7 +497,7 @@
       var msg = document.getElementById("hub-join-msg");
       function go() {
         var code = (input.value || "").trim();
-        if (!/^\d{5}$/.test(code)) { msg.textContent = "5桁の数字を入力してください。"; return; }
+        if (!/^\d{4}$/.test(code)) { msg.textContent = "4桁の数字を入力してください。"; return; }
         btn.disabled = true;
         msg.textContent = "部屋に接続しています…";
         location.href = "オセロ/index.html?autojoin=" + code;

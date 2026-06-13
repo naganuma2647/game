@@ -207,8 +207,8 @@ function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;pmo
   else msg('ホストの設定を待っています…');}
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script src="../shared/lobby.js?v=2"></script>
-<script src="../shared/online-room.js?v=1"></script>
+<script src="../shared/lobby.js?v=3"></script>
+<script src="../shared/online-room.js?v=2"></script>
 <script>
 OnlineRoom.init({gameId:'hitblow',minPlayers:2,maxPlayers:4,note:'同じ秘密の番号を全員で当て、最速正解者が勝ち。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),

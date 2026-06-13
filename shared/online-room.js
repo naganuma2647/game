@@ -1,5 +1,5 @@
 /* Generic N-player online room (PeerJS), star topology with a host-authoritative
- * relay. Up to `maxPlayers` peers share one 5-digit room. The HOST keeps the
+ * relay. Up to `maxPlayers` peers share one 4-digit room. The HOST keeps the
  * canonical seat list and serializes every action: a client calls send(msg),
  * the host stamps it with the sender's seat and broadcasts {t:'act',from,msg}
  * to EVERYONE (including the original sender). Nobody applies an action locally
@@ -30,7 +30,7 @@
 (function () {
   const ROOM_PREFIX = "ngroom-";
   const ALPHABET = "0123456789";
-  function randomCode() { let s = ""; for (let i = 0; i < 5; i++) s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)]; return s; }
+  function randomCode() { let s = ""; for (let i = 0; i < 4; i++) s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)]; return s; }
   const roomId = (code) => ROOM_PREFIX + code;
 
   function mulberry32(a) {
@@ -87,11 +87,11 @@
     <p class="oc-note">同じ部屋番号を共有して対戦します。${cfg.note || ''}</p>
     <div class="oc-sec"><h3>部屋を作る</h3>
       <button id="create-room" class="oc-btn">部屋を作成</button>
-      <div id="room-code-box" hidden><span style="font-size:11px;opacity:.7">部屋番号</span><span id="room-code">-----</span><button id="copy-code">コピー</button></div>
+      <div id="room-code-box" hidden><span style="font-size:11px;opacity:.7">部屋番号</span><span id="room-code">----</span><button id="copy-code">コピー</button></div>
     </div>
     <div class="oc-div">または</div>
     <div class="oc-sec"><h3>部屋に参加する</h3>
-      <div class="oc-join"><input id="join-code" maxlength="5" placeholder="5桁の番号" inputmode="numeric" autocomplete="off"><button id="join-room" class="oc-btn">参加</button></div>
+      <div class="oc-join"><input id="join-code" maxlength="4" placeholder="4桁の番号" inputmode="numeric" autocomplete="off"><button id="join-room" class="oc-btn">参加</button></div>
     </div>
     <p id="oc-roster"></p>
     <button id="start-room" class="oc-btn" hidden>この人数で開始</button>
@@ -214,7 +214,7 @@
     /* ---------- GUEST ---------- */
     function joinCode(code) {
       if (typeof Peer === 'undefined') { setStatus('通信ライブラリの読み込みに失敗しました。'); return; }
-      if (!/^\d{5}$/.test(code)) { setStatus('5桁の数字を入力してください。'); return; }
+      if (!/^\d{4}$/.test(code)) { setStatus('4桁の数字を入力してください。'); return; }
       $('create-room').disabled = true; $('join-room').disabled = true;
       setStatus('接続中…');
       peer = new Peer();

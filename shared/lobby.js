@@ -44,7 +44,7 @@
 
   function randomCode() {
     let s = "";
-    for (let i = 0; i < 5; i++) s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+    for (let i = 0; i < 4; i++) s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
     return s;
   }
   const roomId = (code) => ROOM_PREFIX + code;
@@ -139,7 +139,7 @@
     // otherwise redirect to the correct game page carrying ?autojoin=code.
     function joinCode(code, opts) {
       if (typeof Peer === "undefined") { fail("通信ライブラリの読み込みに失敗しました。再読み込みしてください。"); return; }
-      if (!/^\d{5}$/.test(code)) { setStatus("5桁の数字の部屋番号を入力してください。"); return; }
+      if (!/^\d{4}$/.test(code)) { setStatus("4桁の数字の部屋番号を入力してください。"); return; }
       if (els.createBtn) els.createBtn.disabled = true;
       if (els.joinBtn) els.joinBtn.disabled = true;
       setStatus("接続中…");
