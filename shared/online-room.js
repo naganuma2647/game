@@ -49,7 +49,15 @@
     // host only: seat 0 is the host; guests[] holds {conn, seat, alive}
     let guests = [];
     let cpus = 0; // host's chosen CPU count, applied at start
-    const gone = new Set(); // seats whose human left mid-game (host auto-plays them)
+    const gone = new Set(); // seats whose human left mid-game (relay auto-plays them)
+    // Host migration: if the relay (host) leaves, the surviving peer with the
+    // smallest seat becomes the new relay (a fresh Peer at roomId+'-'+gen) and
+    // the others reconnect to it; the departed relay's seat becomes a CPU.
+    let code = null;          // room code (host & guests both keep it)
+    let gen = 0;              // relay generation (bumps on each migration)
+    let relaySeat = 0;        // seat currently acting as relay
+    let roster = new Set();   // alive human seats incl. the relay (for election)
+    let migrating = false;
 
     /* ---------- lobby UI ---------- */
     const ui = document.createElement('div');
@@ -165,12 +173,28 @@
     }
     function nPlayersNow() { return isHost ? 1 + guests.filter(g => g.alive).length : nPlayers; }
 
-    /* ---------- HOST ---------- */
+    /* ---------- HOST / relay ---------- */
+    function wireIncoming(c) {
+      // First, greet so the hub's 2-player probe can learn the game & redirect.
+      const greet = () => { try { c.send({ t: 'hello', game: cfg.gameId }); } catch (_) {} };
+      if (c.open) greet(); else c.on('open', greet);
+      c.on('data', (m) => hostOnData(c, m));
+      c.on('close', () => hostDrop(c));
+      c.on('error', () => hostDrop(c));
+    }
+    function broadcastRoster() {
+      if (!isHost) return;
+      // roster = relay seat + alive reconnected guests
+      roster = new Set([relaySeat]);
+      guests.forEach(g => { if (g.alive) roster.add(g.seat); });
+      const pkt = { t: 'roster', seats: [...roster], relaySeat, gen };
+      guests.forEach(g => { if (g.alive) { try { g.conn.send(pkt); } catch (_) {} } });
+    }
     function host() {
       if (typeof Peer === 'undefined') { setStatus('通信ライブラリの読み込みに失敗しました。'); return; }
-      isHost = true;
+      isHost = true; relaySeat = 0;
       $('create-room').disabled = true; $('join-room').disabled = true;
-      const code = randomCode();
+      code = randomCode();
       setStatus('部屋を作成中…');
       peer = new Peer(roomId(code));
       peer.on('open', () => {
@@ -180,14 +204,7 @@
         rosterText();
         setStatus('参加者を待っています。この番号を相手に送ってください。');
       });
-      peer.on('connection', (c) => {
-        // First, greet so the hub's 2-player probe can learn the game & redirect.
-        const greet = () => { try { c.send({ t: 'hello', game: cfg.gameId }); } catch (_) {} };
-        if (c.open) greet(); else c.on('open', greet);
-        c.on('data', (m) => hostOnData(c, m));
-        c.on('close', () => hostDrop(c));
-        c.on('error', () => hostDrop(c));
-      });
+      peer.on('connection', wireIncoming);
       peer.on('error', (err) => {
         const t = err && err.type;
         if (t === 'unavailable-id') setStatus('その番号は使用中です。もう一度お試しください。');
@@ -206,6 +223,14 @@
         try { c.send({ t: 'seat', seat }); } catch (_) {}
         rosterText();
         setStatus(`プレイヤー${seat + 1}が参加しました（${nPlayersNow()}/${MAX}）。`);
+      } else if (m.t === 'rejoin') {
+        // a survivor reconnecting to the new relay after a migration
+        if (typeof m.seat === 'number') {
+          const ex = guests.find(g => g.seat === m.seat);
+          if (ex) { ex.conn = c; ex.alive = true; } else guests.push({ conn: c, seat: m.seat, alive: true });
+          gone.delete(m.seat);
+          broadcastRoster();
+        }
       } else if (m.t === 'action') {
         const g = guests.find(x => x.conn === c && x.alive);
         if (g && started) hostBroadcast(g.seat, m.msg);
@@ -218,6 +243,7 @@
       rosterText();
       if (started) {
         gone.add(g.seat);
+        roster.delete(g.seat);
         guests.forEach(x => { if (x.alive) { try { x.conn.send({ t: 'left', seat: g.seat }); } catch (_) {} } });
         try { cfg.onLeft && cfg.onLeft(g.seat); } catch (_) {}
         showBadge('🌐 プレイヤー' + (g.seat + 1) + 'が退出しました');
@@ -236,15 +262,30 @@
       alive.forEach((g, i) => { g.seat = i + 1; });
       guests = alive;
       nPlayers = n;
+      relaySeat = 0; gen = 0;
+      roster = new Set([0]); guests.forEach(g => roster.add(g.seat));
       const seed = (Math.random() * 0x7fffffff) | 0;
       guests.forEach(g => { try { g.conn.send({ t: 'start', seed, n, seat: g.seat, cpus }); } catch (_) {} });
       beginMatch(0, n, seed, cpus);
+      broadcastRoster();
     }
 
     /* ---------- GUEST ---------- */
-    function joinCode(code) {
+    // Post-handshake messages from the relay (shared by initial + reconnected conn).
+    function guestApply(m) {
+      if (m.t === 'start') beginMatch(m.seat, m.n, m.seed, m.cpus || 0);
+      else if (m.t === 'act') deliver(m.from, m.msg);
+      else if (m.t === 'roster') { roster = new Set(m.seats); relaySeat = m.relaySeat; if (m.gen > gen) gen = m.gen; }
+      else if (m.t === 'left') {
+        gone.add(m.seat); roster.delete(m.seat);
+        try { cfg.onLeft && cfg.onLeft(m.seat); } catch (_) {}
+        showBadge('🌐 プレイヤー' + (m.seat + 1) + 'が退出しました');
+      }
+    }
+    function joinCode(c0) {
       if (typeof Peer === 'undefined') { setStatus('通信ライブラリの読み込みに失敗しました。'); return; }
-      if (!/^\d{4}$/.test(code)) { setStatus('4桁の数字を入力してください。'); return; }
+      if (!/^\d{4}$/.test(c0)) { setStatus('4桁の数字を入力してください。'); return; }
+      code = c0;
       $('create-room').disabled = true; $('join-room').disabled = true;
       setStatus('接続中…');
       peer = new Peer();
@@ -269,18 +310,10 @@
             showBadge('🌐 待機中…');
           } else if (m.t === 'full') {
             setStatus('満員、または対局が始まっています。');
-          } else if (m.t === 'start') {
-            beginMatch(m.seat, m.n, m.seed, m.cpus || 0);
-          } else if (m.t === 'act') {
-            deliver(m.from, m.msg);
-          } else if (m.t === 'left') {
-            gone.add(m.seat);
-            try { cfg.onLeft && cfg.onLeft(m.seat); } catch (_) {}
-            showBadge('🌐 プレイヤー' + (m.seat + 1) + 'が退出しました');
-          }
+          } else { guestApply(m); }
         });
         c.on('error', () => { if (!settled) setStatus('接続できませんでした。番号を確認してください。'); });
-        c.on('close', () => { if (started) { showBadge('🌐 ホストの接続が切れました'); } });
+        c.on('close', () => { if (started) migrate(); });
         setTimeout(() => { if (!settled) setStatus('応答がありません。番号を確認して再試行してください。'); }, 8000);
       });
       peer.on('error', (err) => {
@@ -300,6 +333,57 @@
       const cpuTxt = nCpus > 0 ? ` / CPU×${nCpus}` : '';
       showBadge('🌐 オンライン（あなたはP' + (seat + 1) + cpuTxt + '）');
       try { cfg.onStart && cfg.onStart(seat, n, send); } catch (e) { console.error(e); }
+    }
+
+    /* ---------- host migration (relay left) ---------- */
+    // The relay (host) dropped: its seat becomes a CPU, and the surviving peer
+    // with the smallest seat becomes the new relay; the rest reconnect to it.
+    function migrate() {
+      if (migrating || !started) return;
+      migrating = true;
+      gone.add(relaySeat);
+      roster.delete(relaySeat);
+      try { cfg.onLeft && cfg.onLeft(relaySeat); } catch (_) {}
+      showBadge('🌐 ホストが退出 — 引き継ぎ中…');
+      elect();
+    }
+    function elect() {
+      if (!roster.size) { showBadge('🌐 全員退出しました'); return; }
+      const succ = Math.min(...roster);
+      gen += 1;
+      const nid = roomId(code) + '-' + gen;
+      if (mySeat === succ) becomeRelay(nid);
+      else setTimeout(() => reconnectTo(nid, succ), 300 + mySeat * 60);
+    }
+    function becomeRelay(nid) {
+      isHost = true; relaySeat = mySeat; _hostConn = null;
+      guests = []; // survivors will re-register via 'rejoin'
+      try { if (peer && !peer.destroyed) peer.destroy(); } catch (_) {}
+      peer = new Peer(nid);
+      peer.on('open', () => {
+        migrating = false;
+        showBadge('🌐 あなたがホストを引き継ぎました');
+        broadcastRoster();
+        // nudge the game: if it is now an absent seat's turn, the relay auto-plays
+        try { cfg.onLeft && cfg.onLeft(relaySeat); } catch (_) {}
+      });
+      peer.on('connection', wireIncoming);
+      peer.on('error', () => { showBadge('🌐 引き継ぎに失敗しました（再読み込みしてください）'); });
+    }
+    function reconnectTo(nid, succ) {
+      const go = () => {
+        const c = peer.connect(nid, { reliable: true });
+        _hostConn = c;
+        let ok = false;
+        c.on('open', () => { ok = true; migrating = false; try { c.send({ t: 'rejoin', seat: mySeat }); } catch (_) {} showBadge('🌐 新ホストに再接続しました'); });
+        c.on('data', (m) => { if (m && typeof m === 'object') guestApply(m); });
+        c.on('close', () => { if (started) migrate(); });
+        c.on('error', () => {});
+        // successor never showed up → drop it and re-elect
+        setTimeout(() => { if (!ok && started) { roster.delete(succ); migrating = false; migrate(); } }, 5000);
+      };
+      if (!peer || peer.destroyed) { peer = new Peer(); peer.on('open', go); peer.on('error', () => {}); }
+      else go();
     }
 
     /* ---------- wire DOM ---------- */
