@@ -275,8 +275,8 @@ init();
 function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
   document.getElementById('np').classList.add('hidden');
   document.getElementById('mode').classList.add('hidden');
-  init();
-  if(shouldRunCpu())setTimeout(cpuMove,600);}
+  init();}
+  // init() 内で初手がCPU席なら cpuMove を予約済み（ここで再予約すると二重着手の恐れ）
 // 再接続: 現在状態の書き出し/復元
 function getState(){return {board,stock,turn,over,winner,winInfo};}
 function applyState(o){ONLINE=true;MYSEAT=o.seat;roomSend=o.send;np=o.n;
