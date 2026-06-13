@@ -43,6 +43,7 @@
     daifugo: "games/daifugo.html",
     otrio: "games/otrio.html",
     quoridor: "games/quoridor.html",
+    tetrisvs: "games/tetris-vs.html",
   };
 
   function randomCode() {

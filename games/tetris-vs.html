@@ -110,7 +110,11 @@ const COLORS={I:'#4FC3E8',O:'#E8C84F',T:'#B07ACF',S:'#6CC56C',Z:'#E0533E',J:'#5B
 const GARB='#6b6b6b';
 const KEYS=Object.keys(SHAPES);
 const ATTACK=[0,1,2,3,4]; // ライン数 → 送るせり上がり数
+// オンライン用: 盤面セルを1文字に符号化
+const KEY2COL={I:'#4FC3E8',O:'#E8C84F',T:'#B07ACF',S:'#6CC56C',Z:'#E0533E',J:'#5B7BD5',L:'#E0913E',G:GARB};
+const COL2KEY={};for(const k in KEY2COL)COL2KEY[KEY2COL[k]]=k;
 let running=false,paused=false,raf=null,lastT=0,gameOver=false;
+let ONLINE=false,MYSEAT=0,roomSend=null,lastSnap=0;
 
 function rnd(n){return Math.floor(Math.random()*n);}
 
@@ -169,14 +173,19 @@ function lock(p){
     let atk=ATTACK[cleared];
     // 相殺: 自分の受け待ちを先に削る
     if(p.pending>0){const c=Math.min(p.pending,atk);p.pending-=c;atk-=c;updateGauge(p);}
-    if(atk>0){other(p).pending+=atk;p.attack+=atk;updateGauge(other(p));}
+    if(atk>0){
+      p.attack+=atk;
+      if(ONLINE){roomSend&&roomSend({k:'attack',n:atk});}
+      else{other(p).pending+=atk;updateGauge(other(p));}
+    }
   } else {
     // ラインを消さずに着地 → 受け待ちのせり上がりを盤面に追加
     if(p.pending>0){dumpGarbage(p,p.pending);p.pending=0;updateGauge(p);}
   }
   spawn(p);
   updateStats(p);draw(p);
-  if(p.dead){endGame(p);return;}
+  if(ONLINE)sendBoard(true);
+  if(p.dead){if(ONLINE){roomSend&&roomSend({k:'dead'});endOnline(false);}else endGame(p);return;}
 }
 
 function dumpGarbage(p,n){
@@ -218,17 +227,68 @@ function cell(ctx,x,y,col,s){ctx.fillStyle=col;ctx.fillRect(x*s+1,y*s+1,s-2,s-2)
 
 function startMatch(){
   P=[makePlayer(0),makePlayer(1)];
-  for(const p of P){p.next=bagNext(p);spawn(p);updateStats(p);updateGauge(p);draw(p);}
+  if(ONLINE){
+    // 自分の盤面だけ初期化。相手はスナップショットで描画
+    const me=P[MYSEAT];me.next=bagNext(me);spawn(me);updateStats(me);updateGauge(me);draw(me);
+    draw(P[1-MYSEAT]);
+  }else{
+    for(const p of P){p.next=bagNext(p);spawn(p);updateStats(p);updateGauge(p);draw(p);}
+  }
   running=true;paused=false;gameOver=false;lastT=performance.now();
   document.getElementById('over').classList.remove('show');
   document.getElementById('msg').textContent='対戦中！';
+  if(ONLINE)sendBoard(true);
   if(!raf)raf=requestAnimationFrame(loop);
+}
+
+/* ===== オンライン: 盤面スナップショット ===== */
+function encodeGrid(p){let s='';for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const c=p.grid[y][x];s+=c?(COL2KEY[c]||'G'):'.';}return s;}
+function decodeGrid(s){const g=Array.from({length:ROWS},()=>new Array(COLS).fill(null));
+  for(let i=0;i<s.length;i++){const ch=s[i];if(ch==='.')continue;const y=Math.floor(i/COLS),x=i%COLS;g[y][x]=KEY2COL[ch]||GARB;}return g;}
+function sendBoard(force){
+  if(!ONLINE||!roomSend)return;
+  const now=performance.now();if(!force&&now-lastSnap<70)return;lastSnap=now;
+  const me=P[MYSEAT];
+  roomSend({k:'board',grid:encodeGrid(me),cur:me.cur?{k:me.cur.k,x:me.cur.x,y:me.cur.y,cells:me.cur.cells}:null,
+    hold:me.hold,nextK:me.next?me.next.k:null,pending:me.pending,lines:me.lines,attack:me.attack,dead:me.dead});
+}
+function applyBoard(msg){
+  const rp=P[1-MYSEAT];
+  rp.grid=decodeGrid(msg.grid);
+  rp.cur=msg.cur;rp.hold=msg.hold;rp.next=msg.nextK?{k:msg.nextK}:null;
+  rp.pending=msg.pending||0;rp.lines=msg.lines||0;rp.attack=msg.attack||0;rp.canHold=true;
+  updateGauge(rp);updateStats(rp);draw(rp);
+}
+function endOnline(iWon){
+  if(gameOver)return;gameOver=true;running=false;
+  document.getElementById('ovt').textContent=iWon?'あなたの勝ち！🎉':'あいての勝ち';
+  document.getElementById('ovt').style.color=MYSEAT===0?'var(--p1)':'var(--p2)';
+  document.getElementById('msg').textContent=iWon?'WIN':'LOSE';
+  document.getElementById('over').classList.add('show');
+}
+function onNet(from,msg){
+  if(!ONLINE||from===MYSEAT||!msg)return; // 自分のエコーは無視
+  if(msg.k==='board')applyBoard(msg);
+  else if(msg.k==='attack'){P[MYSEAT].pending+=msg.n;updateGauge(P[MYSEAT]);}
+  else if(msg.k==='dead')endOnline(true);
+  else if(msg.k==='start'&&!running)startMatch();
+}
+function startOnline(seat,n){
+  ONLINE=true;MYSEAT=seat;
+  document.getElementById('t'+MYSEAT).textContent='あなた';
+  document.getElementById('t'+(1-MYSEAT)).textContent='あいて';
+  document.getElementById('pads'+(1-MYSEAT)).style.display='none'; // 相手のパッドは隠す
+  document.getElementById('start').style.display='none';
+  // ホストが開始合図。両者startMatchで自分の盤面を生成（同seedで同じミノ列）
+  if(seat===0){setTimeout(()=>{roomSend&&roomSend({k:'start'});startMatch();},300);}
+  else document.getElementById('msg').textContent='ホストの開始を待っています…';
 }
 function loop(t){raf=requestAnimationFrame(loop);if(!running||paused||gameOver)return;
   const dt=t-lastT;lastT=t;
   for(const p of P){if(p.dead)continue;
+    if(ONLINE&&p.idx!==MYSEAT)continue; // 相手盤面はスナップショットで描画するだけ
     const speed=Math.max(120,700-(p.level-1)*55);
-    p.dropT+=dt;if(p.dropT>speed){p.dropT=0;soft(p);}
+    p.dropT+=dt;if(p.dropT>speed){p.dropT=0;soft(p);if(ONLINE)sendBoard(false);}
   }
 }
 function endGame(loser){
@@ -242,9 +302,11 @@ function endGame(loser){
 
 // ===== 入力 =====
 function act(p,a){
+  if(ONLINE)p=P[MYSEAT]; // オンラインでは常に自分の盤面を操作
   if(!running||paused||gameOver||p.dead)return;
   if(a==='left')move(p,-1);else if(a==='right')move(p,1);else if(a==='rot')rot(p);
   else if(a==='soft'){soft(p);p.dropT=0;}else if(a==='drop')hard(p);else if(a==='hold')holdSwap(p);
+  if(ONLINE&&a!=='drop')sendBoard(false); // dropはlockでforce送信される
 }
 window.addEventListener('keydown',e=>{
   const c=e.code;
@@ -271,9 +333,20 @@ for(let i=0;i<2;i++){
 }
 document.getElementById('start').addEventListener('click',startMatch);
 document.getElementById('pause').addEventListener('click',()=>{if(!running||gameOver)return;paused=!paused;lastT=performance.now();document.getElementById('msg').textContent=paused?'一時停止中':'対戦中！';});
-document.getElementById('again').addEventListener('click',startMatch);
+document.getElementById('again').addEventListener('click',()=>{if(ONLINE){if(MYSEAT===0){roomSend&&roomSend({k:'start'});startMatch();}}else startMatch();});
 // 初期描画
 for(const p of P)draw(p);
+</script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="../shared/lobby.js?v=5"></script>
+<script src="../shared/online-room.js?v=8"></script>
+<script>
+OnlineRoom.init({
+  gameId:'tetrisvs', minPlayers:2, maxPlayers:2,
+  note:'2人でリアルタイム対戦。ライン消去で相手にせり上がりを送ります。',
+  onStart:(seat,n,send)=>{ roomSend=send; startOnline(seat,n); },
+  onMessage:(from,msg)=>onNet(from,msg)
+});
 </script>
 </body>
 </html>
