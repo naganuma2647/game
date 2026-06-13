@@ -328,6 +328,7 @@ html, body {
 </head>
 <body>
 <a href="../index.html" style="position:fixed;top:12px;left:12px;z-index:9999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 14px/1 'Segoe UI',sans-serif;padding:9px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.25);">← 一覧に戻る</a>
+<button id="autowin-toggle" style="position:fixed;top:12px;left:150px;z-index:9999;background:rgba(0,0,0,0.55);color:#fff;border:1px solid rgba(255,255,255,0.25);font:600 13px/1 'Segoe UI',sans-serif;padding:9px 12px;border-radius:999px;cursor:pointer">自動和了: OFF</button>
 <div id="app">
   <div id="table">
     <!-- 対面(CPU2) -->
@@ -460,6 +461,13 @@ html, body {
             <button class="speed-opt" data-speed="550">普通</button>
             <button class="speed-opt" data-speed="250">速い</button>
             <button class="speed-opt active" data-speed="60">瞬間</button>
+          </span>
+        </div>
+        <div class="cfg-row">
+          <span class="cfg-label">鳴き（ポン/チー/カン）</span>
+          <span class="seg seg-call">
+            <button class="call-opt active" data-call="on">あり</button>
+            <button class="call-opt" data-call="off">なし</button>
           </span>
         </div>
       </div>
@@ -1305,7 +1313,8 @@ const AI = (() => {
   const SEAT_WIND_NAME = ['東', '南', '西', '北'];
 
   let state = null;
-  let config = { seatTypes: ['cpu', 'cpu', 'cpu', 'cpu'], cpuLevel: 5, speed: 60, length: 'hanchan' };
+  let config = { seatTypes: ['cpu', 'cpu', 'cpu', 'cpu'], cpuLevel: 5, speed: 60, length: 'hanchan', noCall: false };
+  let autoWin = (() => { try { return localStorage.getItem('mjAutoWin') === '1'; } catch (e) { return false; } })();
   const cpuDelay = () => config.speed;
   const maxKyoku = () => (config.length === 'hanchan' ? 8 : 4);
 
@@ -1489,9 +1498,10 @@ const AI = (() => {
   async function playKyoku() {
     if (ONLINE) {
       _clearNet();
-      if (isOnlineHost()) _emit('seed', -1, (Math.random() * 0x7fffffff) | 0);
-      const seed = await _waitNet('seed:-1');
-      handRng = mulberry32(seed);
+      if (isOnlineHost()) _emit('seed', -1, { seed: (Math.random() * 0x7fffffff) | 0, noCall: config.noCall });
+      const m = await _waitNet('seed:-1');
+      handRng = mulberry32(m.seed);
+      config.noCall = !!m.noCall; // ホストの鳴き設定を全員に反映
     } else {
       handRng = Math.random;
     }
@@ -1695,6 +1705,7 @@ const AI = (() => {
         setActions([{ label: '取消', cls: '', onClick: () => { hideMessage(); normalMode(); } }]);
         enableHandClick(allowed, tile => finish({ action: 'discard', tile, riichi: true }), true);
       }
+      if (autoWin && tsumoRes) { setTimeout(() => finish({ action: 'tsumo' }), 250); return; }
       normalMode();
     });
   }
@@ -1706,6 +1717,7 @@ const AI = (() => {
 
   function humanRonChoice(res, tile) {
     return new Promise(resolve => {
+      if (autoWin) { setTimeout(() => resolve(true), 200); return; }
       showMessage('ロンできます（' + tile2str(tile) + '）', 0);
       setActions([
         { label: 'ロン', cls: 'btn-win', onClick: () => { hideMessage(); setActions([]); resolve(true); } },
@@ -1826,6 +1838,7 @@ const AI = (() => {
   function seatDist(from, q) { return (q - from + 4) % 4; }
 
   async function checkCalls(discarder, tile) {
+    if (config.noCall) return null; // 鳴きなしルール
     const cands = [];
     for (let i = 1; i < 4; i++) {
       const q = (discarder + i) % 4;
@@ -2353,13 +2366,16 @@ const AI = (() => {
     const lv = document.querySelector('.lv-opt.active');
     const sp = document.querySelector('.speed-opt.active');
     const ln = document.querySelector('.length-opt.active');
+    const cl = document.querySelector('.call-opt.active');
     return {
       seatTypes,
       cpuLevel: lv ? parseInt(lv.dataset.lv, 10) : 5,
       speed: sp ? parseInt(sp.dataset.speed, 10) : 60,
-      length: ln ? ln.dataset.length : 'hanchan'
+      length: ln ? ln.dataset.length : 'hanchan',
+      noCall: cl ? cl.dataset.call === 'off' : false
     };
   }
+  function readNoCallDOM() { const cl = document.querySelector('.call-opt.active'); return cl ? cl.dataset.call === 'off' : false; }
 
   function start() {
     config = readConfig();
@@ -2400,6 +2416,13 @@ const AI = (() => {
         btn.classList.add('active');
       };
     });
+    // 鳴き あり/なし
+    document.querySelectorAll('.call-opt').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.call-opt').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      };
+    });
     // ログ開閉
     const lt = el('log-toggle');
     if (lt) lt.onclick = () => {
@@ -2413,6 +2436,12 @@ const AI = (() => {
     const btn = el('btn-start');
     if (btn) btn.onclick = start;
     wireConfig();
+    const at = el('autowin-toggle');
+    if (at) {
+      const sync = () => { at.textContent = '自動和了: ' + (autoWin ? 'ON' : 'OFF'); at.style.background = autoWin ? 'rgba(201,162,39,.85)' : 'rgba(0,0,0,0.55)'; at.style.color = autoWin ? '#1a140c' : '#fff'; };
+      sync();
+      at.onclick = () => { autoWin = !autoWin; try { localStorage.setItem('mjAutoWin', autoWin ? '1' : '0'); } catch (e) {} sync(); };
+    }
   }
   if (document.readyState === 'loading')
     document.addEventListener('DOMContentLoaded', bindStart);
@@ -2425,7 +2454,8 @@ const AI = (() => {
       ONLINE = true; MYSEAT = seat;
       const seatTypes = [];
       for (let i = 0; i < 4; i++) seatTypes.push(isOnlineCpu(i) ? 'cpu' : 'human');
-      config = { seatTypes, cpuLevel: 5, speed: 60, length: 'tonpuu' };
+      // ホストの「鳴き」設定を採用（ゲスト側は最初の局のシード配布で上書きされる）
+      config = { seatTypes, cpuLevel: 5, speed: 60, length: 'tonpuu', noCall: readNoCallDOM() };
       el('start-screen').classList.add('hidden');
       el('result-next').textContent = '次へ';
       newGame();
