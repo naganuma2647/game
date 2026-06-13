@@ -187,13 +187,13 @@ function startBetPhase(){
   betIdx=0;curPlayer=betSeq[0];pendBet=Math.min(100,players[curPlayer].chips);
   showDice('m-bowl',[1,1,1]);document.getElementById('m-role').textContent='';document.getElementById('m-role').className='role';
   renderMulti();updateMultiControls();
-  msg('R'+roundNo+'：親はP'+(dealer+1)+'。'+turnName(curPlayer)+'が賭けます');
+  msg('R'+roundNo+'：親はP'+(dealer+1)+'。'+turnName(curPlayer)+'が賭けます');autoKick();
 }
 function _placeBet(amt){
   if(mPhase!=='bet')return;
   const p=players[curPlayer];p.bet=Math.max(1,Math.min(p.chips,amt));
   betIdx++;
-  if(betIdx<betSeq.length){curPlayer=betSeq[betIdx];pendBet=Math.min(100,players[curPlayer].chips);renderMulti();updateMultiControls();msg(turnName(curPlayer)+'が賭けます');}
+  if(betIdx<betSeq.length){curPlayer=betSeq[betIdx];pendBet=Math.min(100,players[curPlayer].chips);renderMulti();updateMultiControls();msg(turnName(curPlayer)+'が賭けます');autoKick();}
   else startRollPhase();
 }
 function startRollPhase(){
@@ -201,7 +201,7 @@ function startRollPhase(){
   rollSeq=[dealer];for(let k=1;k<np;k++)rollSeq.push((dealer+k)%np);
   rollIdx=0;curPlayer=dealer;throws=0;
   renderMulti();updateMultiControls();
-  msg('親 P'+(dealer+1)+' が振ります。「振る」をタップ');
+  msg('親 P'+(dealer+1)+' が振ります。「振る」をタップ');autoKick();
 }
 function _roll(){ // 1回の「振る」＝1投
   if(mPhase!=='roll'||players[curPlayer].roll)return;
@@ -209,13 +209,13 @@ function _roll(){ // 1回の「振る」＝1投
   const {dice,res}=oneThrow();
   showDice('m-bowl',dice,true);
   const rl=document.getElementById('m-role');rl.textContent=pname(curPlayer)+' '+throws+'投目: '+res.name;rl.className='role'+(res.bad?' bad':'');
-  if(!isFinalRole(res)&&throws<3){renderMulti();updateMultiControls();msg(pname(curPlayer)+'：役なし、もう一度「振る」（'+throws+'/3）');return;}
+  if(!isFinalRole(res)&&throws<3){renderMulti();updateMultiControls();msg(pname(curPlayer)+'：役なし、もう一度「振る」（'+throws+'/3）');autoKick();return;}
   players[curPlayer].roll={dice,res};
   rollIdx++;throws=0;
   if(rollIdx>=np){renderMulti();settleRound();return;}
   curPlayer=rollSeq[rollIdx];
   renderMulti();updateMultiControls();
-  msg((curPlayer===dealer?'親 ':'')+turnName(curPlayer)+' が振ります。「振る」をタップ');
+  msg((curPlayer===dealer?'親 ':'')+turnName(curPlayer)+' が振ります。「振る」をタップ');autoKick();
 }
 function settleRound(){
   mPhase='over';
@@ -235,6 +235,13 @@ function settleRound(){
 function _next(){
   players.forEach(p=>{if(p.chips<=0)p.chips=1000;});
   dealer=(dealer+1)%np;roundNo++;startBetPhase();
+}
+// 退出席の代理: bet相は最小ベット, roll相はrollをホストが送信
+function autoKick(){
+  if(!ONLINE||!OnlineRoom.isHost())return;
+  const a=curPlayer;if(!OnlineRoom.isGone(a))return;
+  if(mPhase==='bet'){setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&mPhase==='bet'&&curPlayer===a&&OnlineRoom.isGone(a))OnlineRoom.send({k:'bet',amt:Math.max(1,Math.min(50,players[a].chips))});},700);}
+  else if(mPhase==='roll'){setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&mPhase==='roll'&&curPlayer===a&&OnlineRoom.isGone(a))OnlineRoom.send({k:'roll'});},700);}
 }
 function renderMulti(){
   const bd=document.getElementById('mboard');bd.innerHTML='';
@@ -303,11 +310,12 @@ function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=3"></script>
-<script src="../shared/online-room.js?v=2"></script>
+<script src="../shared/online-room.js?v=3"></script>
 <script>
 OnlineRoom.init({gameId:'chinchiro',minPlayers:2,maxPlayers:4,note:'全員で振って役の強さを競います。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),
-  onMessage:(from,msg)=>doAction(msg)});
+  onMessage:(from,msg)=>doAction(msg),
+  onLeft:(seat)=>{if(mode==='multi')autoKick();}});
 </script>
 </body>
 </html>

@@ -167,11 +167,18 @@ function updateMultiControls(){
   document.getElementById('m-nextrow').style.display=nextShow?'flex':'none';
   if(betShow){pendBet=Math.min(pendBet||100,players[curPlayer].chips);document.getElementById('m-betv').textContent=pendBet;}
 }
+// 退出席の代理: bet相は最小ベット, play相はstandをホストが送信
+function autoKick(){
+  if(!ONLINE||!OnlineRoom.isHost())return;
+  const a=curPlayer;if(!OnlineRoom.isGone(a))return;
+  if(mPhase==='bet'){setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&mPhase==='bet'&&curPlayer===a&&OnlineRoom.isGone(a))OnlineRoom.send({k:'bet',amt:Math.max(1,Math.min(50,players[a].chips))});},700);}
+  else if(mPhase==='play'){setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&mPhase==='play'&&curPlayer===a&&OnlineRoom.isGone(a)&&!players[a].done)OnlineRoom.send({k:'stand'});},700);}
+}
 function _placeBet(amt){
   if(mPhase!=='bet')return;
   const p=players[curPlayer];amt=Math.max(50,Math.min(p.chips,amt));
   p.bet=amt;p.chips-=amt;
-  if(curPlayer<np-1){curPlayer++;pendBet=100;renderMulti();updateMultiControls();msg(turnName(curPlayer)+'：ベットを決めて「ベット確定」');}
+  if(curPlayer<np-1){curPlayer++;pendBet=100;renderMulti();updateMultiControls();msg(turnName(curPlayer)+'：ベットを決めて「ベット確定」');autoKick();}
   else dealAll();
 }
 function dealAll(){
@@ -183,7 +190,7 @@ function dealAll(){
   while(curPlayer<np&&players[curPlayer].done)curPlayer++;
   if(curPlayer>=np){dealerPlay();return;}
   renderMulti();updateMultiControls();
-  msg(turnName(curPlayer)+'：ヒット or スタンド');
+  msg(turnName(curPlayer)+'：ヒット or スタンド');autoKick();
 }
 function nextPlayer(){
   curPlayer++;
@@ -193,11 +200,11 @@ function nextPlayer(){
 function _hit(){if(mPhase!=='play')return;const p=players[curPlayer];if(p.done)return;
   p.hand.push(mDeck.pop());
   if(val(p.hand)>=21){p.done=true;nextPlayer();}
-  if(mPhase==='play'){renderMulti();updateMultiControls();msg(turnName(curPlayer)+'：ヒット or スタンド');}
+  if(mPhase==='play'){renderMulti();updateMultiControls();msg(turnName(curPlayer)+'：ヒット or スタンド');autoKick();}
 }
 function _stand(){if(mPhase!=='play')return;const p=players[curPlayer];if(p.done)return;
   p.done=true;nextPlayer();
-  if(mPhase==='play'){renderMulti();updateMultiControls();msg(turnName(curPlayer)+'：ヒット or スタンド');}
+  if(mPhase==='play'){renderMulti();updateMultiControls();msg(turnName(curPlayer)+'：ヒット or スタンド');autoKick();}
 }
 function dealerPlay(){
   mPhase='dealer';
@@ -220,7 +227,7 @@ function dealerPlay(){
 function _next(){
   for(const p of players){if(p.chips<=0)p.chips=1000;p.bet=0;p.hand=[];p.done=false;p.res=null;}
   dealer=[];mPhase='bet';curPlayer=0;pendBet=100;
-  renderMulti();updateMultiControls();msg(turnName(curPlayer)+'：ベットを決めて「ベット確定」');
+  renderMulti();updateMultiControls();msg(turnName(curPlayer)+'：ベットを決めて「ベット確定」');autoKick();
 }
 
 /* ============ mode switch ============ */
@@ -257,10 +264,11 @@ function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=3"></script>
-<script src="../shared/online-room.js?v=2"></script>
+<script src="../shared/online-room.js?v=3"></script>
 <script>
 OnlineRoom.init({gameId:'blackjack',minPlayers:2,maxPlayers:4,note:'各自ベットしてディーラーと勝負します。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),
-  onMessage:(from,msg)=>doAction(msg)});
+  onMessage:(from,msg)=>doAction(msg),
+  onLeft:(seat)=>{if(mode==='multi')autoKick();}});
 </script>
 </body></html>

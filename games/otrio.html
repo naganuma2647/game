@@ -82,7 +82,7 @@ function init(){
   if(shouldRunCpu())setTimeout(cpuMove,600);
   else if(!ONLINE&&!isHuman())setTimeout(cpuMove,600);
 }
-function isCpuSeat(){return ONLINE&&window.OnlineRoom&&OnlineRoom.isCpu(turn);}
+function isCpuSeat(){return ONLINE&&window.OnlineRoom&&OnlineRoom.isAuto(turn);} // CPU席＋退出席をホストが代理
 function isHuman(){if(ONLINE){if(isCpuSeat())return false;return turn===MYSEAT;}return mode==='pvp'||turn===0;}
 function shouldRunCpu(){if(over)return false;if(ONLINE)return isCpuSeat()&&OnlineRoom.isHost();return !isHuman();}
 function updateTurn(){
@@ -262,10 +262,11 @@ function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=2"></script>
-<script src="../shared/online-room.js?v=2"></script>
+<script src="../shared/online-room.js?v=3"></script>
 <script>
 OnlineRoom.init({gameId:'otrio',minPlayers:2,maxPlayers:4,note:'3サイズのリングで揃える3目並べ。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),
-  onMessage:(from,msg)=>doAction(msg)});
+  onMessage:(from,msg)=>doAction(msg),
+  onLeft:(seat)=>{updateTurn();if(shouldRunCpu())setTimeout(cpuMove,600);}});
 </script>
 </body></html>

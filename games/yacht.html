@@ -86,7 +86,11 @@ let ONLINE=false,MYSEAT=0,roomSend=null;
 function myTurn(){return !ONLINE||curPlayer===MYSEAT;}
 // online: route every input through the relay so all clients apply in one order
 function emit(a){if(ONLINE){if(!myTurn()||over)return;roomSend(a);}else doAction(a);}
-function doAction(a){if(a.k==='roll')_roll();else if(a.k==='keep')_toggleKeep(a.i);else if(a.k==='record')_record(a.id);}
+function doAction(a){if(a.k==='roll')_roll();else if(a.k==='keep')_toggleKeep(a.i);else if(a.k==='record')_record(a.id);else if(a.k==='autoturn')_autoturn();}
+// 退出席の代理: 1回振って空き役へ記入し完走させる（ホストのみ送信）
+function _autoturn(){if(rolls===0)_roll();const c=CATS.find(x=>scores()[x.id]===undefined);if(c)_record(c.id);}
+function autoKick(){if(!ONLINE||!OnlineRoom.isHost()||over||np<=1)return;if(!OnlineRoom.isGone(curPlayer))return;
+  setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&!over&&OnlineRoom.isGone(curPlayer))OnlineRoom.send({k:'autoturn'});},700);}
 function init(){dice=[1,1,1,1,1];keep=[false,false,false,false,false];rolls=0;
   allScores=Array.from({length:np},()=>({}));turn=0;curPlayer=0;over=false;
   document.getElementById('over').classList.remove('show');
@@ -143,7 +147,7 @@ function _record(id){const c=CATS.find(x=>x.id===id);if(!c||scores()[c.id]!==und
     turn++;
     if(turn>=13){finish();return;}
   }
-  updateCurP();renderDice();renderSheet();updateRollBtn();}
+  updateCurP();renderDice();renderSheet();updateRollBtn();autoKick();}
 function finish(){over=true;updateRollBtn();
   if(np===1){document.getElementById('ov-s').textContent='合計 '+grandTotal()+' 点'+(grandTotal()>=200?'（ハイスコア級！）':'');}
   else{const totals=allScores.map((_,p)=>grandTotal(p));const max=Math.max(...totals);const winners=totals.map((v,i)=>v===max?i+1:null).filter(x=>x);const r=winners.length>1?'引き分け（P'+winners.join(', P')+'）':'プレイヤー'+winners[0]+'の勝ち！';const det=totals.map((v,i)=>'P'+(i+1)+': '+v+'点').join(' / ');document.getElementById('ov-s').innerHTML=r+'<br><span style="font-size:13px">'+det+'</span>';}
@@ -159,11 +163,12 @@ function startOnline(seat,n,send){ONLINE=true;MYSEAT=seat;roomSend=send;np=n;
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=3"></script>
-<script src="../shared/online-room.js?v=2"></script>
+<script src="../shared/online-room.js?v=3"></script>
 <script>
 OnlineRoom.init({gameId:'yacht',minPlayers:2,maxPlayers:4,note:'全員で同じ問題を解いてスコアを競います。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),
-  onMessage:(from,msg)=>doAction(msg)});
+  onMessage:(from,msg)=>doAction(msg),
+  onLeft:(seat)=>autoKick()});
 </script>
 </body>
 </html>

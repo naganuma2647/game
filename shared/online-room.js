@@ -49,6 +49,7 @@
     // host only: seat 0 is the host; guests[] holds {conn, seat, alive}
     let guests = [];
     let cpus = 0; // host's chosen CPU count, applied at start
+    const gone = new Set(); // seats whose human left mid-game (host auto-plays them)
 
     /* ---------- lobby UI ---------- */
     const ui = document.createElement('div');
@@ -216,6 +217,7 @@
       g.alive = false;
       rosterText();
       if (started) {
+        gone.add(g.seat);
         guests.forEach(x => { if (x.alive) { try { x.conn.send({ t: 'left', seat: g.seat }); } catch (_) {} } });
         try { cfg.onLeft && cfg.onLeft(g.seat); } catch (_) {}
         showBadge('🌐 プレイヤー' + (g.seat + 1) + 'が退出しました');
@@ -272,6 +274,7 @@
           } else if (m.t === 'act') {
             deliver(m.from, m.msg);
           } else if (m.t === 'left') {
+            gone.add(m.seat);
             try { cfg.onLeft && cfg.onLeft(m.seat); } catch (_) {}
             showBadge('🌐 プレイヤー' + (m.seat + 1) + 'が退出しました');
           }
@@ -320,6 +323,8 @@
       seat: () => mySeat,
       count: () => nPlayers,
       isCpu: (s) => started && nCpus > 0 && s >= (nPlayers - nCpus),
+      isGone: (s) => gone.has(s),
+      isAuto: (s) => gone.has(s) || (started && nCpus > 0 && s >= (nPlayers - nCpus)),
       isHost: () => isHost,
       cpuCount: () => nCpus,
     };

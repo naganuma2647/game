@@ -180,6 +180,9 @@ function _joker(o,s,r){if(gameOver||board[s][r])return;const idx=hands[o].findIn
   board[s][r]='J';hands[o].splice(idx,1);jokerPending=null;
   if(hands[o].length===0&&!finished.includes(o))finished.push(o);next();}
 function _pass(o){passes[o]++;if(passes[o]>=3){forceOut(o);return;}next();}
+// 退出席の代理: ホストがパスを送信（3回でアウト→場に出して進行）
+function autoKick(){if(!ONLINE||!OnlineRoom.isHost()||gameOver)return;const a=turn;if(!OnlineRoom.isGone(a))return;
+  setTimeout(()=>{if(ONLINE&&OnlineRoom.isHost()&&!gameOver&&turn===a&&OnlineRoom.isGone(a))OnlineRoom.send({k:'pass'});},800);}
 function forceOut(o){outCnt[o]=true;
   for(const c of hands[o].slice()){if(c.joker){const pos=bestJokerPos(o);if(pos)board[pos.s][pos.r]='J';hands[o].splice(hands[o].indexOf(c),1);}}
   let changed=true;while(changed){changed=false;for(const c of hands[o].slice()){if(canPlace(c)){board[c.s][c.r]=true;hands[o].splice(hands[o].indexOf(c),1);changed=true;}}}
@@ -196,7 +199,7 @@ function beginTurn(first){
   if(gameOver){render();return;}
   if(!isHuman(turn)){busy=true;render();setTimeout(cpuTurn,650);return;}
   // human
-  if(ONLINE){busy=false;render();msg(turn===MYSEAT?'あなたの番。光るカードをタップ':NAMES[turn]+'の番です…');return;}
+  if(ONLINE){busy=false;render();msg(turn===MYSEAT?'あなたの番。光るカードをタップ':NAMES[turn]+'の番です…');autoKick();return;}
   if(gmode==='cpu'){busy=false;localView=0;render();msg('あなたの番');return;}
   // local hot-seat → handoff
   busy=true;render();
@@ -246,11 +249,12 @@ function applySetup(a){np=a.np;jokerCount=a.jokerCount;init();}
 </script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=3"></script>
-<script src="../shared/online-room.js?v=2"></script>
+<script src="../shared/online-room.js?v=3"></script>
 <script>
 OnlineRoom.init({gameId:'sevens',minPlayers:2,maxPlayers:4,note:'全員でカードをつなげて手札を早く出し切ります。',
   onStart:(seat,n,send)=>startOnline(seat,n,send),
-  onMessage:(from,msg)=>{ if(msg.k==='setup')applySetup(msg); else doAction(msg); }});
+  onMessage:(from,msg)=>{ if(msg.k==='setup')applySetup(msg); else doAction(msg); },
+  onLeft:(seat)=>autoKick()});
 </script>
 </body>
 </html>
