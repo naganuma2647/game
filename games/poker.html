@@ -651,11 +651,10 @@ function renderOpp(showAll=false){
     if(pi===mySeat)continue;
     const el=document.createElement('div');
     el.className='opp'+(pi===G.dealer?' dealer':'')+(pi===G.cur&&pi!==mySeat?' active':'')+(G.folded[pi]?' folded':'');
-    const showCards=showAll||G.phase==='showdown'||!G.folded[pi];
-    const cards=showCards
+    const cards=showAll||G.phase==='showdown'
       ?G.hole[pi].map(c=>cardHTML(c,true)).join('')
       :G.hole[pi].map(()=>cardHTML('back',true)).join('');
-    const handName=showCards&&!G.folded[pi]&&G.hole[pi].length?`<div style="font-size:10px;color:var(--gold2);margin-top:2px">${bestHand(G.hole[pi],G.community).name}</div>`:'';
+    const handName=(showAll||G.phase==='showdown')&&!G.folded[pi]&&G.hole[pi].length?`<div style="font-size:10px;color:var(--gold2);margin-top:2px">${bestHand(G.hole[pi],G.community).name}</div>`:'';
     el.innerHTML=`<div class="opp-name">${G.names[pi]}${G.chips[pi]===0?' (オールイン)':''}</div>
       <div class="opp-chips">💰${G.chips[pi]}</div>
       <div class="opp-bet">${G.bets[pi]>0?'BET:'+G.bets[pi]:''}</div>
