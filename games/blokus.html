@@ -498,6 +498,11 @@ function applyState(o){
   buildBoard();renderBoard();renderScores();turn();
 }
 
+</script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="../shared/lobby.js?v=7"></script>
+<script src="../shared/online-room.js?v=7"></script>
+<script>
 OnlineRoom.init({
   gameId:'blokus',minPlayers:2,maxPlayers:4,
   note:'20×20ボードにタイルを置くテリトリーゲーム',
@@ -519,9 +524,5 @@ OnlineRoom.init({
   onLeft:(seat)=>{if(ONLINE)turn();},
   getState,applyState
 });
-</script>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script src="../shared/lobby.js?v=7"></script>
-<script src="../shared/online-room.js?v=7"></script>
 </body>
 </html>
