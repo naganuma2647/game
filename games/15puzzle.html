@@ -41,6 +41,8 @@ h1{font-size:22px;color:var(--gold);margin-bottom:6px;text-align:center}
 
 /* Solve animation */
 .tile.hint{border-color:var(--gold);color:var(--gold)}
+#ai-stop-btn{border-color:rgba(224,80,80,.5)!important;color:#e05050!important}
+#ai-stop-btn:hover{border-color:#e05050!important}
 
 /* Win banner */
 #win{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
@@ -77,6 +79,10 @@ h1{font-size:22px;color:var(--gold);margin-bottom:6px;text-align:center}
 <div class="btns">
   <button class="gbtn primary" onclick="newGame()">シャッフル</button>
   <button class="gbtn secondary" onclick="showHint()">ヒント</button>
+  <button class="gbtn secondary" id="ai-best-btn" onclick="showBestMove()">最善手</button>
+  <button class="gbtn secondary" id="ai-slow-btn" onclick="startAI(500)">AI(遅)</button>
+  <button class="gbtn secondary" id="ai-fast-btn" onclick="startAI(100)">AI(速)</button>
+  <button class="gbtn secondary" id="ai-stop-btn" onclick="stopAI()" style="display:none">停止</button>
 </div>
 
 <div id="win">
@@ -101,6 +107,7 @@ function setSize(n){
 }
 
 function newGame(){
+  stopAI();
   clearInterval(timerInt);started=false;moveCount=0;timerSec=0;
   document.getElementById('moves').textContent='0';
   document.getElementById('timer').textContent='0:00';
@@ -186,6 +193,7 @@ function clickTile(idx){
 }
 
 function win(){
+  stopAI();
   clearInterval(timerInt);
   if(ONLINE){
     if(raceOver)return;
@@ -242,9 +250,10 @@ function showHint(){
 let ONLINE=false,MYSEAT=0,roomSend=null,raceOver=false;
 
 function onStart(seat,n,send){
+  stopAI();
   ONLINE=true;MYSEAT=seat;roomSend=send;raceOver=false;
   document.querySelector('.size-row').style.display='none';
-  document.querySelector('.btns .gbtn.secondary').style.display='none';
+  document.querySelectorAll('.btns .gbtn.secondary').forEach(b=>b.style.display='none');
   document.getElementById('best-wrap').style.display='none';
   if(seat===0){
     const t=shuffle(makeSolved());
@@ -298,6 +307,123 @@ OnlineRoom.init({
     render();createRaceStatus('ゲームに参加しました。次のラウンドを待機中…');
   }
 });
+
+// ===== AI SOLVER (IDA* + greedy fallback) =====
+let aiInterval = null;
+const _SLIM = 600000;
+let _sN = 0, _sAbort = false;
+
+function _mh(t) {
+  let h = 0;
+  for (let i = 0; i < t.length; i++) {
+    if (!t[i]) continue;
+    const v = t[i]-1;
+    h += Math.abs((i/N|0)-(v/N|0)) + Math.abs(i%N-v%N);
+  }
+  return h;
+}
+
+function _ida(t, blank, g, bound, path, prev) {
+  if (++_sN > _SLIM) { _sAbort = true; return 0; }
+  const h = _mh(t), f = g+h;
+  if (f > bound) return f;
+  if (!h) return -1;
+  const br = blank/N|0, bc = blank%N;
+  const nb = [];
+  if (br > 0) nb.push(blank-N);
+  if (br < N-1) nb.push(blank+N);
+  if (bc > 0) nb.push(blank-1);
+  if (bc < N-1) nb.push(blank+1);
+  let min = Infinity;
+  for (const nx of nb) {
+    if (nx === prev) continue;
+    [t[blank],t[nx]] = [t[nx],t[blank]];
+    path.push(nx);
+    const r = _ida(t, nx, g+1, bound, path, blank);
+    if (r === -1) return -1;
+    if (_sAbort) return 0;
+    if (r < min) min = r;
+    [t[blank],t[nx]] = [t[nx],t[blank]];
+    path.pop();
+  }
+  return min;
+}
+
+function _greedy(st) {
+  const t = [...st], path = [], vis = new Set([t.join(',')]);
+  for (let s = 0; s < 5000 && !isSolved(t); s++) {
+    const blank = t.indexOf(0);
+    const br = blank/N|0, bc = blank%N;
+    const nb = [];
+    if (br > 0) nb.push(blank-N);
+    if (br < N-1) nb.push(blank+N);
+    if (bc > 0) nb.push(blank-1);
+    if (bc < N-1) nb.push(blank+1);
+    let best = null, bestH = Infinity, sawNew = false;
+    for (const nx of nb) {
+      [t[blank],t[nx]] = [t[nx],t[blank]];
+      const h = _mh(t), isV = vis.has(t.join(','));
+      if (!isV && (!sawNew || h < bestH)) { bestH = h; best = nx; sawNew = true; }
+      else if (!sawNew && h < bestH) { bestH = h; best = nx; }
+      [t[blank],t[nx]] = [t[nx],t[blank]];
+    }
+    if (!best) best = nb[0];
+    [t[blank],t[best]] = [t[best],t[blank]];
+    path.push(best); vis.add(t.join(','));
+  }
+  return path;
+}
+
+function _solve() {
+  if (isSolved(tiles)) return [];
+  if (N >= 5) return _greedy(tiles);
+  const t = [...tiles];
+  let bound = _mh(t);
+  const path = [];
+  _sAbort = false;
+  while (!_sAbort && bound < 150) {
+    _sN = 0;
+    const r = _ida(t, t.indexOf(0), 0, bound, path, -1);
+    if (r === -1) return path;
+    if (_sAbort) break;
+    bound = r;
+  }
+  return _greedy(tiles);
+}
+
+function _setAIUI(running) {
+  ['ai-slow-btn','ai-fast-btn','ai-best-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = running ? 'none' : '';
+  });
+  const s = document.getElementById('ai-stop-btn');
+  if (s) s.style.display = running ? '' : 'none';
+}
+
+function startAI(delay) {
+  stopAI();
+  const sol = _solve();
+  if (!sol.length) return;
+  let idx = 0;
+  _setAIUI(true);
+  aiInterval = setInterval(() => {
+    if (idx >= sol.length || isSolved(tiles)) { stopAI(); return; }
+    clickTile(sol[idx++]);
+  }, delay);
+}
+
+function stopAI() {
+  clearInterval(aiInterval); aiInterval = null;
+  _setAIUI(false);
+}
+
+function showBestMove() {
+  const sol = _solve();
+  if (!sol.length) return;
+  const els = document.getElementById('board').children;
+  els[sol[0]]?.classList.add('hint');
+  setTimeout(() => els[sol[0]]?.classList.remove('hint'), 900);
+}
 
 // Keyboard
 document.addEventListener('keydown',e=>{
