@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>ボンバーマン</title>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -83,6 +84,20 @@
 
 <canvas id="c"></canvas>
 
+<div id="olay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;z-index:100;">
+  <div style="background:#1a2210;border:2px solid #4a8;border-radius:14px;padding:24px 32px;text-align:center;min-width:280px;">
+    <div id="olay-title" style="font-size:18px;font-weight:bold;margin-bottom:16px;color:#8f8"></div>
+    <input id="olay-inp" type="text" placeholder="ルームコード" maxlength="20"
+      style="width:100%;padding:10px;border-radius:8px;border:1.5px solid #4a8;background:#0d1a0d;color:#eef;font-size:20px;text-align:center;letter-spacing:4px;outline:none;margin-bottom:12px;display:none;">
+    <div id="olay-code" style="font-size:22px;font-weight:bold;color:#4f8;letter-spacing:3px;margin-bottom:12px;display:none;word-break:break-all;"></div>
+    <div id="olay-msg" style="color:#aaa;margin-bottom:16px;font-size:14px;"></div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button id="olay-ok" style="padding:10px 24px;border-radius:8px;background:#2a5a2a;border:1.5px solid #4a8;color:#8f8;font:bold 15px inherit;cursor:pointer;">OK</button>
+      <button id="olay-cancel" style="padding:10px 24px;border-radius:8px;background:#333;border:1.5px solid #666;color:#aaa;font:15px inherit;cursor:pointer;">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <div id="mctrl">
   <div id="dpad">
     <div></div>
@@ -112,7 +127,7 @@ resize();
 window.addEventListener('resize', () => { resize(); render(); });
 
 // ─── 定数 ──────────────────────────────────────────────────────────────────
-const ST   = { TITLE:0, PLAY:1, CLEAR:2, OVER:3 };
+const ST   = { TITLE:0, PLAY:1, CLEAR:2, OVER:3, ONLINE:4 };
 const CELL = { E:0, H:1, S:2 }; // Empty / Hard / Soft
 const PU   = { BOMB:0, FIRE:1, SPD:2 };
 const D4   = [[0,-1],[1,0],[0,1],[-1,0]]; // 上右下左
@@ -130,21 +145,85 @@ let mp, pl, ens, bbs, exps, pups; // map, player, enemies, bombs, explosions, po
 let score, hisc = 0, gsec;
 let raf, tickId, lastT;
 
+// ─── オンライン変数 ──────────────────────────────────────────────────────────
+let peer = null, conn = null;
+let isHost = false, onlineMode = false;
+let p2 = null;       // P2プレイヤー
+let guestKeys = {};  // ホストが受け取るゲストのキー入力
+let sendTimer = 0;   // state送信タイマー
+let mapSeed = 0;
+
+// シードRNG (xorshift32)
+let _rngS = 1;
+function srng() {
+  _rngS ^= _rngS << 13; _rngS ^= _rngS >> 17; _rngS ^= _rngS << 5;
+  return (_rngS >>> 0) / 0x100000000;
+}
+function setRngSeed(s) { _rngS = (s | 0) || 1; }
+
 // ─── 入力 ────────────────────────────────────────────────────────────────────
 const K = {};
 document.addEventListener('keydown', e => {
   K[e.code] = true;
   if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
-  if (e.code === 'Space') onAction();
+  if (e.code === 'Space') {
+    // ゲストはSpaceでbombをホストへ送信
+    if (onlineMode && !isHost && state===ST.PLAY && conn) {
+      conn.send({ type:'in', up:false, dn:false, lt:false, rt:false, bomb:true });
+    }
+    onAction();
+  }
+  if (e.code === 'Escape') {
+    if (state === ST.ONLINE) { state = ST.TITLE; }
+  }
 });
 document.addEventListener('keyup', e => { K[e.code] = false; });
-cv.addEventListener('click', onAction);
-cv.addEventListener('touchend', e => { e.preventDefault(); onAction(); });
+cv.addEventListener('click', e => onAction(e));
+cv.addEventListener('touchend', e => { e.preventDefault(); onAction(e.changedTouches[0]); });
 
-function onAction() {
-  if (state === ST.PLAY)  { placeBomb(); return; }
-  if (state === ST.TITLE) { go(); return; }
-  if (state === ST.CLEAR || state === ST.OVER) { state = ST.TITLE; }
+// オンラインロビーのボタン座標（描画時に記録）
+let _lobbyBtns = null;
+
+function onAction(e) {
+  // クリック/タップ座標を正規化
+  let cx_ = null, cy_ = null;
+  if (e) {
+    const rect = cv.getBoundingClientRect();
+    const scaleX = cv.width / rect.width;
+    const scaleY = cv.height / rect.height;
+    cx_ = (e.clientX - rect.left) * scaleX;
+    cy_ = (e.clientY - rect.top) * scaleY;
+  }
+
+  if (state === ST.PLAY) {
+    if (onlineMode && !isHost) return; // ゲストはSpaceキーで送信
+    placeBomb(); return;
+  }
+  if (state === ST.CLEAR || state === ST.OVER) { state = ST.TITLE; onlineMode=false; p2=null; return; }
+
+  if (state === ST.TITLE) {
+    // オンライン対戦ボタンのヒット判定
+    if (cx_ !== null && drawTitle._obx !== undefined) {
+      const {_obx,_oby,_obw,_obh} = drawTitle;
+      if (cx_>=_obx && cx_<=_obx+_obw && cy_>=_oby && cy_<=_oby+_obh) {
+        state = ST.ONLINE; return;
+      }
+    }
+    go(); return;
+  }
+
+  if (state === ST.ONLINE && cx_ !== null) {
+    const W=cv.width, H=cv.height;
+    const bw=Math.min(W*0.6,220), bh=T*1.4;
+    const b1x=(W-bw)/2, b1y=H*0.35;
+    const b2y=H*0.35+bh+T*0.6;
+    if (cx_>=b1x && cx_<=b1x+bw && cy_>=b1y && cy_<=b1y+bh) {
+      startOnline(true); return;
+    }
+    if (cx_>=b1x && cx_<=b1x+bw && cy_>=b2y && cy_<=b2y+bh) {
+      startOnline(false); return;
+    }
+  }
 }
 
 // 難易度ボタン
@@ -167,7 +246,13 @@ mkTouch('dl','ArrowLeft'); mkTouch('dr','ArrowRight');
 document.getElementById('btbomb').addEventListener('touchstart', e => {
   e.preventDefault();
   if (state===ST.TITLE) go();
-  else if (state===ST.PLAY) placeBomb();
+  else if (state===ST.PLAY) {
+    if (onlineMode && !isHost && conn) {
+      conn.send({ type:'in', up:false, dn:false, lt:false, rt:false, bomb:true });
+    } else {
+      placeBomb();
+    }
+  }
 }, {passive:false});
 
 // ─── マップ生成 ──────────────────────────────────────────────────────────────
@@ -184,7 +269,7 @@ function buildMap() {
       if (r===0||r===ROWS-1||c===0||c===COLS-1) return CELL.H;
       if (r%2===0 && c%2===0) return CELL.H;
       if (SAFE.has(`${c},${r}`)) return CELL.E;
-      return Math.random() < d.den ? CELL.S : CELL.E;
+      return (onlineMode ? srng() : Math.random()) < d.den ? CELL.S : CELL.E;
     })
   );
 }
@@ -211,6 +296,16 @@ function go() {
     alive: true,
     dir: 2          // 0上1右2下3左
   };
+
+  if (onlineMode) {
+    p2 = {
+      px: (COLS-2)*T, py: T,
+      spd: 2.5, maxB: 1, actB: 0, fire: 1,
+      lives: 3, inv: 0, dead: 0, alive: true, dir: 2
+    };
+  } else {
+    p2 = null;
+  }
 
   const ep = [[COLS-2,1],[1,ROWS-2],[COLS-2,ROWS-2],
               [Math.floor(COLS/2),1],[Math.floor(COLS/2),ROWS-2]];
@@ -243,7 +338,14 @@ function loop(ts) {
   raf = requestAnimationFrame(loop);
   const dt = Math.min((ts-(lastT||ts))/1000, 0.05);
   lastT = ts;
-  if (state===ST.PLAY) update(dt);
+  if (state===ST.PLAY) {
+    if (onlineMode && !isHost) {
+      // ゲストはキーをホストへ送信するだけ（update不要）
+      sendKeys();
+    } else {
+      update(dt);
+    }
+  }
   render();
 }
 requestAnimationFrame(loop);
@@ -253,21 +355,36 @@ function update(dt) {
   // 死亡アニメ中
   if (pl.dead > 0) {
     pl.dead -= dt;
+    if (p2) { if (p2.dead>0) p2.dead-=dt; }
     updExps(dt);
-    if (pl.dead <= 0 && !pl.alive) end(false);
+    if (pl.dead <= 0 && !pl.alive) {
+      if (onlineMode) { end(false, 2); return; }
+      end(false);
+    }
     return;
   }
   if (pl.alive) updPlayer(dt);
+  if (onlineMode && isHost && p2) updP2(dt);
   updEnemies(dt);
   updBombs(dt);
   updExps(dt);
   checkHit();
   if (pl.inv > 0) pl.inv -= dt;
+  if (p2 && p2.inv > 0) p2.inv -= dt;
   updHUD();
+
+  // ホストは50msごとにゲストへ状態送信
+  if (onlineMode && isHost && conn) {
+    sendTimer += dt;
+    if (sendTimer >= 0.05) {
+      sendTimer = 0;
+      sendState();
+    }
+  }
 }
 
 // ─── プレイヤー移動 ──────────────────────────────────────────────────────────
-function canGo(npx, npy) {
+function canGo(plr, npx, npy) {
   const m = 3, sz = T-m*2-1;
   const pts = [[npx+m,npy+m],[npx+m+sz,npy+m],[npx+m,npy+m+sz],[npx+m+sz,npy+m+sz]];
   for (const [px,py] of pts) {
@@ -275,9 +392,9 @@ function canGo(npx, npy) {
     if (tile(gc,gr)!==CELL.E) return false;
     for (const b of bbs) {
       if (b.tx===gc && b.ty===gr) {
-        if (b.passable) {
+        if (b.passable && b.owner===playerNum(plr)) {
           // 現在位置のヒットボックスが爆弾マスと重なっていれば通過許可
-          const hx1=pl.px+m, hx2=pl.px+m+sz, hy1=pl.py+m, hy2=pl.py+m+sz;
+          const hx1=plr.px+m, hx2=plr.px+m+sz, hy1=plr.py+m, hy2=plr.py+m+sz;
           const btX=b.tx*T, btY=b.ty*T;
           if (hx1<btX+T && hx2>=btX && hy1<btY+T && hy2>=btY) continue;
           b.passable = false; // 完全に離れた瞬間に施錠
@@ -288,6 +405,7 @@ function canGo(npx, npy) {
   }
   return true;
 }
+function playerNum(plr) { return plr===pl ? 1 : 2; }
 
 function updPlayer(dt) {
   const spd = pl.spd * T * dt;
@@ -299,13 +417,13 @@ function updPlayer(dt) {
     const snap = Math.round(pl.py/T)*T;
     if (Math.abs(pl.py-snap) < spd+1) pl.py = snap;
     const nx = pl.px + (lt?-spd:spd);
-    if (canGo(nx,pl.py)) { pl.px=nx; pl.dir=lt?3:1; }
+    if (canGo(pl, nx,pl.py)) { pl.px=nx; pl.dir=lt?3:1; }
   }
   if (up||dn) {
     const snap = Math.round(pl.px/T)*T;
     if (Math.abs(pl.px-snap) < spd+1) pl.px = snap;
     const ny = pl.py + (up?-spd:spd);
-    if (canGo(pl.px,ny)) { pl.py=ny; pl.dir=up?0:2; }
+    if (canGo(pl, pl.px,ny)) { pl.py=ny; pl.dir=up?0:2; }
   }
 
   // パワーアップ取得
@@ -317,6 +435,39 @@ function updPlayer(dt) {
     if (p.t===PU.FIRE) pl.fire=Math.min(pl.fire+1,8);
     if (p.t===PU.SPD)  pl.spd =Math.min(pl.spd+0.35,5.5);
   }
+}
+
+// ─── P2移動（ホストがゲストキーで動かす） ────────────────────────────────────
+function updP2(dt) {
+  if (!p2 || !p2.alive) return;
+  const K2 = guestKeys;
+  const spd = p2.spd * T * dt;
+  const up=K2.up, dn=K2.dn, lt=K2.lt, rt=K2.rt;
+
+  if (lt||rt) {
+    const snap = Math.round(p2.py/T)*T;
+    if (Math.abs(p2.py-snap) < spd+1) p2.py = snap;
+    const nx = p2.px + (lt?-spd:spd);
+    if (canGo(p2, nx, p2.py)) { p2.px=nx; p2.dir=lt?3:1; }
+  }
+  if (up||dn) {
+    const snap = Math.round(p2.px/T)*T;
+    if (Math.abs(p2.px-snap) < spd+1) p2.px = snap;
+    const ny = p2.py + (up?-spd:spd);
+    if (canGo(p2, p2.px, ny)) { p2.py=ny; p2.dir=up?0:2; }
+  }
+
+  if (K2.bomb) { placeBomb(p2); K2.bomb=false; }
+
+  const tc=Math.round(p2.px/T), tr=Math.round(p2.py/T);
+  const pi=pups.findIndex(p=>p.tx===tc&&p.ty===tr);
+  if (pi>=0) {
+    const pu=pups.splice(pi,1)[0];
+    if (pu.t===PU.BOMB) p2.maxB=Math.min(p2.maxB+1,6);
+    if (pu.t===PU.FIRE) p2.fire=Math.min(p2.fire+1,8);
+    if (pu.t===PU.SPD)  p2.spd =Math.min(p2.spd+0.35,5.5);
+  }
+  if (p2.inv>0) p2.inv-=dt;
 }
 
 // ─── 敵移動 ────────────────────────────────────────────────────────────────
@@ -358,12 +509,12 @@ function inDanger(tx,ty) {
 }
 
 // ─── 爆弾 ────────────────────────────────────────────────────────────────────
-function placeBomb() {
-  if (!pl.alive || pl.actB>=pl.maxB) return;
-  const btx=Math.round(pl.px/T), bty=Math.round(pl.py/T);
+function placeBomb(plr=pl) {
+  if (!plr.alive || plr.actB>=plr.maxB) return;
+  const btx=Math.round(plr.px/T), bty=Math.round(plr.py/T);
   if (hasBomb(btx,bty)) return;
-  bbs.push({ tx:btx, ty:bty, t:CFG[diff].bt, fire:pl.fire, ph:0, passable:true });
-  pl.actB++;
+  bbs.push({ tx:btx, ty:bty, t:CFG[diff].bt, fire:plr.fire, ph:0, passable:true, owner:playerNum(plr) });
+  plr.actB++;
 }
 
 function hasBomb(tx,ty) { return bbs.some(b=>b.tx===tx&&b.ty===ty); }
@@ -378,7 +529,8 @@ function updBombs(dt) {
 
 function explode(i) {
   const b=bbs.splice(i,1)[0];
-  pl.actB=Math.max(0,pl.actB-1);
+  if (b.owner===2 && p2) p2.actB=Math.max(0,p2.actB-1);
+  else pl.actB=Math.max(0,pl.actB-1);
   const cs=[{x:b.tx,y:b.ty}];
   for (const [dx,dy] of D4) {
     for (let n=1; n<=b.fire; n++) {
@@ -409,6 +561,7 @@ function updExps(dt) {
 // ─── 当たり判定 ──────────────────────────────────────────────────────────────
 function checkHit() {
   const pcx=pl.px+T/2, pcy=pl.py+T/2, TH=T*0.62;
+  const p2cx=p2?p2.px+T/2:0, p2cy=p2?p2.py+T/2:0;
   for (const ex of exps) {
     for (const c of ex.cs) {
       const ecx=c.x*T+T/2, ecy=c.y*T+T/2;
@@ -419,11 +572,17 @@ function checkHit() {
           e.alive=false; score+=100;
         }
       }
-      // プレイヤーにダメージ（同時死亡はプレイヤー勝利）
+      // P1にダメージ
       if (pl.alive && pl.inv<=0) {
         if (Math.abs(pcx-ecx)<TH && Math.abs(pcy-ecy)<TH) {
           if (ens.every(e=>!e.alive)) { end(true); return; }
           hurt(); return;
+        }
+      }
+      // P2にダメージ（オンライン時）
+      if (onlineMode && p2 && p2.alive && p2.inv<=0) {
+        if (Math.abs(p2cx-ecx)<TH && Math.abs(p2cy-ecy)<TH) {
+          hurt2();
         }
       }
     }
@@ -435,8 +594,16 @@ function checkHit() {
       if (Math.abs(pcx-e.px-T/2)<TH && Math.abs(pcy-e.py-T/2)<TH) { hurt(); return; }
     }
   }
+  if (onlineMode && p2 && p2.alive && p2.inv<=0) {
+    for (const e of ens) {
+      if (!e.alive) continue;
+      if (Math.abs(p2cx-e.px-T/2)<TH && Math.abs(p2cy-e.py-T/2)<TH) { hurt2(); return; }
+    }
+  }
   // クリア判定
   if (ens.every(e=>!e.alive)) end(true);
+  // オンライン: 相手プレイヤー死亡で勝利
+  if (onlineMode && p2 && !p2.alive && p2.dead<=0 && pl.alive) { end(true, 1); }
 }
 
 function hurt() {
@@ -449,11 +616,217 @@ function hurt() {
   updHUD();
 }
 
-function end(won) {
+function hurt2() {
+  if (!p2) return;
+  p2.lives--;
+  if (p2.lives<=0) { p2.alive=false; p2.dead=1.4; }
+  else { p2.px=(COLS-2)*T; p2.py=T; p2.inv=2.5; }
+}
+
+function end(won, winner=1) {
   if (state!==ST.PLAY) return;
   clearInterval(tickId);
   if (won) { score+=gsec*10; hisc=Math.max(hisc,score); }
-  state = won ? ST.CLEAR : ST.OVER;
+  if (onlineMode) {
+    if (isHost && conn) conn.send({type:'end', won, winner});
+    state = (winner===1 || won) ? ST.CLEAR : ST.OVER;
+  } else {
+    state = won ? ST.CLEAR : ST.OVER;
+  }
+}
+
+// ─── オーバーレイ ────────────────────────────────────────────────────────────
+function showOlay(title, inputLabel, code, msg) {
+  const el = document.getElementById('olay');
+  document.getElementById('olay-title').textContent = title;
+  const inp = document.getElementById('olay-inp');
+  const cod = document.getElementById('olay-code');
+  if (inputLabel) {
+    inp.style.display = 'block';
+    inp.placeholder = inputLabel;
+    inp.value = '';
+  } else {
+    inp.style.display = 'none';
+  }
+  if (code) {
+    cod.style.display = 'block';
+    cod.textContent = code;
+  } else {
+    cod.style.display = 'none';
+  }
+  document.getElementById('olay-msg').textContent = msg || '';
+  el.style.display = 'flex';
+}
+
+function hideOlay() {
+  document.getElementById('olay').style.display = 'none';
+}
+
+// ─── PeerJS接続 ──────────────────────────────────────────────────────────────
+function makeRoomCode() {
+  // 8文字英数字のランダムID (ルームコードとしてそのままPeer IDに使用)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = 'BM-';
+  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+function startOnline(host) {
+  isHost = host;
+  onlineMode = true;
+  if (peer && !peer.destroyed) {
+    peer.destroy();
+  }
+
+  if (host) {
+    // ホスト: カスタムIDでPeer作成（= ルームコード）
+    const roomCode = makeRoomCode();
+    peer = new Peer(roomCode);
+
+    peer.on('error', err => {
+      // IDが使われていた場合は別コードで再試行
+      if (err.type === 'unavailable-id') {
+        peer.destroy();
+        startOnline(true);
+        return;
+      }
+      showOlay('エラー', null, null, 'エラー: ' + err.message);
+    });
+
+    peer.on('open', id => {
+      showOlay('部屋を作りました', null, id, '接続を待っています...');
+      document.getElementById('olay-ok').style.display = 'none';
+      document.getElementById('olay-cancel').onclick = () => {
+        hideOlay();
+        peer.destroy();
+        onlineMode = false;
+        state = ST.ONLINE;
+      };
+      peer.on('connection', c => {
+        conn = c;
+        setupConn();
+        hideOlay();
+        // ゲームを開始（シード付き）
+        mapSeed = Math.floor(Math.random() * 0x7fffffff);
+        setRngSeed(mapSeed);
+        go();
+        // init送信はsetupConn後少し待って送る
+        setTimeout(() => {
+          if (conn) conn.send({type:'init', seed:mapSeed, diff:diff});
+        }, 400);
+      });
+    });
+  } else {
+    // ゲスト: 普通にPeer作成してルームコードで接続
+    peer = new Peer();
+
+    peer.on('error', err => {
+      document.getElementById('olay-msg').textContent = 'エラー: ' + err.message;
+    });
+
+    peer.on('open', () => {
+      showOlay('部屋に入る', 'ルームコードを入力', null, 'ホストのコードを入力してください');
+      document.getElementById('olay-ok').style.display = '';
+      document.getElementById('olay-ok').onclick = () => {
+        const code = document.getElementById('olay-inp').value.trim().toUpperCase();
+        if (!code) return;
+        document.getElementById('olay-msg').textContent = '接続中...';
+        conn = peer.connect(code, {reliable:true});
+        setupConn();
+        conn.on('open', () => {
+          document.getElementById('olay-msg').textContent = '接続しました！ゲーム開始を待っています...';
+        });
+        conn.on('error', err => {
+          document.getElementById('olay-msg').textContent = '接続エラー: ' + err.message;
+        });
+      };
+      document.getElementById('olay-cancel').onclick = () => {
+        hideOlay();
+        peer.destroy();
+        onlineMode = false;
+        state = ST.ONLINE;
+      };
+    });
+  }
+}
+
+function setupConn() {
+  conn.on('data', d => {
+    if (isHost) {
+      // ホスト: ゲストのキー入力を受信
+      if (d.type === 'in') {
+        guestKeys.up   = d.up;
+        guestKeys.dn   = d.dn;
+        guestKeys.lt   = d.lt;
+        guestKeys.rt   = d.rt;
+        if (d.bomb) guestKeys.bomb = true;
+      }
+    } else {
+      // ゲスト: ゲーム状態を受信
+      if (d.type === 'init') {
+        setRngSeed(d.seed);
+        diff = d.diff;
+        go();
+        hideOlay();
+      } else if (d.type === 'gs') {
+        applyState(d);
+      } else if (d.type === 'end') {
+        clearInterval(tickId);
+        state = d.winner === 2 ? ST.CLEAR : ST.OVER;
+      }
+    }
+  });
+  conn.on('close', () => {
+    if (state === ST.PLAY) {
+      clearInterval(tickId);
+      state = ST.OVER;
+    }
+    onlineMode = false;
+    conn = null;
+  });
+  conn.on('error', err => {
+    console.error('conn error', err);
+  });
+}
+
+// ─── オンライン状態送受信 ─────────────────────────────────────────────────────
+function sendState() {
+  if (!conn) return;
+  conn.send({
+    type: 'gs',
+    p1: {px:pl.px,py:pl.py,alive:pl.alive,inv:pl.inv,dir:pl.dir,lives:pl.lives,fire:pl.fire,maxB:pl.maxB,actB:pl.actB,spd:pl.spd,dead:pl.dead},
+    p2: p2 ? {px:p2.px,py:p2.py,alive:p2.alive,inv:p2.inv,dir:p2.dir,lives:p2.lives,fire:p2.fire,maxB:p2.maxB,actB:p2.actB,spd:p2.spd,dead:p2.dead} : null,
+    ens: ens.map(e=>({px:e.px,py:e.py,alive:e.alive,dir:e.dir,ph:e.ph})),
+    bbs: bbs.map(b=>({tx:b.tx,ty:b.ty,t:b.t,fire:b.fire,ph:b.ph,passable:b.passable,owner:b.owner})),
+    exps: exps.map(ex=>({cs:ex.cs,t:ex.t,mt:ex.mt})),
+    pups: pups.map(p=>({tx:p.tx,ty:p.ty,t:p.t})),
+    mp: mp.map(r=>[...r]),
+    gsec, state
+  });
+}
+
+function applyState(d) {
+  if (d.p1) Object.assign(pl, d.p1);
+  if (d.p2 && p2) Object.assign(p2, d.p2);
+  if (d.ens) ens.forEach((e,i)=>{ if(d.ens[i]) Object.assign(e,d.ens[i]); });
+  if (d.bbs) bbs = d.bbs;
+  if (d.exps) exps = d.exps;
+  if (d.pups) pups = d.pups;
+  if (d.mp) mp = d.mp;
+  if (d.gsec !== undefined) { gsec = d.gsec; document.getElementById('ht').textContent = gsec; }
+  if (d.state !== undefined) state = d.state;
+}
+
+function sendKeys() {
+  if (!conn) return;
+  conn.send({
+    type: 'in',
+    up: K['ArrowUp']||K['KeyW'],
+    dn: K['ArrowDown']||K['KeyS'],
+    lt: K['ArrowLeft']||K['KeyA'],
+    rt: K['ArrowRight']||K['KeyD'],
+    bomb: false
+  });
 }
 
 // ─── HUD更新 ─────────────────────────────────────────────────────────────────
@@ -470,10 +843,41 @@ function updHUD() {
 // ─── 描画 ────────────────────────────────────────────────────────────────────
 function render() {
   cx.clearRect(0,0,cv.width,cv.height);
-  if (state===ST.TITLE)      { drawTitle(); return; }
+  if (state===ST.TITLE)  { drawTitle(); return; }
+  if (state===ST.ONLINE) { drawOnlineLobby(); return; }
   drawMap(); drawPups(); drawExps(); drawBombs(); drawEns(); drawPl();
+  if (onlineMode && p2) drawPl2();
   if (state===ST.CLEAR)      drawResult(true);
   else if (state===ST.OVER)  drawResult(false);
+}
+
+// ─── オンラインロビー画面 ─────────────────────────────────────────────────────
+function drawOnlineLobby() {
+  cx.fillStyle='#1a2210'; cx.fillRect(0,0,cv.width,cv.height);
+  const W=cv.width, H=cv.height;
+  cx.fillStyle='#4f8'; cx.font=`bold ${T*0.8}px "Segoe UI",sans-serif`;
+  cx.textAlign='center'; cx.textBaseline='middle';
+  cx.fillText('🌐 オンライン対戦', W/2, H*0.18);
+
+  const bw=Math.min(W*0.6,220), bh=T*1.4;
+  // 部屋を作る
+  const b1x=(W-bw)/2, b1y=H*0.35;
+  cx.fillStyle='rgba(0,120,60,0.4)'; rrect(b1x,b1y,bw,bh,T*0.2); cx.fill();
+  cx.strokeStyle='#4a8'; cx.lineWidth=2; rrect(b1x,b1y,bw,bh,T*0.2); cx.stroke();
+  cx.fillStyle='#8fa'; cx.font=`${T*0.55}px "Segoe UI",sans-serif`;
+  cx.fillText('🏠 部屋を作る', W/2, b1y+bh/2);
+  // 部屋に入る
+  const b2y=H*0.35+bh+T*0.6;
+  cx.fillStyle='rgba(0,60,120,0.4)'; rrect(b1x,b2y,bw,bh,T*0.2); cx.fill();
+  cx.strokeStyle='#48a'; cx.lineWidth=2; rrect(b1x,b2y,bw,bh,T*0.2); cx.stroke();
+  cx.fillStyle='#8af'; cx.font=`${T*0.55}px "Segoe UI",sans-serif`;
+  cx.fillText('🔑 部屋に入る', W/2, b2y+bh/2);
+  // 戻るヒント
+  cx.fillStyle='#666'; cx.font=`${T*0.38}px "Segoe UI",sans-serif`;
+  cx.fillText('タイトルに戻る: Esc', W/2, H*0.88);
+
+  // ボタン座標を返す（クリック判定用）
+  return { b1x, b1y, b2x:b1x, b2y, bw, bh };
 }
 
 // ─── タイトル画面 ────────────────────────────────────────────────────────────
@@ -524,11 +928,23 @@ function drawTitle() {
     cx.fillText('クリック / スペースでスタート', W/2, by+bh*0.86);
   }
 
+  // オンライン対戦ボタン
+  const obw=bw*0.7, obx=(W-obw)/2, oby=by+bh+T*0.5;
+  cx.fillStyle='rgba(0,180,80,0.15)';
+  rrect(obx,oby,obw,T*1.3,T*0.25); cx.fill();
+  cx.strokeStyle='rgba(0,200,100,0.5)'; cx.lineWidth=1.5;
+  rrect(obx,oby,obw,T*1.3,T*0.25); cx.stroke();
+  cx.fillStyle='#4f8'; cx.font=`bold ${T*0.52}px "Segoe UI",sans-serif`;
+  cx.textAlign='center'; cx.textBaseline='middle';
+  cx.fillText('🌐 オンライン対戦', W/2, oby+T*0.65);
+  // ボタン座標を記憶
+  drawTitle._obx=obx; drawTitle._oby=oby; drawTitle._obw=obw; drawTitle._obh=T*1.3;
+
   // ハイスコア
   if (hisc>0) {
     cx.fillStyle='rgba(255,220,60,0.9)';
     cx.font=`${T*0.4}px "Segoe UI",sans-serif`;
-    cx.fillText(`🏆 ベストスコア: ${hisc}`, W/2, by+bh+T*0.6);
+    cx.fillText(`🏆 ベストスコア: ${hisc}`, W/2, oby+T*1.3+T*0.5);
   }
 }
 
@@ -749,6 +1165,75 @@ function drawPl() {
   // 口
   cx.strokeStyle='#333'; cx.lineWidth=r*.09; cx.lineCap='round';
   cx.beginPath(); cx.arc(0,-r*.02,r*.2,.15,Math.PI-.15); cx.stroke();
+
+  cx.restore();
+}
+
+// ─── P2プレイヤー描画（赤系） ─────────────────────────────────────────────────
+function drawPl2() {
+  if (!p2) return;
+  if (p2.inv>0 && Math.floor(p2.inv*8)%2===0) return;
+
+  const pcx=p2.px+T/2, pcy=p2.py+T/2, r=T*.31;
+  cx.save(); cx.translate(pcx,pcy);
+
+  // 死亡アニメ
+  if (!p2.alive && p2.dead>0) {
+    const fr=1-p2.dead/1.4;
+    cx.globalAlpha=1-fr;
+    cx.scale(1+fr*2.5,1+fr*2.5);
+    for (let i=0;i<8;i++) {
+      const a=i/8*Math.PI*2, d=r*(1+fr*2.2);
+      cx.fillStyle=['#ff0','#f80','#f00','#ff8'][i%4];
+      cx.beginPath(); cx.arc(Math.cos(a)*d,Math.sin(a)*d,r*.3,0,Math.PI*2); cx.fill();
+    }
+    cx.restore(); return;
+  }
+
+  // 影
+  cx.fillStyle='rgba(0,0,0,.28)';
+  cx.beginPath(); cx.ellipse(0,r*.92,r*.65,r*.19,0,0,Math.PI*2); cx.fill();
+
+  // 足（赤系）
+  cx.fillStyle='#8a1010';
+  cx.beginPath(); cx.ellipse(-r*.32,r*.84,r*.19,r*.11,-.15,0,Math.PI*2); cx.fill();
+  cx.beginPath(); cx.ellipse( r*.32,r*.84,r*.19,r*.11, .15,0,Math.PI*2); cx.fill();
+
+  // 胴体（赤系）
+  const bg=cx.createRadialGradient(-r*.22,-r*.1,r*.06,0,0,r);
+  bg.addColorStop(0,'#ff9090'); bg.addColorStop(1,'#c81818');
+  cx.fillStyle=bg;
+  cx.beginPath(); cx.arc(0,0,r,0,Math.PI*2); cx.fill();
+
+  // ベルト
+  cx.fillStyle='#680a0a'; cx.fillRect(-r*.82,r*.22,r*1.64,r*.25);
+
+  // 帽子つば
+  cx.fillStyle='#eedd';
+  cx.beginPath(); cx.ellipse(0,-r*.62,r*.72,r*.13,0,0,Math.PI*2); cx.fill();
+  // 帽子本体
+  cx.fillStyle='#c81818'; cx.fillRect(-r*.44,-r*1.18,r*.88,r*.6);
+  // 帽子ライン
+  cx.fillStyle='#680a0a'; cx.fillRect(-r*.44,-r*.73,r*.88,r*.12);
+
+  // 顔
+  cx.fillStyle='#ffe0b0';
+  cx.beginPath(); cx.arc(0,-r*.08,r*.42,0,Math.PI*2); cx.fill();
+
+  // 目
+  cx.fillStyle='#222';
+  cx.beginPath(); cx.arc(-r*.17,-r*.18,r*.1,0,Math.PI*2); cx.fill();
+  cx.beginPath(); cx.arc( r*.17,-r*.18,r*.1,0,Math.PI*2); cx.fill();
+
+  // 口
+  cx.strokeStyle='#333'; cx.lineWidth=r*.09; cx.lineCap='round';
+  cx.beginPath(); cx.arc(0,-r*.02,r*.2,.15,Math.PI-.15); cx.stroke();
+
+  // P2ラベル
+  cx.fillStyle='rgba(255,100,100,0.9)';
+  cx.font=`bold ${r*.7}px "Segoe UI",sans-serif`;
+  cx.textAlign='center'; cx.textBaseline='middle';
+  cx.fillText('P2', 0, -r*1.6);
 
   cx.restore();
 }
