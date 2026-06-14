@@ -239,7 +239,11 @@ function curShape(){
 }
 
 function placeAt(shape,ar,ac){
-  return shape.map(([r,c])=>[r+ar,c+ac]);
+  const maxR=Math.max(...shape.map(([r])=>r));
+  const maxC=Math.max(...shape.map(([,c])=>c));
+  const or=Math.max(0,Math.min(N-1-maxR,ar-Math.round(maxR/2)));
+  const oc=Math.max(0,Math.min(N-1-maxC,ac-Math.round(maxC/2)));
+  return shape.map(([r,c])=>[r+or,c+oc]);
 }
 
 function isValid(cells,pi){
