@@ -112,8 +112,8 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
     <label>CPUの強さ</label>
     <select id="sel-diff">
       <option value="easy">弱い (1.5秒/枚)</option>
-      <option value="normal" selected>ふつう (0.7秒/枚)</option>
-      <option value="hard">強い (0.3秒/枚)</option>
+      <option value="normal" selected>ふつう (0.9秒/枚)</option>
+      <option value="hard">強い (0.5秒/枚)</option>
     </select>
   </div>
   <button class="start-btn" id="start-btn">ゲームスタート</button>
@@ -421,7 +421,9 @@ function renderInfo() {
 
   const canAny = canAnyonePlay();
   const speedBtn = document.getElementById('speed-btn');
-  speedBtn.disabled = canAny || G.repl[0].length === 0 && G.repl[1].length === 0;
+  const replEmpty = G.repl[0].length === 0 && G.repl[1].length === 0;
+  speedBtn.disabled = canAny || (replEmpty && myHand.length === 0);
+  speedBtn.textContent = replEmpty ? 'スピード！（手札から）' : 'スピード！';
 }
 
 // ========== DRAG / TOUCH HELPERS ==========
@@ -502,13 +504,39 @@ function applyPlay(playerIdx, slot, pileIdx) {
 function doFlip() {
   if (G.won !== null) return;
   if (canAnyonePlay()) { setStatus('まだ出せるカードがあります'); return; }
-  if (G.repl[0].length === 0 && G.repl[1].length === 0) { setStatus('補充山がありません'); return; }
-  if (G.online) {
-    roomSend({t:'flip'});
+  const replEmpty = G.repl[0].length === 0 && G.repl[1].length === 0;
+  if (replEmpty) {
+    const myIdx = G.online ? G.mySeat : 0;
+    if (G.hands[myIdx].length === 0) { setStatus('手札がありません'); return; }
+    if (G.selected < 0) { setStatus('手札から1枚選んでスピード！'); return; }
+    if (G.online) {
+      roomSend({t:'fliphand', slot: G.selected});
+    } else {
+      applyFlipWithHand(G.selected, 0);
+      scheduleStuckCheck();
+    }
   } else {
-    applyFlip();
-    scheduleStuckCheck();
+    if (G.online) {
+      roomSend({t:'flip'});
+    } else {
+      applyFlip();
+      scheduleStuckCheck();
+    }
   }
+}
+
+function applyFlipWithHand(playerSlot, senderSeat) {
+  const otherSeat = 1 - senderSeat;
+  const senderCard = G.hands[senderSeat].splice(playerSlot, 1)[0];
+  G.center[0].push(senderCard);
+  if (G.hands[otherSeat].length > 0) {
+    const otherSlot = Math.floor(Math.random() * G.hands[otherSeat].length);
+    const otherCard = G.hands[otherSeat].splice(otherSlot, 1)[0];
+    G.center[1].push(otherCard);
+  }
+  G.selected = -1;
+  render();
+  setStatus('スピード！');
 }
 
 function applyFlip() {
@@ -571,9 +599,9 @@ function clearCpuTimer() {
 }
 
 function cpuDelay() {
-  return G.diff === 'easy' ? 1200 + Math.random()*600
-       : G.diff === 'normal' ? 500 + Math.random()*400
-       : 200 + Math.random()*200;
+  return G.diff === 'easy' ? 1300 + Math.random()*400   // avg 1.5s
+       : G.diff === 'normal' ? 700 + Math.random()*400   // avg 0.9s
+       : 300 + Math.random()*400;                         // avg 0.5s
 }
 
 function scheduleCpu() {
@@ -610,7 +638,10 @@ function scheduleStuckCheck() {
   G.stuckCheckTimer = setTimeout(() => {
     if (G.won !== null || G.online) return;
     if (!canAnyonePlay()) {
-      setStatus('行き詰まり！「スピード！」で補充してください');
+      const replEmpty = G.repl[0].length === 0 && G.repl[1].length === 0;
+      setStatus(replEmpty
+        ? '行き詰まり！手札から1枚選んで「スピード！」を押してください'
+        : '行き詰まり！「スピード！」で補充してください');
       renderInfo();
     }
   }, 800);
@@ -709,6 +740,9 @@ OnlineRoom.init({
       scheduleStuckCheck();
     } else if (msg.t === 'flip') {
       applyFlip();
+      scheduleStuckCheck();
+    } else if (msg.t === 'fliphand') {
+      applyFlipWithHand(msg.slot, fromSeat);
       scheduleStuckCheck();
     } else if (msg.t === 'win') {
       G.won = fromSeat;
