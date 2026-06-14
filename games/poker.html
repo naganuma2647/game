@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>テキサスホールデム</title>
 <style>
 :root{--bg:#0a1a0a;--surf:#111e11;--gold:#c9a030;--gold2:#f0d060;--txt:#e8f0e8;--dim:#557755;
@@ -36,6 +36,8 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
 .opp-chips{font-size:13px;font-weight:700;color:var(--gold)}
 .opp-bet{font-size:11px;color:var(--blue);min-height:14px}
 .opp-cards{display:flex;gap:3px;justify-content:center;margin-top:6px;min-height:56px;align-items:center}
+.chip-segs{display:flex;gap:2px;justify-content:center;margin:3px 0 1px}
+.chip-seg{width:12px;height:6px;border-radius:2px}
 
 /* Community */
 .community-area{background:var(--surf);border-radius:14px;padding:14px;text-align:center}
@@ -87,6 +89,12 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
 #win-box .win-btns button{padding:9px 20px;border:none;border-radius:10px;font:700 13px 'Segoe UI',sans-serif;cursor:pointer}
 .btn-next{background:var(--gold);color:#111}
 .btn-quit{background:#333;color:var(--txt)}
+
+@media (max-width:480px){
+  .opp{min-width:90px;padding:7px 8px}
+  .card{width:38px;height:54px;font-size:13px}
+  .card.sm{width:28px;height:40px;font-size:10px}
+}
 </style>
 </head>
 <body>
@@ -260,7 +268,7 @@ function startGame(){
   const startChips=+document.getElementById('sel-c').value;
   const bb=Math.max(10,startChips/50|0)*2;
   G={
-    numP,diff,
+    numP,diff,startChips,
     chips:Array(numP).fill(startChips),
     names:['あなた',...Array.from({length:numP-1},(_,i)=>`CPU${i+1}`)],
     dealer:0,
@@ -653,8 +661,14 @@ function renderOpp(showAll=false){
       ?G.hole[pi].map(c=>cardHTML(c,true)).join('')
       :G.hole[pi].map(()=>cardHTML('back',true)).join('');
     const handName=(showAll||G.phase==='showdown')&&!G.folded[pi]&&G.hole[pi].length?`<div style="font-size:10px;color:var(--gold2);margin-top:2px">${bestHand(G.hole[pi],G.community).name}</div>`:'';
+    const ref=G.startChips||1000;
+    const ratio=Math.min(G.chips[pi]/ref,1);
+    const segs=Math.round(ratio*5);
+    const segCol=ratio>0.5?'#4ec05e':ratio>0.2?'#f0e020':'#e05050';
+    const segsHTML='<div class="chip-segs">'+Array.from({length:5},(_,s)=>`<div class="chip-seg" style="background:${s<segs?segCol:'rgba(255,255,255,.1)'}"></div>`).join('')+'</div>';
     el.innerHTML=`<div class="opp-name">${G.names[pi]}${G.chips[pi]===0?' (オールイン)':''}</div>
       <div class="opp-chips">💰${G.chips[pi]}</div>
+      ${segsHTML}
       <div class="opp-bet">${G.bets[pi]>0?'BET:'+G.bets[pi]:''}</div>
       <div class="opp-cards">${cards}</div>${handName}`;
     row.appendChild(el);

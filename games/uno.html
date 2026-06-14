@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>UNO</title>
 <style>
 :root{--bg:#0e0e18;--surf:#1a1a28;--gold:#c9a030;--gold2:#f0d060;--txt:#e8e8f0;--dim:#555;--red:#e0473a;--grn:#4ec05e;
@@ -102,6 +102,13 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
 .win-btns button{padding:10px 22px;border-radius:8px;font:700 14px 'Segoe UI',sans-serif;cursor:pointer;border:none}
 .win-btns .again{background:var(--gold);color:#111}
 .win-btns .home{background:#2a2a3e;color:var(--txt)}
+
+@media (max-width:480px){
+  .hand-row{flex-wrap:wrap;overflow-x:visible;justify-content:center}
+  .card-el{width:48px;height:68px}
+  .draw-pile{width:48px;height:68px}
+  .card-el .cv{font-size:16px}
+}
 </style>
 </head>
 <body>
@@ -356,7 +363,7 @@ function initLocalGame(numP, diff) {
 }
 
 function scheduleTurn() {
-  if (G.phase === 'color') return; // waiting for color pick
+  if (G.phase === 'color' || G.phase === 'done') return;
   if (G.cur === 0) {
     // Human turn
     setStatus('あなたのターン');
@@ -449,7 +456,15 @@ function pickColor(c) {
 
 function humanDraw() {
   if (G.cur !== 0 || G.phase !== 'play') return;
-  if (G.drewThisTurn) { setStatus('すでにドロー済みです。カードを出すか、パスしてください'); return; }
+  if (G.drewThisTurn) {
+    // 2回目のクリックでパス
+    advanceTurn();
+    G.drewThisTurn = false;
+    G.unoCalled = false;
+    renderAll();
+    scheduleTurn();
+    return;
+  }
 
   if (ONLINE && roomSend) {
     roomSend({t:'draw'});
@@ -472,7 +487,7 @@ function humanDraw() {
       scheduleTurn();
     }, 1000);
   } else {
-    setStatus('ドローしたカードを出せます');
+    setStatus('ドローしたカードを出せます（パスは山札を再クリック）');
   }
 }
 
@@ -484,7 +499,7 @@ function callUno() {
 }
 
 function cpuPlay() {
-  if (G.cur === 0) return;
+  if (G.cur === 0 || G.phase === 'done') return;
   const pi = G.cur;
   const hand = G.hands[pi];
 

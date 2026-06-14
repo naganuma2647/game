@@ -288,6 +288,12 @@
         // seat<0 (= "番号だけで再接続") → assign the lowest empty (gone) seat.
         let seat = m.seat;
         if (started && m.game === cfg.gameId) {
+          // If the connection dropped silently (no close event), the seat may
+          // still be in guests but not in gone. Promote it so reclaim succeeds.
+          if (seat >= 0 && !gone.has(seat)) {
+            const ex = guests.find(g => g.seat === seat);
+            if (ex) { try { ex.conn.close(); } catch (_) {} ex.alive = false; gone.add(seat); roster.delete(seat); }
+          }
           if (!(seat >= 0 && gone.has(seat))) { const g0 = [...gone].sort((a, b) => a - b); seat = g0.length ? g0[0] : -1; }
           if (seat >= 0 && gone.has(seat)) {
             gone.delete(seat);

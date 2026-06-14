@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>ニムト (6 nimmt!)</title>
 <style>
 :root{--bg:#0e0e18;--surf:#1a1a28;--gold:#c9a030;--gold2:#f0d060;--txt:#e8e8f0;--dim:#555;--red:#d94040;--grn:#3dba6a;}
@@ -93,6 +93,11 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
 .go-btns button{padding:9px 20px;border-radius:8px;font:700 13px 'Segoe UI',sans-serif;cursor:pointer;border:none}
 .go-btns .again{background:var(--gold);color:#111}
 .go-btns .home{background:#2a2a38;color:var(--txt)}
+
+@media(max-width:480px){
+  .card-el{width:32px;height:44px;font-size:11px}
+  .hcard{width:36px;height:50px;font-size:12px}
+}
 </style>
 </head>
 <body>

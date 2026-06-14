@@ -52,7 +52,28 @@ h1{font-size:22px;color:var(--gold);margin-bottom:6px;text-align:center}
 #win-box p{color:var(--dim);font-size:14px;margin-bottom:20px}
 #win-box .gbtn{margin:4px}
 
-/* Timer done */
+/* Opponent board panel (persistent, below main board) */
+#opp-section{display:none;width:100%;max-width:400px;margin-top:20px;text-align:center}
+.opp-header{display:flex;align-items:center;justify-content:center;gap:10px;font-size:12px;color:var(--dim);margin-bottom:8px}
+.opp-header .opp-label{font-weight:700;color:var(--gold2)}
+.opp-header .opp-info{font-size:11px;color:var(--dim)}
+#opp-mini-board{display:inline-grid;gap:3px;padding:8px;background:var(--surf);border-radius:12px}
+.opp-tile{display:flex;align-items:center;justify-content:center;border-radius:5px;font-weight:800;background:linear-gradient(135deg,#252538,#1e1e30);border:1px solid rgba(255,255,255,.08);color:var(--txt)}
+.opp-tile.empty{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.04)}
+.opp-tile.correct{background:linear-gradient(135deg,#1a3a1a,#162816);border-color:rgba(78,192,94,.3);color:#4ec05e}
+
+/* Mode select modal */
+#mode-select{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:300;align-items:center;justify-content:center;padding:16px}
+#mode-select.show{display:flex}
+.mode-box{background:var(--surf);border-radius:16px;padding:24px 20px;max-width:300px;width:100%;text-align:center}
+.mode-box h3{color:var(--gold);font-size:17px;margin-bottom:6px}
+.mode-box p{font-size:12px;color:var(--dim);margin-bottom:20px;line-height:1.6}
+.mode-btns{display:flex;flex-direction:column;gap:10px}
+.mode-btn{padding:14px;border:none;border-radius:10px;font:700 14px 'Segoe UI',sans-serif;cursor:pointer;transition:all .12s}
+.mode-btn.same{background:var(--gold);color:#111}
+.mode-btn.same:hover{background:var(--gold2)}
+.mode-btn.rand{background:#2a2a3e;color:var(--txt);border:1px solid #444}
+.mode-btn.rand:hover{border-color:var(--gold)}
 </style>
 </head>
 <body>
@@ -83,6 +104,27 @@ h1{font-size:22px;color:var(--gold);margin-bottom:6px;text-align:center}
   <button class="gbtn secondary" id="ai-slow-btn" onclick="startAI(500)">AI(遅)</button>
   <button class="gbtn secondary" id="ai-fast-btn" onclick="startAI(100)">AI(速)</button>
   <button class="gbtn secondary" id="ai-stop-btn" onclick="stopAI()" style="display:none">停止</button>
+</div>
+
+<!-- 相手の盤面（常時表示パネル） -->
+<div id="opp-section">
+  <div class="opp-header">
+    <span class="opp-label">相手の盤面</span>
+    <span class="opp-info" id="opp-info">-</span>
+  </div>
+  <div id="opp-mini-board"></div>
+</div>
+
+<!-- 対戦形式選択モーダル（ホストのみ表示） -->
+<div id="mode-select">
+  <div class="mode-box">
+    <h3>対戦形式を選択</h3>
+    <p>ホストが選んだ形式で対戦が始まります</p>
+    <div class="mode-btns">
+      <button class="mode-btn same" onclick="startRace('same')">同じ盤面でスタート<br><span style="font-size:11px;font-weight:400;opacity:.8">二人が同じパズルを解く</span></button>
+      <button class="mode-btn rand" onclick="startRace('random')">それぞれランダムな盤面<br><span style="font-size:11px;font-weight:400;opacity:.8">異なるパズルを解く</span></button>
+    </div>
+  </div>
 </div>
 
 <div id="win">
@@ -125,7 +167,6 @@ function makeSolved(){
 
 function shuffle(t){
   const a=[...t];
-  // Fisher-Yates, ensure solvable
   do{
     for(let i=a.length-1;i>0;i--){const j=Math.random()*i|0;[a[i],a[j]]=[a[j],a[i]];}
   }while(!isSolvable(a)||isSolved(a));
@@ -167,26 +208,32 @@ function render(){
   });
 }
 
+function startRaceTimer(){
+  if(started)return;
+  started=true;
+  clearInterval(timerInt);
+  timerInt=setInterval(()=>{
+    timerSec++;
+    const m=Math.floor(timerSec/60),s=timerSec%60;
+    document.getElementById('timer').textContent=m+':'+(s<10?'0':'')+s;
+  },1000);
+}
+
 function clickTile(idx){
   const blank=tiles.indexOf(0);
   const r1=Math.floor(idx/N),c1=idx%N;
   const r2=Math.floor(blank/N),c2=blank%N;
   if(Math.abs(r1-r2)+Math.abs(c1-c2)!==1)return;
 
-  if(!started){
-    started=true;
-    timerInt=setInterval(()=>{
-      timerSec++;
-      const m=Math.floor(timerSec/60),s=timerSec%60;
-      document.getElementById('timer').textContent=m+':'+(s<10?'0':'')+s;
-    },1000);
+  // オフラインのみ最初のクリックでタイマーを開始
+  if(!started&&!ONLINE){
+    startRaceTimer();
   }
 
   [tiles[idx],tiles[blank]]=[tiles[blank],tiles[idx]];
   moveCount++;
   document.getElementById('moves').textContent=moveCount;
 
-  // Animate
   const el=document.getElementById('board').children[idx];
   el.classList.add('moving');
   setTimeout(()=>{render();if(isSolved(tiles))win();},80);
@@ -195,6 +242,7 @@ function clickTile(idx){
 function win(){
   stopAI();
   clearInterval(timerInt);
+  clearInterval(peekInterval);
   if(ONLINE){
     if(raceOver)return;
     raceOver=true;
@@ -221,7 +269,6 @@ function updateBest(){
 }
 
 function showHint(){
-  // Highlight the tile that should move (closest to solved)
   const blank=tiles.indexOf(0);
   const br=Math.floor(blank/N),bc=blank%N;
   const neighbors=[];
@@ -229,12 +276,10 @@ function showHint(){
   if(br<N-1)neighbors.push(blank+N);
   if(bc>0)neighbors.push(blank-1);
   if(bc<N-1)neighbors.push(blank+1);
-
-  // Pick neighbor whose value belongs closest to blank position
   let best=null,bestScore=Infinity;
   for(const n of neighbors){
     const v=tiles[n];
-    const goalIdx=v-1; // 0-indexed goal position
+    const goalIdx=v-1;
     const gr=Math.floor(goalIdx/N),gc=goalIdx%N;
     const nr=Math.floor(n/N),nc=n%N;
     const dist=Math.abs(nr-gr)+Math.abs(nc-gc);
@@ -248,6 +293,57 @@ function showHint(){
 
 // ===== ONLINE RACE MODE =====
 let ONLINE=false,MYSEAT=0,roomSend=null,raceOver=false;
+let peekInterval=null;
+
+function sendPeek(){
+  if(raceOver||!roomSend)return;
+  roomSend({t:'peek',tiles:[...tiles],moves:moveCount,n:N});
+}
+
+function startPeekInterval(){
+  clearInterval(peekInterval);
+  sendPeek(); // 即時送信（0秒）
+  peekInterval=setInterval(()=>{
+    if(raceOver){clearInterval(peekInterval);return;}
+    sendPeek();
+  },30000); // 以降30秒ごと
+}
+
+function renderOppMini(oppTiles,oppN){
+  const mini=document.getElementById('opp-mini-board');
+  const maxW=Math.min(window.innerWidth-80,200);
+  const cs=Math.min(Math.floor((maxW-16-3*(oppN-1))/oppN),42);
+  mini.style.gridTemplateColumns=`repeat(${oppN},${cs}px)`;
+  mini.style.gridTemplateRows=`repeat(${oppN},${cs}px)`;
+  mini.innerHTML='';
+  oppTiles.forEach((v,i)=>{
+    const el=document.createElement('div');
+    el.className='opp-tile'+(v===0?' empty':v===i+1?' correct':'');
+    el.style.width=cs+'px';el.style.height=cs+'px';
+    el.style.fontSize=cs*0.38+'px';
+    if(v!==0)el.textContent=v;
+    mini.appendChild(el);
+  });
+}
+
+function showOppSectionWaiting(n){
+  // randomモード用プレースホルダー（空タイル）
+  const section=document.getElementById('opp-section');
+  section.style.display='block';
+  document.getElementById('opp-info').textContent='受信中…';
+  const dummy=[];
+  for(let i=0;i<n*n-1;i++)dummy.push(i+1);
+  dummy.push(0);
+  renderOppMini(dummy,n);
+}
+
+function showOpponentBoard(oppTiles,oppMoves,oppN){
+  const section=document.getElementById('opp-section');
+  section.style.display='block';
+  const solved=oppTiles.filter((v,i)=>v!==0&&v===i+1).length;
+  document.getElementById('opp-info').textContent=`${oppMoves}手・${solved}/${oppN*oppN-1}マス完成`;
+  renderOppMini(oppTiles,oppN);
+}
 
 function onStart(seat,n,send){
   stopAI();
@@ -255,14 +351,38 @@ function onStart(seat,n,send){
   document.querySelector('.size-row').style.display='none';
   document.querySelectorAll('.btns .gbtn.secondary').forEach(b=>b.style.display='none');
   document.getElementById('best-wrap').style.display='none';
+  document.getElementById('opp-section').style.display='none';
   if(seat===0){
-    const t=shuffle(makeSolved());
-    tiles=[...t];
-    send({t:'start',tiles:t});
+    // ホストのみ形式選択を表示
+    document.getElementById('mode-select').classList.add('show');
   } else {
     document.getElementById('board').innerHTML='';
     document.getElementById('status-race')||createRaceStatus('対戦相手を待機中…');
   }
+}
+
+function startRace(mode){
+  document.getElementById('mode-select').classList.remove('show');
+  clearInterval(timerInt);timerSec=0;moveCount=0;started=false;
+  document.getElementById('moves').textContent='0';
+  document.getElementById('timer').textContent='0:00';
+
+  if(mode==='same'){
+    const t=shuffle(makeSolved());
+    tiles=[...t];
+    render();
+    createRaceStatus('スタート！先に揃えた方の勝ち（同じ盤面）');
+    showOpponentBoard([...t],0,N); // 同じ盤面なので即表示
+    roomSend({t:'start',mode:'same',tiles:t,n:N});
+  } else {
+    tiles=shuffle(makeSolved());
+    render();
+    createRaceStatus('スタート！先に揃えた方の勝ち（ランダム盤面）');
+    showOppSectionWaiting(N); // 受信待ちプレースホルダー
+    roomSend({t:'start',mode:'random',n:N});
+  }
+  startRaceTimer();
+  startPeekInterval();
 }
 
 function createRaceStatus(msg){
@@ -276,12 +396,29 @@ function createRaceStatus(msg){
 
 function handleMsg(from,msg){
   if(msg.t==='start'){
-    tiles=[...msg.tiles];moveCount=0;timerSec=0;started=false;
+    clearInterval(timerInt);timerSec=0;moveCount=0;started=false;
     document.getElementById('moves').textContent='0';
     document.getElementById('timer').textContent='0:00';
-    render();createRaceStatus('スタート！先に揃えた方の勝ち');
+    if(msg.mode==='same'){
+      N=msg.n||N;
+      tiles=[...msg.tiles];
+      render();
+      createRaceStatus('スタート！先に揃えた方の勝ち（同じ盤面）');
+      showOpponentBoard([...tiles],0,N); // 同じ盤面なので即表示
+    } else {
+      N=msg.n||N;
+      tiles=shuffle(makeSolved());
+      render();
+      createRaceStatus('スタート！先に揃えた方の勝ち（ランダム盤面）');
+      showOppSectionWaiting(N); // 受信待ちプレースホルダー
+    }
+    startRaceTimer();
+    startPeekInterval();
+  } else if(msg.t==='peek'){
+    showOpponentBoard(msg.tiles,msg.moves,msg.n||N);
   } else if(msg.t==='done'){
     if(raceOver)return;raceOver=true;
+    clearInterval(peekInterval);
     clearInterval(timerInt);
     const myWin=from===MYSEAT;
     const m=Math.floor(msg.sec/60),s=msg.sec%60;
@@ -292,21 +429,6 @@ function handleMsg(from,msg){
     document.getElementById('win-box').querySelector('h2').textContent=myWin?'あなたの勝ち！':'惜しい…';
   }
 }
-
-OnlineRoom.init({
-  gameId:'puzzle15',minPlayers:2,maxPlayers:2,
-  note:'同じパズルを先に解いた人の勝ち（競争モード）',
-  onStart:(seat,n,send)=>onStart(seat,n,send),
-  onMessage:(from,msg)=>handleMsg(from,msg),
-  getState:()=>({tiles:[...tiles],N}),
-  applyState:(o)=>{
-    ONLINE=true;MYSEAT=o.seat;roomSend=o.send;raceOver=false;
-    document.querySelector('.size-row').style.display='none';
-    const s=o.state;N=s.N;
-    tiles=[...s.tiles];moveCount=0;timerSec=0;started=false;
-    render();createRaceStatus('ゲームに参加しました。次のラウンドを待機中…');
-  }
-});
 
 // ===== AI SOLVER (IDA* + greedy fallback) =====
 let aiInterval = null;
@@ -443,5 +565,21 @@ newGame();
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="../shared/lobby.js?v=7"></script>
 <script src="../shared/online-room.js?v=7"></script>
+<script>
+OnlineRoom.init({
+  gameId:'puzzle15',minPlayers:2,maxPlayers:2,
+  note:'先に揃えた人の勝ち（競争モード）',
+  onStart:(seat,n,send)=>onStart(seat,n,send),
+  onMessage:(from,msg)=>handleMsg(from,msg),
+  getState:()=>({tiles:[...tiles],N}),
+  applyState:(o)=>{
+    ONLINE=true;MYSEAT=o.seat;roomSend=o.send;raceOver=false;
+    document.querySelector('.size-row').style.display='none';
+    const s=o.state;N=s.N;
+    tiles=[...s.tiles];moveCount=0;timerSec=0;started=false;
+    render();createRaceStatus('ゲームに参加しました。次のラウンドを待機中…');
+  }
+});
+</script>
 </body>
 </html>

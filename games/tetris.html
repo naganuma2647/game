@@ -54,7 +54,7 @@ canvas{background:#0E0C09;border:2px solid var(--line);border-radius:6px;display
   <button id="p-drop">⤓</button>
 </div>
 <div class="foot"><button id="start">スタート / 一時停止</button></div>
-<div class="hint">PC: ←→移動 ↑回転 ↓速く下げる スペース=即落下<br>スマホ: ◀⟳▶移動回転 ▼=速く下げる ⤓=即落下<br>速く下げると+1点／即落下は落ちた段数×2点</div>
+<div class="hint">PC: ←→移動 ↑回転 ↓速く下げる スペース=即落下<br>スマホ: 盤面タップ=回転 ◀▶移動 ▼=速く下げる ⤓=即落下<br>速く下げると+1点／即落下は落ちた段数×2点</div>
 <div class="over" id="over"><div class="c"><div class="t">GAME OVER</div><div class="s" id="ov-s"></div><button id="again">もう一度</button></div></div>
 <script>
 const COLS=10,ROWS=20,CELL=24;
@@ -129,6 +129,12 @@ document.getElementById('start').addEventListener('click',()=>{
   if(over||!grid){init();draw();return;}
   paused=!paused;lastT=performance.now();msg(paused?'一時停止中':'');});
 document.getElementById('again').addEventListener('click',()=>{init();draw();});
+// スマホ: 盤面タップで回転
+(function(){
+  let tx=0,ty=0;
+  cv.addEventListener('touchstart',function(e){e.preventDefault();tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:false});
+  cv.addEventListener('touchend',function(e){e.preventDefault();const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;if(Math.abs(dx)<15&&Math.abs(dy)<15&&!paused&&!over){cur=rotate(cur);draw();}},{passive:false});
+})();
 init();draw();paused=true;msg('「スタート」で開始');
 </script>
 <script src="../shared/firebase-counter.js"></script></body>

@@ -143,10 +143,39 @@
     a.tag { text-decoration: none; }
     a.tag:hover { filter: brightness(1.25); }
     .tag-online { background: rgba(80,150,255,0.18); color: #9cc4ff; }
+    .tag-rule { background: rgba(201,162,39,0.15); color: #e8c84a; border: none; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+    .tag-rule:hover { filter: brightness(1.25); }
+    /* ルールモーダル */
+    .rule-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.82);display:none;align-items:center;justify-content:center;z-index:60;padding:16px; }
+    .rule-overlay.show { display:flex; }
+    .rule-card { background:#1a1510;border:1px solid rgba(201,162,39,0.35);border-radius:14px;padding:28px 28px 24px;max-width:480px;width:100%;max-height:82vh;overflow-y:auto;position:relative; }
+    .rule-card h2 { color:#e8c84a;font-size:18px;font-family:"Hiragino Mincho ProN",serif;margin-bottom:16px;padding-right:28px; }
+    .rule-card h3 { color:#e8c84a;font-size:13px;font-weight:700;margin:14px 0 4px; }
+    .rule-card p,.rule-card li { font-size:13px;line-height:1.75;color:#ede6d6;opacity:.9; }
+    .rule-card ul { padding-left:18px; }
+    .rule-card li { margin-bottom:4px; }
+    .rule-close { position:absolute;top:14px;right:16px;background:none;border:none;color:#9a8f7b;font-size:22px;cursor:pointer;line-height:1; }
 
-    /* 人数フィルター */
+    /* 検索 */
+    .search-wrap { position: relative; margin: 0 0 12px; }
+    .search-wrap input {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+      color: #cfd8e6; padding: 9px 36px 9px 38px; border-radius: 8px; font-size: 14px;
+      font-family: inherit; outline: none; transition: border-color 0.15s;
+    }
+    .search-wrap input:focus { border-color: rgba(80,150,255,0.65); }
+    .search-wrap input::placeholder { color: rgba(255,255,255,0.3); }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 15px; opacity: 0.45; pointer-events: none; }
+    .search-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 18px;
+      display: none; padding: 2px 6px; line-height: 1; }
+    .search-clear:hover { color: rgba(255,255,255,0.8); }
+
+    /* フィルター */
     .filterbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; align-items: center; }
     .filterbar .fb-label { font-size: 12px; opacity: 0.65; margin-right: 2px; }
+    .filterbar .fb-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.18); margin: 0 2px; flex-shrink: 0; }
     .filterbar button {
       background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
       color: #cfd8e6; padding: 7px 16px; border-radius: 999px; font-size: 13px;
@@ -258,53 +287,58 @@
 
     <!-- ゲーム一覧 -->
     <div class="col-games">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="game-search" placeholder="ゲームを検索..." autocomplete="off" spellcheck="false">
+        <button class="search-clear" id="search-clear" aria-label="クリア">×</button>
+      </div>
       <div class="filterbar" id="filterbar">
         <span class="fb-label">人数:</span>
         <button data-f="all" class="on">すべて</button>
         <button data-f="solo">1人</button>
         <button data-f="duo">1VS1</button>
         <button data-f="multi">複数人</button>
+        <span class="fb-sep"></span>
+        <button data-f="card">🃏 カードゲーム</button>
+        <button data-f="board">♟ ボードゲーム</button>
       </div>
       <div class="grid">
         <div class="card">
           <div class="icon"><svg width="38" height="38" viewBox="0 0 40 40" fill="none" stroke-linejoin="round"><polygon points="20,3 27.3,7.5 27.3,15.8 20,20 12.7,15.8 12.7,7.5" fill="#2d7a3a" fill-opacity="0.42" stroke="#4aaa5e" stroke-width="2"/><polygon points="31.2,12.5 38.4,16.7 38.4,25 31.2,29.2 23.9,25 23.9,16.7" fill="#d4a827" fill-opacity="0.42" stroke="#d4a827" stroke-width="2"/><polygon points="8.8,12.5 16.1,16.7 16.1,25 8.8,29.2 1.6,25 1.6,16.7" fill="#7a4020" fill-opacity="0.42" stroke="#c0522a" stroke-width="2"/></svg></div>
           <div class="name">カタン</div>
           <div class="desc">資源を集めて開拓する人気ボードゲーム。</div>
-          <div class="tagrow"><a class="tag" href="カタン/index.html">プレイする →</a><a class="tag tag-online" href="カタン/index.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="カタン/index.html">プレイする →</a><a class="tag tag-online" href="カタン/index.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-catan').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon">🀄</div>
           <div class="name">麻雀</div>
           <div class="desc">和了判定・点数計算つきの四人打ち麻雀。オンライン4麻対応（CPU補填可）。</div>
-          <div class="tagrow"><a class="tag" href="麻雀ゲーム/index.html">プレイする →</a><a class="tag tag-online" href="麻雀ゲーム/index.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="麻雀ゲーム/index.html">プレイする →</a><a class="tag tag-online" href="麻雀ゲーム/index.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-mahjong').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="font-size:34px;letter-spacing:-3px">⚫⚪</div>
           <div class="name">オセロ</div>
           <div class="desc">CPU 5段階・AIアシスタント付き。人間／CPUを自由に設定。</div>
-          <div class="tagrow"><a class="tag" href="games/othello.html">プレイする →</a><a class="tag tag-online" href="games/othello.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/othello.html">プレイする →</a><a class="tag tag-online" href="games/othello.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-othello').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
-          <div class="icon" style="display:inline-grid;grid-template-columns:1fr 1fr;gap:2px;width:40px;height:40px">
-            <span style="background:#5B9BD5;border-radius:3px"></span><span style="background:#E8C84F;border-radius:3px"></span>
-            <span style="background:#6CC56C;border-radius:3px"></span><span style="background:#E0533E;border-radius:3px"></span>
-          </div>
+          <div class="icon"><svg width="40" height="40" viewBox="0 0 40 40" style="display:block"><rect x="15" y="3" width="10" height="10" rx="2" fill="#9b59b6"/><rect x="3" y="15" width="10" height="10" rx="2" fill="#9b59b6"/><rect x="15" y="15" width="10" height="10" rx="2" fill="#9b59b6"/><rect x="27" y="15" width="10" height="10" rx="2" fill="#9b59b6"/></svg></div>
           <div class="name">テトリス</div>
           <div class="desc">落ちるブロックを並べてラインを消す定番パズル。対戦は画面2分割でライン消去攻撃＆HOLD。</div>
-          <div class="tagrow"><a class="tag" href="games/tetris.html">ひとり →</a><a class="tag" href="games/tetris-vs.html">🆚 対戦</a><a class="tag tag-online" href="games/tetris-vs.html?online=1">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/tetris.html">ひとり →</a><a class="tag" href="games/tetris-vs.html">🆚 対戦</a><a class="tag tag-online" href="games/tetris-vs.html?online=1">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-tetris').classList.add('show')">📖 ルール</button></div></div>
 
-        <a class="card" href="games/invader.html">
+        <div class="card">
           <div class="icon">👾</div>
           <div class="name">インベーダー</div>
           <div class="desc">攻めてくる編隊を撃ち落とす。シールドに隠れて反撃、UFOでボーナス。</div>
-          <span class="tag">プレイする →</span>
-        </a>
+          <div class="tagrow"><a class="tag" href="games/invader.html">プレイする →</a><button class="tag tag-rule" onclick="document.getElementById('rule-invader').classList.add('show')">📖 ルール</button></div>
+        </div>
 
         <div class="card">
           <div class="icon" style="width:42px;height:42px;background:#edc22e;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#776e65;font-weight:900;font-size:14px;box-shadow:0 2px 5px rgba(0,0,0,.4)">2048</div>
           <div class="name">2048</div>
           <div class="desc">同じ数字を合体して2048を目指すパズル。対戦はスコア対決（5分タイムアタック／10分一発勝負）。</div>
-          <div class="tagrow"><a class="tag" href="games/g2048.html">ひとり →</a><a class="tag" href="games/g2048-vs.html">🆚 対戦</a><a class="tag tag-online" href="games/g2048-vs.html?online=1">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/g2048.html">ひとり →</a><a class="tag" href="games/g2048-vs.html">🆚 対戦</a><a class="tag tag-online" href="games/g2048-vs.html?online=1">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-2048').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="display:inline-grid;grid-template-columns:1fr 1fr;gap:3px;width:38px;height:38px">
@@ -313,20 +347,38 @@
           </div>
           <div class="name">ヒットアンドブロー</div>
           <div class="desc">秘密の数字を当てる推理。1人／複数人の早解き対戦。</div>
-          <div class="tagrow"><a class="tag" href="games/hitblow.html">プレイする →</a><a class="tag tag-online" href="games/hitblow.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/hitblow.html">プレイする →</a><a class="tag tag-online" href="games/hitblow.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-hitblow').classList.add('show')">📖 ルール</button></div></div>
 
-        <a class="card" href="games/mines.html">
+        <div class="card">
           <div class="icon">💣</div>
           <div class="name">マインスイーパー</div>
           <div class="desc">数字を頼りに地雷を避けて開放。3段階。</div>
-          <span class="tag">プレイする →</span>
-        </a>
+          <div class="tagrow"><a class="tag" href="games/mines.html">プレイする →</a><button class="tag tag-rule" onclick="document.getElementById('rule-mines').classList.add('show')">📖 ルール</button></div>
+        </div>
+
+        <div class="card">
+          <div class="icon">🦅</div>
+          <div class="name">ハゲタカのえじき</div>
+          <div class="desc">全員同時入札！得点カードを高い数字で奪い合い、低い数字でペナルティを回避。2〜6人。</div>
+          <div class="tagrow"><a class="tag" href="games/hagetaka.html">プレイする →</a><a class="tag tag-online" href="games/hagetaka.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-hagetaka').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon"><svg width="40" height="36" viewBox="0 0 40 36" fill="none"><rect x="1" y="4" width="17" height="28" rx="3" fill="#222" stroke="#444" stroke-width="1"/><text x="9.5" y="23" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">0</text><rect x="22" y="4" width="17" height="28" rx="3" fill="#fff" stroke="#ccc" stroke-width="1"/><text x="30.5" y="23" text-anchor="middle" font-size="13" font-weight="700" fill="#333">1</text></svg></div>
+          <div class="name">アルゴ</div>
+          <div class="desc">相手の伏せカードを推理して当てる。黒・白0〜11の数字カード。昇順制約を読んで絞り込め。2〜4人。</div>
+          <div class="tagrow"><a class="tag" href="games/algo.html">プレイする →</a><a class="tag tag-online" href="games/algo.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-algo').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon"><svg width="44" height="44" viewBox="0 0 44 44" style="display:block"><rect x="2" y="2" width="7" height="7" rx="1" fill="#e0473a"/><rect x="10" y="2" width="7" height="7" rx="1" fill="#e0473a"/><rect x="18" y="2" width="7" height="7" rx="1" fill="#e0473a"/><rect x="2" y="10" width="7" height="7" rx="1" fill="#e0473a"/><rect x="10" y="10" width="7" height="7" rx="1" fill="#e0473a"/><rect x="26" y="2" width="7" height="7" rx="1" fill="#3e87d6"/><rect x="34" y="2" width="7" height="7" rx="1" fill="#3e87d6"/><rect x="34" y="10" width="7" height="7" rx="1" fill="#3e87d6"/><rect x="26" y="10" width="7" height="7" rx="1" fill="#3e87d6"/><rect x="34" y="18" width="7" height="7" rx="1" fill="#3e87d6"/><rect x="34" y="26" width="7" height="7" rx="1" fill="#4ec05e"/><rect x="34" y="34" width="7" height="7" rx="1" fill="#4ec05e"/><rect x="26" y="34" width="7" height="7" rx="1" fill="#4ec05e"/><rect x="18" y="34" width="7" height="7" rx="1" fill="#4ec05e"/><rect x="26" y="26" width="7" height="7" rx="1" fill="#4ec05e"/><rect x="2" y="18" width="7" height="7" rx="1" fill="#e0c34a"/><rect x="10" y="18" width="7" height="7" rx="1" fill="#e0c34a"/><rect x="2" y="26" width="7" height="7" rx="1" fill="#e0c34a"/><rect x="2" y="34" width="7" height="7" rx="1" fill="#e0c34a"/><rect x="10" y="34" width="7" height="7" rx="1" fill="#e0c34a"/></svg></div>
+          <div class="name">ブロックス</div>
+          <div class="desc">20×20ボードに4色がタイルを置く。自分の色と角でつながるように配置。残りマス数最小の人の勝ち。2〜4人。</div>
+          <div class="tagrow"><a class="tag" href="games/blokus.html">プレイする →</a><a class="tag tag-online" href="games/blokus.html?online=1&_v=2&create=1">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-blokus').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="font-size:18px;letter-spacing:0">⚫⚪⚫⚪⚫</div>
           <div class="name">五目並べ</div>
           <div class="desc">15路盤で先に五つ並べたら勝ち。CPU4段階・AIアシスタント付き。</div>
-          <div class="tagrow"><a class="tag" href="games/gomoku.html">プレイする →</a><a class="tag tag-online" href="games/gomoku.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/gomoku.html">プレイする →</a><a class="tag tag-online" href="games/gomoku.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-gomoku').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="display:flex;gap:3px;align-items:center;justify-content:center;height:40px">
@@ -336,13 +388,13 @@
           </div>
           <div class="name">マンカラ</div>
           <div class="desc">種まきのカラハ。連続手番の妙を楽しむ。</div>
-          <div class="tagrow"><a class="tag" href="games/mancala.html">プレイする →</a><a class="tag tag-online" href="games/mancala.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/mancala.html">プレイする →</a><a class="tag tag-online" href="games/mancala.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-mancala').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="font-size:30px;letter-spacing:-2px"><span style="color:#e0473a">⬢</span><span style="color:#3e87d6">⬢</span></div>
           <div class="name">ヘックス</div>
           <div class="desc">六角盤の接続ゲーム。引き分けなし。</div>
-          <div class="tagrow"><a class="tag" href="games/hex.html">プレイする →</a><a class="tag tag-online" href="games/hex.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/hex.html">プレイする →</a><a class="tag tag-online" href="games/hex.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-hex').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="display:flex;gap:2px;height:40px;align-items:flex-start">
@@ -353,19 +405,19 @@
           </div>
           <div class="name">バックギャモン</div>
           <div class="desc">ヒット・ベアオフ・ギャモン判定つき。</div>
-          <div class="tagrow"><a class="tag" href="games/backgammon.html">プレイする →</a><a class="tag tag-online" href="games/backgammon.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/backgammon.html">プレイする →</a><a class="tag tag-online" href="games/backgammon.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-backgammon').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon">👻</div>
           <div class="name">ガイスター</div>
           <div class="desc">青と赤の正体非公開。ノーチートCPU。</div>
-          <div class="tagrow"><a class="tag" href="games/geister.html">プレイする →</a><a class="tag tag-online" href="games/geister.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/geister.html">プレイする →</a><a class="tag tag-online" href="games/geister.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-geister').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="font-size:17px;letter-spacing:1px">🔴🟡🔴🟡</div>
           <div class="name">コネクトフォー</div>
           <div class="desc">重力落下で4連。深さ9のαβ探索CPU。</div>
-          <div class="tagrow"><a class="tag" href="games/connect4.html">プレイする →</a><a class="tag tag-online" href="games/connect4.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/connect4.html">プレイする →</a><a class="tag tag-online" href="games/connect4.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-connect4').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="display:inline-grid;grid-template-columns:repeat(3,1fr);width:39px;height:39px;border-radius:4px;overflow:hidden">
@@ -375,7 +427,13 @@
           </div>
           <div class="name">チェッカー</div>
           <div class="desc">強制ジャンプ・連続取り・キング昇格。</div>
-          <div class="tagrow"><a class="tag" href="games/checkers.html">プレイする →</a><a class="tag tag-online" href="games/checkers.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/checkers.html">プレイする →</a><a class="tag tag-online" href="games/checkers.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-checkers').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon" style="display:inline-grid;grid-template-columns:repeat(4,9px);gap:2px;width:42px;height:42px;align-content:center;justify-content:center"><div style="background:#c9a030;width:9px;height:9px;border-radius:2px;display:flex;align-items:center;justify-content:center;font:700 5px sans-serif;color:#111">1</div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:rgba(255,255,255,.05);width:9px;height:9px;border-radius:2px"></div></div>
+          <div class="name">スライドパズル</div>
+          <div class="desc">1〜15の数字タイルをスライドして順番に並べる。3×3・4×4・5×5の3サイズ対応。競争対戦モードあり。</div>
+          <div class="tagrow"><a class="tag" href="games/15puzzle.html">プレイする →</a><a class="tag tag-online" href="games/15puzzle.html?online=1&_v=2&create=1">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-15puzzle').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon"><svg width="38" height="38" viewBox="0 0 40 40" fill="none" stroke-linecap="round">
@@ -395,7 +453,7 @@
 </svg></div>
           <div class="name">ドットアンドボックス</div>
           <div class="desc">線を引いて箱を取る陣取り。CPU対戦・2人対戦・3サイズ。</div>
-          <div class="tagrow"><a class="tag" href="games/dots.html">プレイする →</a><a class="tag tag-online" href="games/dots.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/dots.html">プレイする →</a><a class="tag tag-online" href="games/dots.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-dots').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon">
@@ -404,19 +462,18 @@
               <circle cx="22" cy="5" r="2.5" fill="#e05050"/>
               <circle cx="19.5" cy="9.5" r="2" fill="#e05050"/>
               <circle cx="24.5" cy="9.5" r="2" fill="#e05050"/>
-              <circle cx="22" cy="39" r="2.5" fill="#5080e0"/>
-              <circle cx="19.5" cy="34.5" r="2" fill="#5080e0"/>
-              <circle cx="24.5" cy="34.5" r="2" fill="#5080e0"/>
-              <circle cx="10" cy="15" r="2" fill="#50c050"/>
-              <circle cx="10" cy="29" r="2" fill="#50c050"/>
-              <circle cx="34" cy="15" r="2" fill="#50c050"/>
-              <circle cx="34" cy="29" r="2" fill="#50c050"/>
+              <circle cx="36.5" cy="30.5" r="2.5" fill="#5080e0"/>
+              <circle cx="31.5" cy="30.5" r="2" fill="#5080e0"/>
+              <circle cx="34" cy="26" r="2" fill="#5080e0"/>
+              <circle cx="7.5" cy="30.5" r="2.5" fill="#50c050"/>
+              <circle cx="12.5" cy="30.5" r="2" fill="#50c050"/>
+              <circle cx="10" cy="26" r="2" fill="#50c050"/>
               <circle cx="22" cy="22" r="2.2" fill="#555" stroke="#888" stroke-width="0.5"/>
             </svg>
           </div>
           <div class="name">チャイニーズチェッカー</div>
           <div class="desc">星型盤で駒を相手陣へ。ジャンプ連鎖。CPU対戦・2人対戦。</div>
-          <div class="tagrow"><a class="tag" href="games/chinese.html">プレイする →</a><a class="tag tag-online" href="games/chinese.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/chinese.html">プレイする →</a><a class="tag tag-online" href="games/chinese.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-chinese').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="width:40px;height:40px;border-radius:50%;border:3.5px solid #e23b2e;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,.4)">
@@ -426,7 +483,7 @@
           </div>
           <div class="name">オートリオ</div>
           <div class="desc">3サイズのリングで3目並べ。同サイズ/階段/同心円の3通りで勝てる。CPU対戦・2〜4人対応。</div>
-          <div class="tagrow"><a class="tag" href="games/otrio.html">プレイする →</a><a class="tag tag-online" href="games/otrio.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/otrio.html">プレイする →</a><a class="tag tag-online" href="games/otrio.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-otrio').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon">
@@ -448,15 +505,15 @@
           </div>
           <div class="name">コリドール</div>
           <div class="desc">9×9盤で駒を進めるか壁で阻む。読み合いの戦略系。CPU対戦・2/4人対応。</div>
-          <div class="tagrow"><a class="tag" href="games/quoridor.html">プレイする →</a><a class="tag tag-online" href="games/quoridor.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/quoridor.html">プレイする →</a><a class="tag tag-online" href="games/quoridor.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-quoridor').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon"><svg width="40" height="46" viewBox="0 0 40 46"><defs><linearGradient id="hasami-fill" x1="0.3" y1="0" x2="0.7" y2="1"><stop offset="0%" stop-color="#f5e090"/><stop offset="100%" stop-color="#c8940c"/></linearGradient></defs><polygon points="20,2 31.2,8.7 38,44 2,44 8.8,8.7" fill="url(#hasami-fill)" stroke="#6b4210" stroke-width="1.2" stroke-linejoin="round"/><text x="20" y="32" text-anchor="middle" font-size="19" font-weight="900" fill="#1a0800" font-family="'Hiragino Mincho ProN',serif">歩</text></svg></div>
           <div class="name">はさみ将棋</div>
           <div class="desc">縦横に走って挟んで取る。5枚先取。CPU対戦・2人対戦。</div>
-          <div class="tagrow"><a class="tag" href="games/hasami.html">プレイする →</a><a class="tag tag-online" href="games/hasami.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/hasami.html">プレイする →</a><a class="tag tag-online" href="games/hasami.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-hasami').classList.add('show')">📖 ルール</button></div></div>
 
-        <a class="card" href="games/solitaire.html">
+        <div class="card">
           <div class="icon" style="position:relative;width:42px;height:50px">
             <div style="position:absolute;left:0;top:0;width:26px;height:34px;background:#f4efe3;border:1px solid #c9bfa8;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#1c1c1c;font-weight:800;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.45)">K♠</div>
             <div style="position:absolute;left:8px;top:8px;width:26px;height:34px;background:#f4efe3;border:1px solid #c9bfa8;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.45)">Q♥</div>
@@ -464,8 +521,8 @@
           </div>
           <div class="name">ソリティア</div>
           <div class="desc">クロンダイク。山札を崩して4組を完成。</div>
-          <span class="tag">プレイする →</span>
-        </a>
+          <div class="tagrow"><a class="tag" href="games/solitaire.html">プレイする →</a><button class="tag tag-rule" onclick="document.getElementById('rule-solitaire').classList.add('show')">📖 ルール</button></div>
+        </div>
 
         <div class="card">
           <div class="icon" style="position:relative;width:46px;height:42px">
@@ -474,7 +531,7 @@
           </div>
           <div class="name">神経衰弱</div>
           <div class="desc">ペアを揃える記憶ゲーム。1〜2人・絵文字3サイズ＋トランプ52枚。</div>
-          <div class="tagrow"><a class="tag" href="games/memory.html">プレイする →</a><a class="tag tag-online" href="games/memory.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/memory.html">プレイする →</a><a class="tag tag-online" href="games/memory.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-memory').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="position:relative;width:48px;height:42px">
@@ -483,13 +540,13 @@
           </div>
           <div class="name">ブラックジャック</div>
           <div class="desc">21を目指す。1人／複数人でディーラーと勝負。チップ制。</div>
-          <div class="tagrow"><a class="tag" href="games/blackjack.html">プレイする →</a><a class="tag tag-online" href="games/blackjack.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/blackjack.html">プレイする →</a><a class="tag tag-online" href="games/blackjack.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-blackjack').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon">🃏</div>
           <div class="name">大富豪</div>
           <div class="desc">8切り・革命あり。CPU／みんなで／オンライン対戦。</div>
-          <div class="tagrow"><a class="tag" href="games/daifugo.html">プレイする →</a><a class="tag tag-online" href="games/daifugo.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/daifugo.html">プレイする →</a><a class="tag tag-online" href="games/daifugo.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-daifugo').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="display:flex;align-items:center;height:44px">
@@ -499,123 +556,17 @@
           </div>
           <div class="name">七並べ</div>
           <div class="desc">7から並べて早く出し切る。CPU／みんなで／オンライン。</div>
-          <div class="tagrow"><a class="tag" href="games/sevens.html">プレイする →</a><a class="tag tag-online" href="games/sevens.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/sevens.html">プレイする →</a><a class="tag tag-online" href="games/sevens.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-sevens').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
-          <div class="icon"><svg width="40" height="46" viewBox="0 0 40 46"><defs><linearGradient id="shogi-fill" x1="0.3" y1="0" x2="0.7" y2="1"><stop offset="0%" stop-color="#f5e090"/><stop offset="100%" stop-color="#c8940c"/></linearGradient></defs><polygon points="20,2 31.2,8.7 38,44 2,44 8.8,8.7" fill="url(#shogi-fill)" stroke="#6b4210" stroke-width="1.2" stroke-linejoin="round"/><text x="20" y="26" text-anchor="middle" font-size="13" font-weight="900" fill="#1a0800" font-family="'Hiragino Mincho ProN',serif">王</text><text x="20" y="39" text-anchor="middle" font-size="13" font-weight="900" fill="#1a0800" font-family="'Hiragino Mincho ProN',serif">将</text></svg></div>
-          <div class="name">将棋</div>
-          <div class="desc">本将棋。成り・持ち駒・詰み判定。AIアシスタント＆一手戻る。</div>
-          <div class="tagrow"><a class="tag" href="games/shogi.html">プレイする →</a><a class="tag tag-online" href="games/shogi.html?online=1&_v=2">🌐 オンライン</a></div></div>
-
-        <div class="card">
-          <div class="icon" style="width:42px;height:42px"><svg width="42" height="42" viewBox="0 0 42 42" style="display:block">
-            <rect width="42" height="42" rx="4" fill="#e3b765"/>
-            <g stroke="#5a3a1a" stroke-width="1.2">
-              <line x1="9" y1="9" x2="33" y2="9"/><line x1="9" y1="21" x2="33" y2="21"/><line x1="9" y1="33" x2="33" y2="33"/>
-              <line x1="9" y1="9" x2="9" y2="33"/><line x1="21" y1="9" x2="21" y2="33"/><line x1="33" y1="9" x2="33" y2="33"/>
-            </g>
-            <circle cx="21" cy="9" r="5.6" fill="#1a1a1a"/>
-            <circle cx="33" cy="21" r="5.6" fill="#f4f1e8" stroke="#b8b29c" stroke-width="0.6"/>
-            <circle cx="9" cy="33" r="5.6" fill="#1a1a1a"/>
-          </svg></div>
-          <div class="name">囲碁</div>
-          <div class="desc">9/13/19路。コウ・地計算・死石指定に対応。</div>
-          <div class="tagrow"><a class="tag" href="games/go.html">プレイする →</a><a class="tag tag-online" href="games/go.html?online=1&_v=2">🌐 オンライン</a></div></div>
-
-        <div class="card">
-          <div class="icon">♞</div>
-          <div class="name">チェス</div>
-          <div class="desc">キャスリング・アンパッサン対応。PST評価CPU。</div>
-          <div class="tagrow"><a class="tag" href="games/chess.html">プレイする →</a><a class="tag tag-online" href="games/chess.html?online=1&_v=2">🌐 オンライン</a></div></div>
-
-        <div class="card">
-          <div class="icon">🎴</div>
-          <div class="name">花札こいこい</div>
-          <div class="desc">花札の定番こいこい。札を合わせ役を作り、こいこいで高得点を狙う。CPU・2人・オンライン対戦。</div>
-          <div class="tagrow"><a class="tag" href="games/hanafuda.html">プレイする →</a><a class="tag tag-online" href="games/hanafuda.html?online=1&_v=2">🌐 オンライン</a></div></div>
-
-        <a class="card" href="games/sudoku.html">
-          <div class="icon" style="display:inline-grid;grid-template-columns:repeat(3,1fr);gap:1px;width:40px;height:40px;background:#5a5040;padding:2px;border-radius:4px">
-            <span style="background:#1b2334;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#cfe3ff">5</span><span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#cfe3ff">3</span>
-            <span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#cfe3ff">7</span><span style="background:#1b2334"></span>
-            <span style="background:#1b2334;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#cfe3ff">1</span><span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#cfe3ff">9</span>
+          <div class="icon" style="position:relative;width:80px;height:44px">
+            <div style="position:absolute;left:0;top:2px;transform:rotate(-8deg);width:26px;height:36px;background:#f4efe3;border-radius:4px;border:1px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:11px;box-shadow:0 2px 4px rgba(0,0,0,.4)">A♥</div>
+            <div style="position:absolute;left:14px;top:0;width:26px;height:36px;background:#f4efe3;border-radius:4px;border:1px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#1c1c1c;font-weight:800;font-size:11px;box-shadow:0 2px 4px rgba(0,0,0,.4)">K♠</div>
+            <div style="position:absolute;right:0;top:4px;transform:rotate(8deg);width:26px;height:36px;background:#f4efe3;border-radius:4px;border:1px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:11px;box-shadow:0 2px 4px rgba(0,0,0,.4)">Q♦</div>
           </div>
-          <div class="name">数独</div>
-          <div class="desc">9×9に1〜9を埋める。難易度3段階・自動生成。</div>
-          <span class="tag">プレイする →</span>
-        </a>
-
-        <div class="card">
-          <div class="icon">⊞</div>
-          <div class="name">ナインメンズモリス</div>
-          <div class="desc">9個の駒で3つ並べ（ミル）て相手の駒を取る古典戦略。CPU3段階・2人・オンライン。</div>
-          <div class="tagrow"><a class="tag" href="games/morris.html">プレイする →</a><a class="tag tag-online" href="games/morris.html?online=1&_v=2">🌐 オンライン</a></div></div>
-
-        <div class="card">
-          <div class="icon" style="display:inline-grid;grid-template-columns:repeat(3,1fr);gap:1px;width:42px;height:54px;background:#7a5c25;padding:2px;border-radius:4px;font-size:10px">
-            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🦒</span>
-            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🦁</span>
-            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🐘</span>
-            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center"></span>
-            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🐥</span>
-            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center"></span>
-            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center"></span>
-            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🐥</span>
-            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center"></span>
-            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🐘</span>
-            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🦁</span>
-            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🦒</span>
-          </div>
-          <div class="name">どうぶつしょうぎ</div>
-          <div class="desc">3×4の入門将棋。トライとキャッチ。CPU対戦。</div>
-          <div class="tagrow"><a class="tag" href="games/dobutsu.html">プレイする →</a><a class="tag tag-online" href="games/dobutsu.html?online=1&_v=2">🌐 オンライン</a></div></div>
-
-        <a class="card" href="カルカソンヌ/index.html">
-          <div class="icon">🏰</div>
-          <div class="name">カルカソンヌ</div>
-          <div class="desc">タイル配置で街道や都市を作る陣取りゲーム。CPU対戦。</div>
-          <span class="tag">プレイする →</span>
-        </a>
-
-        <div class="card">
-          <div class="icon" style="display:inline-grid;grid-template-columns:repeat(3,1fr);gap:2px;width:42px;height:42px;background:#8a93a8;padding:2px;border-radius:4px;font-weight:900;font-size:12px">
-            <span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#5b9bd5">O</span><span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#e0473a">X</span>
-            <span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#e0473a">X</span><span style="background:#1b2334"></span>
-            <span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#5b9bd5">O</span><span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#e0473a">X</span>
-          </div>
-          <div class="name">三目並べ</div>
-          <div class="desc">○×。CPUは最善手で負けなし。2人対戦も。</div>
-          <div class="tagrow"><a class="tag" href="games/tictactoe.html">プレイする →</a><a class="tag tag-online" href="games/tictactoe.html?online=1&_v=2">🌐 オンライン</a></div></div>
-
-        <div class="card">
-          <div class="icon">🎲</div>
-          <div class="name">チンチロ</div>
-          <div class="desc">サイコロ3個の出目勝負。1人／複数人で役を競う。</div>
-          <div class="tagrow"><a class="tag" href="games/chinchiro.html">プレイする →</a><a class="tag tag-online" href="games/chinchiro.html?online=1&_v=2">🌐 オンライン</a></div></div>
-
-        <div class="card">
-          <div class="icon" style="font-size:17px;letter-spacing:1px">🎲🎲🎲🎲🎲</div>
-          <div class="name">ヨット</div>
-          <div class="desc">サイコロ5個で役作り。1〜4人でスコアを競う。</div>
-          <div class="tagrow"><a class="tag" href="games/yacht.html">プレイする →</a><a class="tag tag-online" href="games/yacht.html?online=1&_v=2">🌐 オンライン</a></div></div>
-
-        <div class="card">
-          <div class="icon">🦅</div>
-          <div class="name">ハゲタカのえじき</div>
-          <div class="desc">全員同時入札！得点カードを高い数字で奪い合い、低い数字でペナルティを回避。2〜6人。</div>
-          <div class="tagrow"><a class="tag" href="games/hagetaka.html">プレイする →</a><a class="tag tag-online" href="games/hagetaka.html?online=1&_v=2">🌐 オンライン</a></div></div>
-
-        <div class="card">
-          <div class="icon">🐮</div>
-          <div class="name">ニムト</div>
-          <div class="desc">104枚のカードを同時出し。6枚目を置いた人が列を引き取り、牛の頭がペナルティ点に。2〜10人。</div>
-          <div class="tagrow"><a class="tag" href="games/nimmt.html">プレイする →</a><a class="tag tag-online" href="games/nimmt.html?online=1&_v=2">🌐 オンライン</a></div></div>
-
-        <div class="card">
-          <div class="icon"><svg width="40" height="36" viewBox="0 0 40 36" fill="none"><rect x="1" y="4" width="17" height="28" rx="3" fill="#222" stroke="#444" stroke-width="1"/><text x="9.5" y="23" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">0</text><rect x="22" y="4" width="17" height="28" rx="3" fill="#fff" stroke="#ccc" stroke-width="1"/><text x="30.5" y="23" text-anchor="middle" font-size="13" font-weight="700" fill="#333">1</text></svg></div>
-          <div class="name">アルゴ</div>
-          <div class="desc">相手の伏せカードを推理して当てる。黒・白0〜11の数字カード。昇順制約を読んで絞り込め。2〜4人。</div>
-          <div class="tagrow"><a class="tag" href="games/algo.html">プレイする →</a><a class="tag tag-online" href="games/algo.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="name">スピード</div>
+          <div class="desc">2人同時出し！手札と山札を先に空にした方が勝ち。1つ差の数字カードを素早く積め。オンライン対応。</div>
+          <div class="tagrow"><a class="tag" href="games/speed.html">プレイする →</a><a class="tag tag-online" href="games/speed.html?online=1&_v=2&create=1">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-speed').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="position:relative;width:80px;height:44px">
@@ -637,19 +588,7 @@
           </div>
           <div class="name">テキサスホールデム</div>
           <div class="desc">手札2枚＋コミュニティ5枚で最強の役を作るポーカー。ベット・コール・レイズで戦う。2〜6人。</div>
-          <div class="tagrow"><a class="tag" href="games/poker.html">プレイする →</a><a class="tag tag-online" href="games/poker.html?online=1&_v=2&create=1">🌐 オンライン</a></div></div>
-
-        <div class="card">
-          <div class="icon" style="display:inline-grid;grid-template-columns:repeat(5,8px);gap:1px;width:42px;height:42px;align-content:center;justify-content:center"><div style="background:#e0473a;width:8px;height:8px;border-radius:1px"></div><div style="background:#3e87d6;width:8px;height:8px;border-radius:1px"></div><div style="background:#4ec05e;width:8px;height:8px;border-radius:1px"></div><div style="background:#e0c34a;width:8px;height:8px;border-radius:1px"></div><div style="background:#e0473a;width:8px;height:8px;border-radius:1px"></div><div style="background:#3e87d6;width:8px;height:8px;border-radius:1px"></div><div style="background:#e0473a;width:8px;height:8px;border-radius:1px"></div><div style="background:#4ec05e;width:8px;height:8px;border-radius:1px"></div><div style="background:#e0473a;width:8px;height:8px;border-radius:1px"></div><div style="background:#e0c34a;width:8px;height:8px;border-radius:1px"></div></div>
-          <div class="name">ブロックス</div>
-          <div class="desc">20×20ボードに4色がタイルを置く。自分の色と角でつながるように配置。残りマス数最小の人の勝ち。2〜4人。</div>
-          <div class="tagrow"><a class="tag" href="games/blokus.html">プレイする →</a><a class="tag tag-online" href="games/blokus.html?online=1&_v=2&create=1">🌐 オンライン</a></div></div>
-
-        <div class="card">
-          <div class="icon" style="display:inline-grid;grid-template-columns:repeat(4,9px);gap:2px;width:42px;height:42px;align-content:center;justify-content:center"><div style="background:#c9a030;width:9px;height:9px;border-radius:2px;display:flex;align-items:center;justify-content:center;font:700 5px sans-serif;color:#111">1</div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:#c9a030;width:9px;height:9px;border-radius:2px"></div><div style="background:rgba(255,255,255,.05);width:9px;height:9px;border-radius:2px"></div></div>
-          <div class="name">15パズル</div>
-          <div class="desc">1〜15の数字タイルをスライドして順番に並べる。3×3・4×4・5×5の3サイズ対応。競争対戦モードあり。</div>
-          <div class="tagrow"><a class="tag" href="games/15puzzle.html">プレイする →</a><a class="tag tag-online" href="games/15puzzle.html?online=1&_v=2&create=1">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/poker.html">プレイする →</a><a class="tag tag-online" href="games/poker.html?online=1&_v=2&create=1">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-texas').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="position:relative;width:64px;height:44px">
@@ -659,24 +598,1537 @@
           </div>
           <div class="name">ウノ</div>
           <div class="desc">色と数字を合わせてカードを出し切れ！スキップ・リバース・ドロー2・ワイルドで逆転。2〜6人。</div>
-          <div class="tagrow"><a class="tag" href="games/uno.html">プレイする →</a><a class="tag tag-online" href="games/uno.html?online=1&_v=2&create=1">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/uno.html">プレイする →</a><a class="tag tag-online" href="games/uno.html?online=1&_v=2&create=1">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-uno').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
-          <div class="icon" style="position:relative;width:80px;height:44px">
-            <div style="position:absolute;left:0;top:2px;transform:rotate(-8deg);width:26px;height:36px;background:#f4efe3;border-radius:4px;border:1px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:11px;box-shadow:0 2px 4px rgba(0,0,0,.4)">A♥</div>
-            <div style="position:absolute;left:14px;top:0;width:26px;height:36px;background:#f4efe3;border-radius:4px;border:1px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#1c1c1c;font-weight:800;font-size:11px;box-shadow:0 2px 4px rgba(0,0,0,.4)">K♠</div>
-            <div style="position:absolute;right:0;top:4px;transform:rotate(8deg);width:26px;height:36px;background:#f4efe3;border-radius:4px;border:1px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:11px;box-shadow:0 2px 4px rgba(0,0,0,.4)">Q♦</div>
+          <div class="icon" style="width:42px;height:42px"><svg width="42" height="42" viewBox="0 0 42 42" style="display:block">
+            <rect width="42" height="42" rx="4" fill="#e3b765"/>
+            <g stroke="#5a3a1a" stroke-width="1.2">
+              <line x1="9" y1="9" x2="33" y2="9"/><line x1="9" y1="21" x2="33" y2="21"/><line x1="9" y1="33" x2="33" y2="33"/>
+              <line x1="9" y1="9" x2="9" y2="33"/><line x1="21" y1="9" x2="21" y2="33"/><line x1="33" y1="9" x2="33" y2="33"/>
+            </g>
+            <circle cx="21" cy="9" r="5.6" fill="#1a1a1a"/>
+            <circle cx="33" cy="21" r="5.6" fill="#f4f1e8" stroke="#b8b29c" stroke-width="0.6"/>
+            <circle cx="9" cy="33" r="5.6" fill="#1a1a1a"/>
+          </svg></div>
+          <div class="name">囲碁</div>
+          <div class="desc">9/13/19路。コウ・地計算・死石指定に対応。</div>
+          <div class="tagrow"><a class="tag" href="games/go.html">プレイする →</a><a class="tag tag-online" href="games/go.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-go').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon"><svg width="40" height="46" viewBox="0 0 40 46"><defs><linearGradient id="shogi-fill" x1="0.3" y1="0" x2="0.7" y2="1"><stop offset="0%" stop-color="#f5e090"/><stop offset="100%" stop-color="#c8940c"/></linearGradient></defs><polygon points="20,2 31.2,8.7 38,44 2,44 8.8,8.7" fill="url(#shogi-fill)" stroke="#6b4210" stroke-width="1.2" stroke-linejoin="round"/><text x="20" y="26" text-anchor="middle" font-size="13" font-weight="900" fill="#1a0800" font-family="'Hiragino Mincho ProN',serif">王</text><text x="20" y="39" text-anchor="middle" font-size="13" font-weight="900" fill="#1a0800" font-family="'Hiragino Mincho ProN',serif">将</text></svg></div>
+          <div class="name">将棋</div>
+          <div class="desc">本将棋。成り・持ち駒・詰み判定。AIアシスタント＆一手戻る。</div>
+          <div class="tagrow"><a class="tag" href="games/shogi.html">プレイする →</a><a class="tag tag-online" href="games/shogi.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-shogi').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon">♞</div>
+          <div class="name">チェス</div>
+          <div class="desc">キャスリング・アンパッサン対応。PST評価CPU。</div>
+          <div class="tagrow"><a class="tag" href="games/chess.html">プレイする →</a><a class="tag tag-online" href="games/chess.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-chess').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon">🎴</div>
+          <div class="name">花札こいこい</div>
+          <div class="desc">花札の定番こいこい。札を合わせ役を作り、こいこいで高得点を狙う。CPU・2人・オンライン対戦。</div>
+          <div class="tagrow"><a class="tag" href="games/hanafuda.html">プレイする →</a><a class="tag tag-online" href="games/hanafuda.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-hanafuda').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon" style="display:inline-grid;grid-template-columns:repeat(3,1fr);gap:1px;width:40px;height:40px;background:#5a5040;padding:2px;border-radius:4px">
+            <span style="background:#1b2334;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#cfe3ff">5</span><span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#cfe3ff">3</span>
+            <span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#cfe3ff">7</span><span style="background:#1b2334"></span>
+            <span style="background:#1b2334;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#cfe3ff">1</span><span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#cfe3ff">9</span>
           </div>
-          <div class="name">スピード</div>
-          <div class="desc">2人同時出し！手札と山札を先に空にした方が勝ち。1つ差の数字カードを素早く積め。オンライン対応。</div>
-          <div class="tagrow"><a class="tag" href="games/speed.html">プレイする →</a><a class="tag tag-online" href="games/speed.html?online=1&_v=2&create=1">🌐 オンライン</a></div></div>
-      </div>
+          <div class="name">数独</div>
+          <div class="desc">9×9に1〜9を埋める。難易度3段階・自動生成。</div>
+          <div class="tagrow"><a class="tag" href="games/sudoku.html">プレイする →</a><button class="tag tag-rule" onclick="document.getElementById('rule-sudoku').classList.add('show')">📖 ルール</button></div>
+        </div>
+
+        <div class="card">
+          <div class="icon">⊞</div>
+          <div class="name">ナインメンズモリス</div>
+          <div class="desc">9個の駒で3つ並べ（ミル）て相手の駒を取る古典戦略。CPU3段階・2人・オンライン。</div>
+          <div class="tagrow"><a class="tag" href="games/morris.html">プレイする →</a><a class="tag tag-online" href="games/morris.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-morris').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon">🐮</div>
+          <div class="name">ニムト</div>
+          <div class="desc">104枚のカードを同時出し。6枚目を置いた人が列を引き取り、牛の頭がペナルティ点に。2〜10人。</div>
+          <div class="tagrow"><a class="tag" href="games/nimmt.html">プレイする →</a><a class="tag tag-online" href="games/nimmt.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-nimmt').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon" style="display:inline-grid;grid-template-columns:repeat(3,1fr);gap:1px;width:42px;height:54px;background:#7a5c25;padding:2px;border-radius:4px;font-size:10px">
+            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🦒</span>
+            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🦁</span>
+            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🐘</span>
+            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center"></span>
+            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🐥</span>
+            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center"></span>
+            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center"></span>
+            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🐥</span>
+            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center"></span>
+            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🐘</span>
+            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🦁</span>
+            <span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🦒</span>
+          </div>
+          <div class="name">どうぶつしょうぎ</div>
+          <div class="desc">3×4の入門将棋。トライとキャッチ。CPU対戦。</div>
+          <div class="tagrow"><a class="tag" href="games/dobutsu.html">プレイする →</a><a class="tag tag-online" href="games/dobutsu.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-dobutsu').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon">🏰</div>
+          <div class="name">カルカソンヌ</div>
+          <div class="desc">タイル配置で街道や都市を作る陣取りゲーム。CPU対戦。</div>
+          <div class="tagrow"><a class="tag" href="カルカソンヌ/index.html">プレイする →</a><button class="tag tag-rule" onclick="document.getElementById('rule-carcassonne').classList.add('show')">📖 ルール</button></div>
+        </div>
+
+        <div class="card">
+          <div class="icon" style="display:inline-grid;grid-template-columns:repeat(3,1fr);gap:2px;width:42px;height:42px;background:#8a93a8;padding:2px;border-radius:4px;font-weight:900;font-size:12px">
+            <span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#5b9bd5">O</span><span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#e0473a">X</span>
+            <span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#e0473a">X</span><span style="background:#1b2334"></span>
+            <span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#5b9bd5">O</span><span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#e0473a">X</span>
+          </div>
+          <div class="name">三目並べ</div>
+          <div class="desc">○×。CPUは最善手で負けなし。2人対戦も。</div>
+          <div class="tagrow"><a class="tag" href="games/tictactoe.html">プレイする →</a><a class="tag tag-online" href="games/tictactoe.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-tictactoe').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon">🎲</div>
+          <div class="name">チンチロ</div>
+          <div class="desc">サイコロ3個の出目勝負。1人／複数人で役を競う。</div>
+          <div class="tagrow"><a class="tag" href="games/chinchiro.html">プレイする →</a><a class="tag tag-online" href="games/chinchiro.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-chinchiro').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon" style="font-size:17px;letter-spacing:1px">🎲🎲🎲🎲🎲</div>
+          <div class="name">ヨット</div>
+          <div class="desc">サイコロ5個で役作り。1〜4人でスコアを競う。</div>
+          <div class="tagrow"><a class="tag" href="games/yacht.html">プレイする →</a><a class="tag tag-online" href="games/yacht.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-yacht').classList.add('show')">📖 ルール</button></div></div>
+
+        <div class="card">
+          <div class="icon">💣</div>
+          <div class="name">ボンバーマン</div>
+          <div class="desc">爆弾を置いて敵を倒せ！炎・爆弾・スピードのパワーアップで強化。3難易度。</div>
+          <div class="tagrow"><a class="tag" href="games/bomberman.html">プレイする →</a><a class="tag tag-online" href="games/bomberman.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-bomberman').classList.add('show')">📖 ルール</button></div>
+        </div>
+
+        <div class="card">
+          <div class="icon">💀</div>
+          <div class="name">ロシアンルーレット</div>
+          <div class="desc">6穴リボルバーに弾を装填。順番に引き金を引け。最後まで生き残れ！2〜6人・不特定多数。</div>
+          <div class="tagrow"><a class="tag" href="games/russian-roulette.html">プレイする →</a><button class="tag tag-rule" onclick="document.getElementById('rule-russian').classList.add('show')">📖 ルール</button></div></div>
+
+            </div>
       <p class="filter-empty" id="filter-empty">この人数で遊べるゲームはありません</p>
     </div>
 
   </div>
 
   <footer>クリックで各ゲームが開きます</footer>
+
+  <!-- バックギャモン ルールモーダル -->
+  <div id="rule-backgammon" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-backgammon').classList.remove('show')">×</button>
+      <h2>🎲 バックギャモン ルール</h2>
+      <h3>目的</h3>
+      <p>15個の駒をすべて相手側から自分のホームボード（右下6点）に集め、先に全駒を盤外に出した方の勝ち。</p>
+      <svg viewBox="0 0 380 118" xmlns="http://www.w3.org/2000/svg" style="width:100%;margin:10px 0 4px;border-radius:6px">
+        <rect width="380" height="118" rx="5" fill="#1a1208"/>
+        <rect x="15" y="22" width="350" height="74" rx="3" fill="#2a1a0a" stroke="#7a6040" stroke-width="1.5"/>
+        <rect x="183" y="22" width="14" height="74" fill="#3a2510"/>
+        <polygon points="18,22 43,22 30,50" fill="#6a3c18"/><polygon points="47,22 72,22 59,50" fill="#c9a56a"/>
+        <polygon points="76,22 101,22 88,50" fill="#6a3c18"/><polygon points="105,22 130,22 117,50" fill="#c9a56a"/>
+        <polygon points="134,22 159,22 146,50" fill="#6a3c18"/><polygon points="160,22 181,22 170,50" fill="#c9a56a"/>
+        <polygon points="199,22 224,22 211,50" fill="#6a3c18"/><polygon points="228,22 253,22 240,50" fill="#c9a56a"/>
+        <polygon points="257,22 282,22 269,50" fill="#6a3c18"/><polygon points="286,22 311,22 298,50" fill="#c9a56a"/>
+        <polygon points="315,22 340,22 327,50" fill="#6a3c18"/><polygon points="341,22 363,22 352,50" fill="#c9a56a"/>
+        <polygon points="18,96 43,96 30,68" fill="#c9a56a"/><polygon points="47,96 72,96 59,68" fill="#6a3c18"/>
+        <polygon points="76,96 101,96 88,68" fill="#c9a56a"/><polygon points="105,96 130,96 117,68" fill="#6a3c18"/>
+        <polygon points="134,96 159,96 146,68" fill="#c9a56a"/><polygon points="160,96 181,96 170,68" fill="#6a3c18"/>
+        <polygon points="199,96 224,96 211,68" fill="#c9a56a"/><polygon points="228,96 253,96 240,68" fill="#6a3c18"/>
+        <polygon points="257,96 282,96 269,68" fill="#c9a56a"/><polygon points="286,96 311,96 298,68" fill="#6a3c18"/>
+        <polygon points="315,96 340,96 327,68" fill="#c9a56a"/><polygon points="341,96 363,96 352,68" fill="#6a3c18"/>
+        <rect x="198" y="68" width="167" height="28" rx="2" fill="#e8c84a" opacity=".2"/>
+        <rect x="198" y="22" width="167" height="28" rx="2" fill="#5b9bd5" opacity=".2"/>
+        <text x="281" y="86" text-anchor="middle" font-size="8" fill="#e8c84a">白 Home (1-6)</text>
+        <text x="281" y="38" text-anchor="middle" font-size="8" fill="#5b9bd5">黒 Home (19-24)</text>
+        <text x="30" y="19" text-anchor="middle" font-size="7" fill="#9a8f7b">13</text>
+        <text x="352" y="19" text-anchor="middle" font-size="7" fill="#5b9bd5">24</text>
+        <text x="30" y="110" text-anchor="middle" font-size="7" fill="#9a8f7b">12</text>
+        <text x="352" y="110" text-anchor="middle" font-size="7" fill="#e8c84a">1</text>
+        <text x="190" y="13" text-anchor="middle" font-size="9" fill="#e8c84a">↺ 白（反時計回り 24→1）</text>
+        <text x="190" y="113" text-anchor="middle" font-size="9" fill="#5b9bd5">↻ 黒（時計回り 1→24）</text>
+      </svg>
+      <h3>基本の動かし方</h3>
+      <ul>
+        <li>サイコロを2個振り、出た目の数だけ駒を前進させる。</li>
+        <li>2つの目は別々の駒に使っても、1つの駒に合計して使ってもよい。</li>
+        <li>ゾロ目が出たら同じ目を4回分使える。</li>
+        <li>相手の駒が2個以上いる点（スタック）には止まれない。</li>
+      </ul>
+      <h3>ヒット（弾き飛ばし）</h3>
+      <ul>
+        <li>相手の駒が1個しかいない点（ブロット）に止まると、その駒をバー（中央の仕切り）に送れる。</li>
+        <li>バーに駒がある間は、まずその駒を相手のホームボードに戻さなければならない。</li>
+      </ul>
+      <h3>ベアオフ（駒の持ち出し）</h3>
+      <ul>
+        <li>全15個の駒がホームボードに揃ったらベアオフ開始。</li>
+        <li>サイコロの目に合う点の駒を盤外に出す。該当する駒がなければ最も遠い点の駒を動かす。</li>
+      </ul>
+      <h3>勝利点数</h3>
+      <ul>
+        <li><b>通常勝ち</b>：相手が1個以上ベアオフ済みなら1点。</li>
+        <li><b>ギャモン</b>：相手がベアオフ0個のまま勝つと2点。</li>
+        <li><b>バックギャモン</b>：相手の駒がバー or 自陣ホームボードに残った状態で勝つと3点。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- カタン ルールモーダル -->
+  <div id="rule-catan" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-catan').classList.remove('show')">×</button>
+      <h2>🏝️ カタン ルール</h2>
+      <h3>目的</h3>
+      <p>カタン島を開拓し、先に<b>10勝利点</b>を獲得したプレイヤーが勝ち。</p>
+      <h3>ボード構成</h3>
+      <ul>
+        <li>六角形タイル19枚（森×4・丘×3・牧草地×4・農地×4・山×3・砂漠×1）をランダムに並べる。</li>
+        <li>各タイルには2〜12の数字トークンが置かれる（7を除く）。砂漠には盗賊が初期配置。</li>
+        <li>ボード外周に港（4つの汎用3:1港＋5つの特殊2:1港）が存在。</li>
+      </ul>
+      <h3>初期配置</h3>
+      <ul>
+        <li>順番に開拓地1個＋道路1本を2巡配置（計2開拓地・2道路）。</li>
+        <li>2巡目の開拓地に隣接する資源タイルから初期資源を1枚ずつ獲得。</li>
+      </ul>
+      <h3>手番の流れ</h3>
+      <ul>
+        <li>① サイコロを2個振り、出た目のタイルに隣接する開拓地・都市を持つ全員が資源獲得（開拓地1枚・都市2枚）。</li>
+        <li>② 交易：銀行または他プレイヤーと資源を交換できる。</li>
+        <li>③ 建設：道路・開拓地・都市・発展カードを建設・購入できる。</li>
+      </ul>
+      <h3>7が出たとき（盗賊）</h3>
+      <ul>
+        <li>手札が<b>8枚以上</b>のプレイヤーは半分（端数切り捨て）を捨てる。</li>
+        <li>盗賊を任意のタイルへ移動。そのタイルからの資源産出が止まる。</li>
+        <li>移動先タイルに隣接する他プレイヤー1人からランダムに資源1枚を奪える。</li>
+        <li>発展カード「騎士」でも同様の効果を得られる。</li>
+      </ul>
+      <h3>建設コスト</h3>
+      <ul>
+        <li><b>道路</b>：木材＋レンガ ▶ 既存の道路・開拓地から延長。</li>
+        <li><b>開拓地</b>：木材＋レンガ＋羊毛＋穀物 ▶ 1勝利点。道路の端、かつ他の開拓地・都市と2本以上離れた交差点に建設。</li>
+        <li><b>都市</b>：穀物×2＋鉄鉱石×3 ▶ 開拓地を2勝利点の都市に昇格。資源産出が2枚になる。</li>
+        <li><b>発展カード</b>：羊毛＋穀物＋鉄鉱石 ▶ 山札からランダムに1枚引く。</li>
+      </ul>
+      <h3>発展カードの種類</h3>
+      <ul>
+        <li><b>騎士（14枚）</b>：盗賊を移動＋資源強奪。使用した騎士が3枚以上で最大騎士力を争う。</li>
+        <li><b>道路建設（2枚）</b>：道路を2本無料で建設。</li>
+        <li><b>年の豊作（2枚）</b>：任意の資源2枚を銀行から獲得。</li>
+        <li><b>独占（2枚）</b>：資源を1種類指定し、他の全プレイヤーからその資源を全て奪う。</li>
+        <li><b>勝利点（5枚）</b>：手に入れた瞬間から+1点（10点達成まで公開不要）。</li>
+      </ul>
+      <h3>交易（銀行との交換レート）</h3>
+      <ul>
+        <li><b>4:1</b>：同じ資源4枚→任意資源1枚（港なしの基本レート）。</li>
+        <li><b>汎用3:1港</b>：任意の資源3枚→任意資源1枚。</li>
+        <li><b>特殊2:1港</b>：指定資源2枚→任意資源1枚（木材港・レンガ港・羊毛港・穀物港・鉄鉱石港の5種）。</li>
+        <li>他プレイヤーとの交渉は自由（レートや条件は当事者間で決める）。</li>
+      </ul>
+      <h3>勝利点の内訳</h3>
+      <ul>
+        <li>開拓地：1点　都市：2点　勝利点カード：各1点</li>
+        <li><b>最長交易路</b>：連続した道路が5本以上で2点（他プレイヤーに上回られると移動）。</li>
+        <li><b>最大騎士力</b>：騎士カードを3枚以上使用し最多で2点（同上）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 麻雀 ルールモーダル -->
+  <div id="rule-mahjong" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-mahjong').classList.remove('show')">×</button>
+      <h2>🀄 麻雀 ルール</h2>
+      <h3>目的</h3>
+      <p>4面子＋1雀頭の計14枚を揃えて「和了（あがり）」を目指す。役がなければ和了できない。</p>
+      <svg viewBox="0 0 366 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;margin:10px 0 4px;border-radius:6px">
+        <rect width="366" height="70" rx="5" fill="#0d0a07"/>
+        <rect x="5" y="5" width="72" height="42" rx="3" fill="#152a15"/>
+        <rect x="81" y="5" width="72" height="42" rx="3" fill="#131827"/>
+        <rect x="157" y="5" width="72" height="42" rx="3" fill="#152a15"/>
+        <rect x="233" y="5" width="72" height="42" rx="3" fill="#131827"/>
+        <line x1="309" y1="7" x2="309" y2="45" stroke="#e8c84a" stroke-width="1.5"/>
+        <line x1="312" y1="7" x2="312" y2="45" stroke="#e8c84a" stroke-width="1.5"/>
+        <rect x="316" y="5" width="45" height="42" rx="3" fill="#271510"/>
+        <rect x="8" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="18" y="20" text-anchor="middle" font-size="10" font-weight="800" fill="#c23b26">1</text><text x="18" y="33" text-anchor="middle" font-size="8" fill="#c23b26">萬</text>
+        <rect x="31" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="41" y="20" text-anchor="middle" font-size="10" font-weight="800" fill="#c23b26">2</text><text x="41" y="33" text-anchor="middle" font-size="8" fill="#c23b26">萬</text>
+        <rect x="54" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="64" y="20" text-anchor="middle" font-size="10" font-weight="800" fill="#c23b26">3</text><text x="64" y="33" text-anchor="middle" font-size="8" fill="#c23b26">萬</text>
+        <text x="41" y="60" text-anchor="middle" font-size="9" fill="#7bc47b">順子</text>
+        <rect x="84" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="94" y="20" text-anchor="middle" font-size="10" font-weight="800" fill="#1c6bab">5</text><text x="94" y="33" text-anchor="middle" font-size="8" fill="#1c6bab">筒</text>
+        <rect x="107" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="117" y="20" text-anchor="middle" font-size="10" font-weight="800" fill="#1c6bab">5</text><text x="117" y="33" text-anchor="middle" font-size="8" fill="#1c6bab">筒</text>
+        <rect x="130" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="140" y="20" text-anchor="middle" font-size="10" font-weight="800" fill="#1c6bab">5</text><text x="140" y="33" text-anchor="middle" font-size="8" fill="#1c6bab">筒</text>
+        <text x="117" y="60" text-anchor="middle" font-size="9" fill="#7b9bc4">刻子</text>
+        <rect x="160" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="170" y="20" text-anchor="middle" font-size="10" font-weight="800" fill="#2a7a3b">7</text><text x="170" y="33" text-anchor="middle" font-size="8" fill="#2a7a3b">索</text>
+        <rect x="183" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="193" y="20" text-anchor="middle" font-size="10" font-weight="800" fill="#2a7a3b">8</text><text x="193" y="33" text-anchor="middle" font-size="8" fill="#2a7a3b">索</text>
+        <rect x="206" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="216" y="20" text-anchor="middle" font-size="10" font-weight="800" fill="#2a7a3b">9</text><text x="216" y="33" text-anchor="middle" font-size="8" fill="#2a7a3b">索</text>
+        <text x="193" y="60" text-anchor="middle" font-size="9" fill="#7bc47b">順子</text>
+        <rect x="236" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="246" y="28" text-anchor="middle" font-size="12" font-weight="800" fill="#1c1c1c">東</text>
+        <rect x="259" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="269" y="28" text-anchor="middle" font-size="12" font-weight="800" fill="#1c1c1c">東</text>
+        <rect x="282" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="292" y="28" text-anchor="middle" font-size="12" font-weight="800" fill="#1c1c1c">東</text>
+        <text x="269" y="60" text-anchor="middle" font-size="9" fill="#7b9bc4">刻子</text>
+        <rect x="319" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="329" y="28" text-anchor="middle" font-size="12" font-weight="800" fill="#c23b26">中</text>
+        <rect x="342" y="8" width="20" height="32" rx="2" fill="#f0e8d4"/><text x="352" y="28" text-anchor="middle" font-size="12" font-weight="800" fill="#c23b26">中</text>
+        <text x="340" y="60" text-anchor="middle" font-size="9" fill="#e8c84a">雀頭</text>
+      </svg>
+      <h3>牌の種類（全136枚）</h3>
+      <ul>
+        <li><b>萬子（マンズ）</b>：1〜9萬 各4枚。</li>
+        <li><b>筒子（ピンズ）</b>：1〜9筒 各4枚。</li>
+        <li><b>索子（ソーズ）</b>：1〜9索 各4枚。</li>
+        <li><b>字牌</b>：東・南・西・北（風牌）＋白・發・中（三元牌）各4枚。</li>
+      </ul>
+      <h3>基本の流れ</h3>
+      <ul>
+        <li>4人で対局。親（東家）は14枚、子は13枚からスタート（親から時計回りに配牌）。</li>
+        <li>自分の番に山牌から1枚ツモり、不要牌を1枚捨てる（親は最初からツモ済みなので即捨て）。</li>
+        <li><b>ツモ和了</b>：自分でツモった牌で完成 → 全員から点数をもらう。</li>
+        <li><b>ロン和了</b>：他家の捨て牌で完成 → 捨てた1人から点数をもらう。</li>
+        <li>山牌がなくなると流局。テンパイ者は罰符をノーテン者から受け取る。</li>
+      </ul>
+      <h3>面子の種類</h3>
+      <ul>
+        <li><b>順子（シュンツ）</b>：同じ種類の連番3枚（例：3・4・5筒）。字牌では作れない。</li>
+        <li><b>刻子（コーツ）</b>：同じ牌3枚（例：中・中・中）。</li>
+        <li><b>槓子（カンツ）</b>：同じ牌4枚（カン宣言が必要、嶺上牌をツモる）。</li>
+        <li><b>雀頭（ジャントウ）</b>：同じ牌2枚（対子・アタマ）。1組だけ必要。</li>
+      </ul>
+      <h3>鳴き（副露）</h3>
+      <ul>
+        <li><b>チー</b>：左隣（上家）の捨て牌で順子を完成させる。上家の捨て牌のみ可。</li>
+        <li><b>ポン</b>：誰の捨て牌でも刻子を完成させる（チーより優先）。</li>
+        <li><b>カン（大明槓）</b>：誰かの捨て牌で槓子を完成させる。</li>
+        <li>鳴くと「門前（メンゼン）」が崩れ、立直・門前ツモ・一盃口など一部の役が使えなくなる。</li>
+      </ul>
+      <h3>立直（リーチ）</h3>
+      <ul>
+        <li>門前テンパイ時に1000点を供託して宣言。以後、牌を変えられない。</li>
+        <li>立直後に引いたドラ牌は「裏ドラ」として和了時に加算される。</li>
+        <li>一発：立直後、最初の一巡以内に和了すると+1翻。</li>
+      </ul>
+      <h3>主な役と翻数</h3>
+      <ul>
+        <li><b>立直</b> 1翻 ／ <b>門前清自摸和</b> 1翻 ／ <b>断么九</b> 1翻（1と9と字牌を使わない）</li>
+        <li><b>平和</b> 1翻（4順子＋両面待ち、門前のみ） ／ <b>一盃口</b> 1翻（同じ順子2組、門前のみ）</li>
+        <li><b>役牌（白・發・中・場風・自風）</b> 各1翻 ／ <b>混全帯么九</b> 2翻（各面子に1・9・字牌）</li>
+        <li><b>七対子</b> 2翻（異なる対子7組） ／ <b>三色同順</b> 2翻 ／ <b>一気通貫</b> 2翻</li>
+        <li><b>混一色</b> 3翻 ／ <b>純全帯么九</b> 3翻 ／ <b>二盃口</b> 3翻（門前のみ）</li>
+        <li><b>清一色</b> 6翻（1種類の数牌のみ）</li>
+      </ul>
+      <h3>役満</h3>
+      <ul>
+        <li>国士無双・四暗刻・大三元・小四喜・大四喜・字一色・清老頭・緑一色・九蓮宝燈・天和・地和など。</li>
+        <li>通常の翻数計算を飛び越え、子32000点・親48000点が基本。</li>
+      </ul>
+      <h3>ドラ</h3>
+      <ul>
+        <li>表示牌の次の牌が「ドラ」。和了時に1枚につき+1翻（役にはならない、翻数の加算のみ）。</li>
+        <li>カンをするたびにカンドラが追加される。立直者には裏ドラも適用。</li>
+      </ul>
+      <h3>点数計算</h3>
+      <ul>
+        <li>基本点＝符×2の（翻数+2）乗。親は子の1.5倍。</li>
+        <li><b>満貫</b>（5翻、または4翻30符以上）：子8000・親12000点が上限に。</li>
+        <li>跳満（6〜7翻）→ 倍満（8〜10翻）→ 三倍満（11〜12翻）→ 役満（13翻〜）と上限が上がる。</li>
+      </ul>
+      <h3>局の進め方</h3>
+      <ul>
+        <li>東1局〜東4局を「東風戦」、東場＋南場を「半荘（ハンチャン）」と呼ぶ。</li>
+        <li>親が和了または流局テンパイだと連荘（親が続く）。子が和了すると次の人が親になる。</li>
+        <li>連荘のたびに本場（100点棒）が積まれ、和了点に加算される（1本場につき和了時+300点）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- オセロ ルールモーダル -->
+  <div id="rule-othello" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-othello').classList.remove('show')">×</button>
+      <h2>⚫ オセロ ルール</h2>
+      <h3>目的</h3>
+      <p>8×8のボードに石を置き、ゲーム終了時に自分の色の石が多い方が勝ち。</p>
+      <h3>初期配置</h3>
+      <p>中央4マスに黒白2個ずつ斜めに配置（黒先手）。</p>
+      <h3>石の置き方</h3>
+      <ul>
+        <li>相手の石を自分の石で縦・横・斜めのいずれかの方向に「挟む」場所にのみ置ける。</li>
+        <li>挟んだ相手の石はすべて自分の色に返る（複数方向同時も可）。</li>
+        <li>置ける場所がない場合はパス。</li>
+      </ul>
+      <h3>終了条件</h3>
+      <ul>
+        <li>両者が連続してパスになる、またはボードが全て埋まったら終了。</li>
+        <li>石が多い方の勝ち。同数は引き分け。</li>
+      </ul>
+      <h3>コツ</h3>
+      <ul>
+        <li>角（コーナー）を取ると返されない強力な拠点になる。</li>
+        <li>終盤より序盤・中盤の「少なく取る」戦略が有効なことが多い。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- テトリス ルールモーダル -->
+  <div id="rule-tetris" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-tetris').classList.remove('show')">×</button>
+      <h2>🟪 テトリス ルール</h2>
+      <h3>基本</h3>
+      <ul>
+        <li>上から落ちてくる7種類のテトロミノ（4マスのブロック）を左右移動・回転させて積む。</li>
+        <li>横一列が隙間なく埋まると消えてスコアが入る。</li>
+        <li>一度に消す列数が多いほど高得点（4列同時＝テトリス）。</li>
+        <li>ブロックが天井まで積み上がるとゲームオーバー。</li>
+      </ul>
+      <h3>操作</h3>
+      <ul>
+        <li>←→：左右移動　↑：回転　↓：ソフトドロップ（加速）</li>
+        <li>スペース / ↓長押し：ハードドロップ（即着地）</li>
+        <li>HOLD（C / Shift）：現在のピースを保持、後で使える</li>
+      </ul>
+      <h3>対戦モード</h3>
+      <ul>
+        <li>画面2分割で同時プレイ。</li>
+        <li>列を消すと「おじゃまブロック」が相手の画面下から追加される（2列消し以上）。</li>
+        <li>相手がゲームオーバーになった方が勝ち。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- インベーダー ルールモーダル -->
+  <div id="rule-invader" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-invader').classList.remove('show')">×</button>
+      <h2>👾 インベーダー ルール</h2>
+      <h3>目的</h3>
+      <p>迫りくるエイリアン編隊をすべて撃ち落とし、地球を守る。</p>
+      <h3>基本操作</h3>
+      <ul>
+        <li>←→キー（またはタッチ）で砲台を左右に移動。</li>
+        <li>スペース（またはタップ）で弾を発射。画面に1発のみ。</li>
+        <li>シールドに隠れて敵の弾を防げるが、シールド自体も徐々に壊れる。</li>
+      </ul>
+      <h3>エイリアム編隊</h3>
+      <ul>
+        <li>複数列のエイリアムが左右に動きながら段々と降下してくる。</li>
+        <li>端に当たるたびに1段下がり、速度が上がる。</li>
+        <li>地上まで降りてきたらゲームオーバー。</li>
+      </ul>
+      <h3>UFO（ボーナス）</h3>
+      <ul>
+        <li>時折UFOが画面上部を横切る。撃墜すると高得点。</li>
+      </ul>
+      <h3>ライフ</h3>
+      <p>敵の弾に当たるとライフを1つ失う。全ライフを失うとゲームオーバー。</p>
+    </div>
+  </div>
+
+  <!-- 2048 ルールモーダル -->
+  <div id="rule-2048" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-2048').classList.remove('show')">×</button>
+      <h2>🔢 2048 ルール</h2>
+      <h3>目的</h3>
+      <p>4×4のボードでスワイプしてタイルを合体させ、2048のタイルを作る。</p>
+      <h3>基本操作</h3>
+      <ul>
+        <li>上下左右にスワイプ（またはキー操作）すると、全タイルが同方向に滑る。</li>
+        <li>同じ数字のタイルが衝突すると合体して2倍の数字になる。</li>
+        <li>移動後に空きマスにランダムで「2」か「4」が出現。</li>
+      </ul>
+      <h3>終了条件</h3>
+      <ul>
+        <li>2048のタイルが完成したらクリア（続行も可）。</li>
+        <li>動かせる場所がなくなったらゲームオーバー。</li>
+      </ul>
+      <h3>対戦モード</h3>
+      <ul>
+        <li>制限時間内のスコア対決（5分タイムアタック／10分一発勝負）。</li>
+        <li>合体させるたびにスコア加算。大きい数字ほど高得点。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ヒットアンドブロー ルールモーダル -->
+  <div id="rule-hitblow" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-hitblow').classList.remove('show')">×</button>
+      <h2>🔎 ヒットアンドブロー ルール</h2>
+      <h3>目的</h3>
+      <p>相手（またはCPU）が決めた4桁の秘密の数字を推理して当てる。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>各桁はすべて異なる数字（0〜9）で構成。</li>
+        <li>数字を予想して入力すると結果が返ってくる。</li>
+      </ul>
+      <h3>ヒット・ブロー</h3>
+      <ul>
+        <li><b>ヒット</b>：数字も位置も正解の桁の数。</li>
+        <li><b>ブロー</b>：数字は合っているが位置が違う桁の数。</li>
+        <li>例）正解「1234」、予想「1325」→ Hit:1（1の位置が合致）Blow:2（2と3は含まれるが位置違い）</li>
+      </ul>
+      <h3>対戦モード</h3>
+      <ul>
+        <li>お互いに秘密の数字を設定し合い、先に当てた方が勝ち。</li>
+        <li>複数人での早解き対戦も可能。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- マインスイーパー ルールモーダル -->
+  <div id="rule-mines" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-mines').classList.remove('show')">×</button>
+      <h2>💣 マインスイーパー ルール</h2>
+      <h3>目的</h3>
+      <p>地雷が隠れたマス以外をすべて開放する。</p>
+      <h3>基本操作</h3>
+      <ul>
+        <li>マスをクリック（タップ）で開放。</li>
+        <li>右クリック（長押し）で旗を立てて地雷の目印にできる。</li>
+      </ul>
+      <h3>数字の見方</h3>
+      <ul>
+        <li>開放されたマスに表示される数字＝その周囲8マスに潜む地雷の数。</li>
+        <li>数字を手がかりに地雷の場所を論理的に絞り込む。</li>
+        <li>何もない（0）マスは周囲が自動的に一斉開放される。</li>
+      </ul>
+      <h3>終了条件</h3>
+      <ul>
+        <li>地雷を踏んだらゲームオーバー（全地雷が表示される）。</li>
+        <li>地雷以外を全て開放したらクリア。</li>
+      </ul>
+      <h3>難易度</h3>
+      <p>初級・中級・上級の3段階（地雷数とボードサイズが変わる）。</p>
+    </div>
+  </div>
+
+  <!-- ハゲタカのえじき ルールモーダル -->
+  <div id="rule-hagetaka" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-hagetaka').classList.remove('show')">×</button>
+      <h2>🦅 ハゲタカのえじき ルール</h2>
+      <h3>目的</h3>
+      <p>得点カードを集めて最もトータルスコアが高いプレイヤーが勝ち。</p>
+      <h3>カードの構成</h3>
+      <ul>
+        <li><b>得点カード</b>：-5〜+10の15枚（0を除く）</li>
+        <li><b>入札カード</b>：各プレイヤーが1〜15（人数によって枚数が変わる）の手札を持つ。各数字は1回しか使えない。</li>
+      </ul>
+      <h3>1ラウンドの流れ</h3>
+      <ul>
+        <li>得点カードを1枚表向きにめくる。</li>
+        <li>全員が同時に入札カードを1枚伏せて出す。</li>
+        <li>一斉公開：最も大きい数字を出した人が得点カードを獲得。</li>
+        <li><b>同数タイは誰も獲得できない</b>（ただしマイナスカードは同数タイで最小の人が押しつけられる）。</li>
+        <li>マイナスカードは最小の数字を出した人が受け取る。</li>
+      </ul>
+      <h3>終了</h3>
+      <p>得点カードが全てなくなったら終了。獲得カードの合計が最大のプレイヤーが勝ち。</p>
+    </div>
+  </div>
+
+  <!-- アルゴ ルールモーダル -->
+  <div id="rule-algo" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-algo').classList.remove('show')">×</button>
+      <h2>🃏 アルゴ ルール</h2>
+      <h3>目的</h3>
+      <p>相手の伏せカードの数字をすべて当てる。最後まで自分のカードが残ったプレイヤーの勝ち。</p>
+      <h3>カード</h3>
+      <ul>
+        <li>黒0〜11、白0〜11の計24枚。</li>
+        <li>各プレイヤーは4枚ずつ引き、<b>昇順</b>（同数は黒→白の順）に並べて伏せる。</li>
+      </ul>
+      <h3>手番の流れ</h3>
+      <ul>
+        <li>山札から1枚引き、自分の列に仮置き（昇順を保つ位置に）。</li>
+        <li>相手のカード1枚を指定して数字を宣言する。</li>
+        <li>正解→そのカードを表向きにして続けて攻撃できる（パスも可）。</li>
+        <li>不正解→引いたカードを表向きで自分の列に加えて手番終了。</li>
+      </ul>
+      <h3>昇順の制約を読む</h3>
+      <p>伏せカードの位置から「このカードより大きい／小さい」と絞り込むのが核心。</p>
+      <h3>脱落</h3>
+      <p>自分のカードがすべて表になったら脱落。最後まで残った1人が勝ち。</p>
+    </div>
+  </div>
+
+  <!-- ブロックス ルールモーダル -->
+  <div id="rule-blokus" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-blokus').classList.remove('show')">×</button>
+      <h2>🟥 ブロックス ルール</h2>
+      <h3>目的</h3>
+      <p>自分の色のタイルを出来るだけ多くボードに置く。ゲーム終了時に残りマス数が少ない人の勝ち。</p>
+      <h3>タイル</h3>
+      <p>各プレイヤーは1〜5マスのポリオミノ（21種類、89マス分）を持つ。</p>
+      <h3>配置ルール</h3>
+      <ul>
+        <li>最初の1枚は自分の担当コーナーから置く。</li>
+        <li>2枚目以降は<b>自分の色と「角（コーナー）」でつながる</b>位置にのみ置ける。</li>
+        <li>自分の色と<b>辺で隣接してはいけない</b>（角のみOK）。</li>
+        <li>相手の色との隣接は自由。</li>
+      </ul>
+      <h3>終了</h3>
+      <ul>
+        <li>全員が置けなくなったら終了。</li>
+        <li>残りタイルのマス数合計が最も少ない人が勝ち。</li>
+        <li>全タイルを置き切った場合はボーナス点あり。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 五目並べ ルールモーダル -->
+  <div id="rule-gomoku" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-gomoku').classList.remove('show')">×</button>
+      <h2>⚫ 五目並べ ルール</h2>
+      <h3>目的</h3>
+      <p>15×15路盤に交互に石を置き、先に縦・横・斜めのいずれかに5個連続させたプレイヤーが勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>黒（先手）と白（後手）が交互に1手ずつ石を置く。</li>
+        <li>5個ぴったり並べば勝ち（6個以上の長連は勝ちにならない場合あり）。</li>
+        <li>盤が全て埋まっても決着がつかなければ引き分け。</li>
+      </ul>
+      <h3>禁じ手（黒のみ）</h3>
+      <ul>
+        <li><b>三三禁</b>：1手で2つの活三を同時に作る手は禁じ手。</li>
+        <li><b>四四禁</b>：1手で2つの四を同時に作る手は禁じ手。</li>
+        <li><b>長連禁</b>：6個以上の連続は勝ちにならない（禁じ手扱い）。</li>
+        <li>※このゲームの禁じ手設定はモードにより異なる場合あり。</li>
+      </ul>
+      <h3>戦略</h3>
+      <ul>
+        <li>序盤は中央付近に展開すると有利。</li>
+        <li>「四」（あと1手で五目）を作りながら守りを崩すのが基本。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- マンカラ ルールモーダル -->
+  <div id="rule-mancala" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-mancala').classList.remove('show')">×</button>
+      <h2>🪨 マンカラ ルール</h2>
+      <h3>目的</h3>
+      <p>ゲーム終了時に自分のストア（右端の大きな穴）に入った石が多い方の勝ち。</p>
+      <h3>盤の構成</h3>
+      <ul>
+        <li>2列×6穴＋両端にストアの計14穴。</li>
+        <li>最初は各穴に石4個ずつ（計48個）。</li>
+      </ul>
+      <h3>手番の流れ</h3>
+      <ul>
+        <li>自分側の穴を1つ選び、全ての石を取り出す。</li>
+        <li>反時計回りに1穴ずつ1個ずつ石を蒔いていく。</li>
+        <li>自分のストアには石を入れる（＋1点）が、相手のストアは飛ばす。</li>
+      </ul>
+      <h3>特別ルール</h3>
+      <ul>
+        <li><b>連続手番</b>：最後の石が自分のストアに入ったら、もう一度手番を得る。</li>
+        <li><b>奪取</b>：最後の石が自分側の空穴に入り、かつ真向かいの穴に石があれば、両方の穴の石を自分のストアに取り込める。</li>
+      </ul>
+      <h3>終了</h3>
+      <p>どちらかのプレイヤーの穴がすべて空になったら終了。残った石は相手のストアへ。石の多い方が勝ち。</p>
+    </div>
+  </div>
+
+  <!-- ヘックス ルールモーダル -->
+  <div id="rule-hex" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-hex').classList.remove('show')">×</button>
+      <h2>⬡ ヘックス ルール</h2>
+      <h3>目的</h3>
+      <p>六角形のマス目で、自分の2辺を石でつなぎ切った方の勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>赤と青が交互に1マスずつ石を置く。</li>
+        <li>赤は上下の辺、青は左右の辺をつなぐことを目指す。</li>
+        <li>六角形なので隣接は最大6方向。斜めにもつながる。</li>
+        <li><b>引き分けは絶対に起きない</b>（数学的に証明されている）。</li>
+      </ul>
+      <h3>パイルール（スワップ）</h3>
+      <ul>
+        <li>先手有利を緩和するため、後手は1手目だけ「相手の置いた石を自分のものにする」選択ができる。</li>
+      </ul>
+      <h3>戦略</h3>
+      <ul>
+        <li>中央を押さえると両辺への経路が広がり有利。</li>
+        <li>相手の接続を遮断しながら自分のパスを確保するのが核心。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ガイスター ルールモーダル -->
+  <div id="rule-geister" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-geister').classList.remove('show')">×</button>
+      <h2>👻 ガイスター ルール</h2>
+      <h3>目的</h3>
+      <p>次の3つのどれかを達成したら勝ち：</p>
+      <ul>
+        <li>相手の青いお化けを4体すべて取る。</li>
+        <li>自分の青いお化けを1体、相手側のコーナーから脱出させる。</li>
+        <li>相手が自分の赤いお化けを4体すべて取る（相手が全部引き取る）。</li>
+      </ul>
+      <h3>セットアップ</h3>
+      <ul>
+        <li>6×6のボード。各プレイヤーは青4体・赤4体の計8体を自分の陣地2行に秘密裏に配置。</li>
+        <li>お化けの色は自分だけが知っている（相手には見えない）。</li>
+      </ul>
+      <h3>手番</h3>
+      <ul>
+        <li>自分のお化けを縦・横に1マス動かす。</li>
+        <li>相手のお化けがいるマスに移動すると、そのお化けを取る（色が判明）。</li>
+      </ul>
+      <h3>脱出</h3>
+      <p>自分の青いお化けが相手陣地の奥コーナー（2か所）に到達し、そのまま脱出すると勝ち。</p>
+    </div>
+  </div>
+
+  <!-- コネクトフォー ルールモーダル -->
+  <div id="rule-connect4" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-connect4').classList.remove('show')">×</button>
+      <h2>🔴 コネクトフォー ルール</h2>
+      <h3>目的</h3>
+      <p>縦・横・斜めのいずれかに自分の色を4つ連続して並べた方の勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>7列×6行の縦型ボード。</li>
+        <li>コマは<b>重力で落下</b>する——列を選ぶと一番下の空きマスに入る。</li>
+        <li>赤と黄が交互に1枚ずつコマを投入する。</li>
+      </ul>
+      <h3>終了条件</h3>
+      <ul>
+        <li>4連が完成したプレイヤーが勝ち。</li>
+        <li>全マスが埋まって4連がなければ引き分け。</li>
+      </ul>
+      <h3>戦略</h3>
+      <ul>
+        <li>中央列を早めに確保すると勝ちパターンが増える。</li>
+        <li>「3連＋両端が空き」の形（オープンスリー）を作ると防ぎにくい。</li>
+        <li>相手の3連を放置すると次の手で負けるので即座に防ぐ。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- チェッカー ルールモーダル -->
+  <div id="rule-checkers" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-checkers').classList.remove('show')">×</button>
+      <h2>🔴 チェッカー ルール</h2>
+      <h3>目的</h3>
+      <p>相手の駒をすべて取るか、相手が動けない状態にした方の勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>8×8ボードの黒マスのみを使う。各プレイヤー12個の駒でスタート。</li>
+        <li>駒は前方の斜め1マスにのみ移動できる。</li>
+        <li>相手の駒を飛び越えると取れる（飛び越えた先が空きマスの場合）。</li>
+        <li><b>取れる場合は必ず取らなければならない</b>（強制ジャンプ）。</li>
+      </ul>
+      <h3>連続取り</h3>
+      <p>1度のジャンプ後にさらに取れる駒があれば、連続してジャンプし続けなければならない。</p>
+      <h3>キング昇格</h3>
+      <ul>
+        <li>駒が相手陣地の最奥列に到達すると「キング」に昇格。</li>
+        <li>キングは前後どちらにも斜め移動・ジャンプが可能。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- スライドパズル ルールモーダル -->
+  <div id="rule-15puzzle" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-15puzzle').classList.remove('show')">×</button>
+      <h2>🔢 スライドパズル ルール</h2>
+      <h3>目的</h3>
+      <p>バラバラに並んだ数字タイルをスライドさせて、1から順番に並べ直す。</p>
+      <h3>基本操作</h3>
+      <ul>
+        <li>空きマスに隣接するタイルをクリック（タップ）すると空きマスへスライドする。</li>
+        <li>目標：左上から右へ1・2・3…と順番に並び、右下が空きマスになる状態。</li>
+      </ul>
+      <h3>サイズ</h3>
+      <ul>
+        <li><b>3×3</b>（8パズル）・<b>4×4</b>（15パズル）・<b>5×5</b>（24パズル）の3種類。</li>
+        <li>サイズが大きいほど難易度が大幅に上がる。</li>
+      </ul>
+      <h3>対戦モード</h3>
+      <ul>
+        <li>同じパズルを2人が同時に解き、先に完成させた方が勝ち。</li>
+        <li>相手の進捗がリアルタイムで表示される。</li>
+      </ul>
+      <h3>豆知識</h3>
+      <p>全配置のうち半分（偶置換）のみが解ける。このゲームは解ける配置のみを出題する。</p>
+    </div>
+  </div>
+
+  <!-- ドットアンドボックス ルールモーダル -->
+  <div id="rule-dots" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-dots').classList.remove('show')">×</button>
+      <h2>📦 ドットアンドボックス ルール</h2>
+      <h3>目的</h3>
+      <p>正方形の箱を多く完成させたプレイヤーが勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>格子状に並んだ点の間に、交互に線を1本引く。</li>
+        <li>4辺が揃って正方形が完成すると、完成させたプレイヤーのものになり、イニシャルが入る。</li>
+        <li><b>箱を完成させたら続けてもう1本引ける</b>（連続手番）。</li>
+      </ul>
+      <h3>戦略</h3>
+      <ul>
+        <li>3辺が埋まった箱（あと1本で完成）は相手に渡さないよう注意。</li>
+        <li>「長い鎖」を作って相手に渡すと連続して取られる——鎖の末尾を利用した駆け引きが核心。</li>
+        <li>終盤は「犠牲の戦術」（小さい鎖を渡して大きい鎖を確保）が有効。</li>
+      </ul>
+      <h3>サイズ</h3>
+      <p>3×3・4×4・5×5の3種類から選択可能。</p>
+    </div>
+  </div>
+
+  <!-- チャイニーズチェッカー ルールモーダル -->
+  <div id="rule-chinese" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-chinese').classList.remove('show')">×</button>
+      <h2>✶ チャイニーズチェッカー ルール</h2>
+      <h3>目的</h3>
+      <p>自分の三角形エリアにある駒を、すべて対面の三角形エリアへ移動させた方の勝ち。</p>
+      <h3>盤面</h3>
+      <p>六芒星（星型）のボードで、各頂点に三角形のエリアがある。2人対戦では対面の頂点を使用。</p>
+      <h3>手番の流れ</h3>
+      <ul>
+        <li>1手番に駒を1個動かす。</li>
+        <li><b>隣接移動</b>：空いている隣のマスへ1歩移動。</li>
+        <li><b>ジャンプ</b>：隣の駒（自分・相手問わず）を飛び越えて着地できる。</li>
+        <li><b>連続ジャンプ</b>：ジャンプ後にさらにジャンプできる場合、同じ手番で続けて跳び続けられる（任意で止められる）。</li>
+      </ul>
+      <h3>注意</h3>
+      <ul>
+        <li>一度ゴールエリアに入った駒を外に出してはいけない（ルール設定による）。</li>
+        <li>連続ジャンプは他の駒を「通過」するだけで、取ることはしない。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- オートリオ ルールモーダル -->
+  <div id="rule-otrio" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-otrio').classList.remove('show')">×</button>
+      <h2>⊙ オートリオ ルール</h2>
+      <h3>目的</h3>
+      <p>3×3のグリッドに小・中・大の3サイズのリングを置き、次の3パターンのいずれかで3目並べを完成させた方の勝ち。</p>
+      <h3>勝利条件（3通り）</h3>
+      <ul>
+        <li><b>同サイズ3連</b>：同じサイズのリングを縦・横・斜めに3つ並べる。</li>
+        <li><b>同心円3連</b>：1つのマスに小・中・大の3サイズをすべて置く。</li>
+        <li><b>階段3連</b>：斜めに小→中→大（または大→中→小）と並べる。</li>
+      </ul>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>2〜4人で交互に手番。各プレイヤーはそれぞれ小・中・大を3個ずつ持つ。</li>
+        <li>1手番に手持ちのリングを1個、任意のマスに置く。</li>
+        <li>すでに同サイズのリングがあるマスには置けない（異サイズは同じマスに重ねられる）。</li>
+      </ul>
+      <h3>戦略</h3>
+      <p>3通りの勝利条件があるため、複数の方向に同時に狙いを向けながら相手の3連を防ぐのが鍵。</p>
+    </div>
+  </div>
+
+  <!-- コリドール ルールモーダル -->
+  <div id="rule-quoridor" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-quoridor').classList.remove('show')">×</button>
+      <h2>🚧 コリドール ルール</h2>
+      <h3>目的</h3>
+      <p>自分のポーンを相手陣地の最奥列まで先に到達させた方の勝ち。</p>
+      <h3>手番の選択</h3>
+      <p>手番ごとに次の2つのどちらかを行う：</p>
+      <ul>
+        <li><b>ポーンを動かす</b>：上下左右の隣接マスへ1歩移動。相手ポーンがいるマスは飛び越えられる（一定条件下）。</li>
+        <li><b>壁を置く</b>：2マス分の壁を設置して相手の進路を塞ぐ。各プレイヤーは壁10枚（2人の場合）を持つ。</li>
+      </ul>
+      <h3>壁のルール</h3>
+      <ul>
+        <li>壁はポーンとポーンの間に横または縦に置く。</li>
+        <li><b>どのプレイヤーもゴールへの経路が必ず存在するように</b>置かなければならない（完全封鎖禁止）。</li>
+      </ul>
+      <h3>戦略</h3>
+      <ul>
+        <li>自分が前進しながら相手の最短ルートに壁を置くのが基本。</li>
+        <li>壁は限りがあるので使いどころが重要。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- はさみ将棋 ルールモーダル -->
+  <div id="rule-hasami" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-hasami').classList.remove('show')">×</button>
+      <h2>✂️ はさみ将棋 ルール</h2>
+      <h3>目的</h3>
+      <p>相手の駒を先に5枚取った方の勝ち。</p>
+      <h3>初期配置</h3>
+      <p>9×9の将棋盤。各プレイヤーが1段目（9枚の「歩」）を並べてスタート。</p>
+      <h3>駒の動き</h3>
+      <ul>
+        <li>将棋の「飛車」と同じく、縦または横に何マスでもまっすぐ移動できる。</li>
+        <li>他の駒は飛び越えられない。</li>
+      </ul>
+      <h3>取り方（はさむ）</h3>
+      <ul>
+        <li>相手の駒を縦または横から自分の駒2枚で挟むと、挟まれた駒を取れる。</li>
+        <li>移動した結果として挟んだ場合に取れる（静止中に挟まれても取られない）。</li>
+        <li>一度に複数枚挟んで取ることも可能。</li>
+      </ul>
+      <h3>角取り</h3>
+      <p>盤の角（コーナー）に追い込んで縦横から挟むと取れる。</p>
+    </div>
+  </div>
+
+  <!-- ソリティア ルールモーダル -->
+  <div id="rule-solitaire" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-solitaire').classList.remove('show')">×</button>
+      <h2>🃏 ソリティア（クロンダイク）ルール</h2>
+      <h3>目的</h3>
+      <p>4つの組札（ファウンデーション）にスート（マーク）ごとにA→Kの順で13枚ずつ積み上げてコンプリートする。</p>
+      <h3>盤面の構成</h3>
+      <ul>
+        <li><b>場札（タブロー）</b>：7列。左から1〜7枚。一番上だけ表向き。</li>
+        <li><b>山札（ストック）</b>：残りのカード。クリックで1〜3枚めくる。</li>
+        <li><b>組札（ファウンデーション）</b>：A→Kの順で積む目標の4列。</li>
+      </ul>
+      <h3>カードの移動ルール</h3>
+      <ul>
+        <li>場札へは<b>交互の色・1つ下の数字</b>のカードのみ重ねられる（例：赤7の上に黒6）。</li>
+        <li>表向きの連なりは一括で移動可能。</li>
+        <li>列が空になったらKのみ置ける。</li>
+        <li>組札へは同スートで昇順（A→2→3…→K）に積む。</li>
+      </ul>
+      <h3>山札の使い方</h3>
+      <p>山札をめくって使えるカードは積極的に活用。山札が尽きたら裏返して再使用できる。</p>
+    </div>
+  </div>
+
+  <!-- 神経衰弱 ルールモーダル -->
+  <div id="rule-memory" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-memory').classList.remove('show')">×</button>
+      <h2>🎴 神経衰弱 ルール</h2>
+      <h3>目的</h3>
+      <p>裏向きに並んだカードをめくってペアを揃える。ゲーム終了時にペアが多い方の勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>全カードを裏向きに並べる。</li>
+        <li>手番のプレイヤーがカードを2枚めくる。</li>
+        <li>2枚が同じペアなら獲得してもう1回手番を得る。</li>
+        <li>違えば裏返して相手の手番へ。</li>
+      </ul>
+      <h3>このゲームのモード</h3>
+      <ul>
+        <li>絵文字カード：小（4×4）・中（4×6）・大（6×6）の3サイズ。</li>
+        <li>トランプ52枚のペア対戦も選択可能。</li>
+        <li>1人練習・2人対戦・オンライン対戦に対応。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ブラックジャック ルールモーダル -->
+  <div id="rule-blackjack" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-blackjack').classList.remove('show')">×</button>
+      <h2>🂡 ブラックジャック ルール</h2>
+      <h3>目的</h3>
+      <p>手札の合計を21に近づけてディーラーに勝つ。21を超えるとバーストで負け。</p>
+      <h3>カードの数え方</h3>
+      <ul>
+        <li>2〜10：そのままの数字。絵札（J・Q・K）：10。</li>
+        <li>A（エース）：1 または 11（有利な方を自動選択）。</li>
+      </ul>
+      <h3>プレイヤーの選択</h3>
+      <ul>
+        <li><b>ヒット</b>：カードを1枚追加。</li>
+        <li><b>スタンド</b>：カードを引くのをやめる。</li>
+        <li><b>ダブルダウン</b>：チップを2倍にして1枚だけ追加（最初の2枚後のみ）。</li>
+      </ul>
+      <h3>ブラックジャック</h3>
+      <p>最初の2枚がA+10点カードで合計21になるとブラックジャック。通常の勝ちより1.5倍の払い戻し。</p>
+      <h3>ディーラールール</h3>
+      <p>ディーラーは17以上になるまで必ずヒットし続ける。</p>
+    </div>
+  </div>
+
+  <!-- 大富豪 ルールモーダル -->
+  <div id="rule-daifugo" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-daifugo').classList.remove('show')">×</button>
+      <h2>🃏 大富豪 ルール</h2>
+      <h3>目的</h3>
+      <p>手札をすべて出し切った順番で順位がつく。最初に出し切ると「大富豪」。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>カードの強さ：3＜4＜…＜K＜A＜2（2が最強）。</li>
+        <li>場に出たカードより強いカードを出す（パスも可）。</li>
+        <li>全員パスになると場を流して先手になる。</li>
+        <li>出し方：1枚・同数字の複数枚・連続する同数枚の階段。</li>
+      </ul>
+      <h3>特殊ルール</h3>
+      <ul>
+        <li><b>8切り</b>：8を出すと場を流してリセット。</li>
+        <li><b>革命</b>：同じ数字を4枚同時に出すと強さの順番が逆転。</li>
+        <li><b>ジョーカー</b>：任意の数字として使える最強カード。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 七並べ ルールモーダル -->
+  <div id="rule-sevens" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-sevens').classList.remove('show')">×</button>
+      <h2>🃖 七並べ ルール</h2>
+      <h3>目的</h3>
+      <p>手札を早く全て出し切った人の勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>まず各スート（♠♥♦♣）の7を場の中央に並べる。</li>
+        <li>手番に場の端に続く数字を出せる（例：♠7があれば♠6か♠8を出せる）。</li>
+        <li>出せるカードがない、または出したくない場合はパス。</li>
+      </ul>
+      <h3>パス制限</h3>
+      <ul>
+        <li>パスできる回数に上限あり。使い果たすと手番に必ず出さなければならない。</li>
+      </ul>
+      <h3>戦略</h3>
+      <p>7に近いカードを手元に残して相手の展開を妨害するのが定石。パスの使いどころが勝負の分かれ目。</p>
+    </div>
+  </div>
+
+  <!-- 将棋 ルールモーダル -->
+  <div id="rule-shogi" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-shogi').classList.remove('show')">×</button>
+      <h2>♟ 将棋 ルール</h2>
+      <h3>目的</h3>
+      <p>相手の「王将（玉将）」を動けなくする（詰み）と勝ち。</p>
+      <h3>駒の種類と動き</h3>
+      <ul>
+        <li><b>王将・玉将</b>：全方向に1マス。</li>
+        <li><b>飛車</b>：縦横に何マスでも。成ると「龍王」で斜め1マスも追加。</li>
+        <li><b>角行</b>：斜めに何マスでも。成ると「龍馬」で縦横1マスも追加。</li>
+        <li><b>金将</b>：前・横・斜め前に1マス。</li>
+        <li><b>銀将</b>：前と斜めに1マス。成ると金将と同じ動き。</li>
+        <li><b>桂馬</b>：前方2マス先に斜め1マス（L字）。成ると金将と同じ。</li>
+        <li><b>香車</b>：前方に何マスでも。成ると金将と同じ。</li>
+        <li><b>歩兵</b>：前に1マス。成ると「と金」（金将と同じ動き）。</li>
+      </ul>
+      <svg viewBox="0 0 300 116" xmlns="http://www.w3.org/2000/svg" style="width:100%;margin:10px 0 4px;border-radius:6px">
+        <rect width="300" height="116" rx="5" fill="#0d0a07"/>
+        <text x="50" y="13" text-anchor="middle" font-size="10" fill="#e8c84a">飛車</text>
+        <text x="150" y="13" text-anchor="middle" font-size="10" fill="#e8c84a">角行</text>
+        <text x="250" y="13" text-anchor="middle" font-size="10" fill="#e8c84a">桂馬</text>
+        <!-- G1: 飛車 grid -->
+        <rect x="10" y="18" width="80" height="80" fill="#1a1510" stroke="#5a5040" stroke-width="1"/>
+        <line x1="10" y1="34" x2="90" y2="34" stroke="#5a5040" stroke-width=".5"/><line x1="10" y1="50" x2="90" y2="50" stroke="#5a5040" stroke-width=".5"/>
+        <line x1="10" y1="66" x2="90" y2="66" stroke="#5a5040" stroke-width=".5"/><line x1="10" y1="82" x2="90" y2="82" stroke="#5a5040" stroke-width=".5"/>
+        <line x1="26" y1="18" x2="26" y2="98" stroke="#5a5040" stroke-width=".5"/><line x1="42" y1="18" x2="42" y2="98" stroke="#5a5040" stroke-width=".5"/>
+        <line x1="58" y1="18" x2="58" y2="98" stroke="#5a5040" stroke-width=".5"/><line x1="74" y1="18" x2="74" y2="98" stroke="#5a5040" stroke-width=".5"/>
+        <rect x="42" y="18" width="16" height="16" fill="#e8c84a" opacity=".3"/><rect x="42" y="34" width="16" height="16" fill="#e8c84a" opacity=".3"/>
+        <rect x="10" y="50" width="16" height="16" fill="#e8c84a" opacity=".3"/><rect x="26" y="50" width="16" height="16" fill="#e8c84a" opacity=".3"/>
+        <rect x="58" y="50" width="16" height="16" fill="#e8c84a" opacity=".3"/><rect x="74" y="50" width="16" height="16" fill="#e8c84a" opacity=".3"/>
+        <rect x="42" y="66" width="16" height="16" fill="#e8c84a" opacity=".3"/><rect x="42" y="82" width="16" height="16" fill="#e8c84a" opacity=".3"/>
+        <rect x="42" y="50" width="16" height="16" rx="1" fill="#2a2010" stroke="#e8c84a" stroke-width="1.5"/>
+        <text x="50" y="62" text-anchor="middle" font-size="8" font-weight="800" fill="#e8c84a">飛</text>
+        <text x="50" y="108" text-anchor="middle" font-size="8" fill="#9a8f7b">縦横・無制限</text>
+        <!-- G2: 角行 grid -->
+        <rect x="110" y="18" width="80" height="80" fill="#1a1510" stroke="#5a5040" stroke-width="1"/>
+        <line x1="110" y1="34" x2="190" y2="34" stroke="#5a5040" stroke-width=".5"/><line x1="110" y1="50" x2="190" y2="50" stroke="#5a5040" stroke-width=".5"/>
+        <line x1="110" y1="66" x2="190" y2="66" stroke="#5a5040" stroke-width=".5"/><line x1="110" y1="82" x2="190" y2="82" stroke="#5a5040" stroke-width=".5"/>
+        <line x1="126" y1="18" x2="126" y2="98" stroke="#5a5040" stroke-width=".5"/><line x1="142" y1="18" x2="142" y2="98" stroke="#5a5040" stroke-width=".5"/>
+        <line x1="158" y1="18" x2="158" y2="98" stroke="#5a5040" stroke-width=".5"/><line x1="174" y1="18" x2="174" y2="98" stroke="#5a5040" stroke-width=".5"/>
+        <rect x="110" y="18" width="16" height="16" fill="#e8c84a" opacity=".3"/><rect x="126" y="34" width="16" height="16" fill="#e8c84a" opacity=".3"/>
+        <rect x="174" y="18" width="16" height="16" fill="#e8c84a" opacity=".3"/><rect x="158" y="34" width="16" height="16" fill="#e8c84a" opacity=".3"/>
+        <rect x="126" y="66" width="16" height="16" fill="#e8c84a" opacity=".3"/><rect x="110" y="82" width="16" height="16" fill="#e8c84a" opacity=".3"/>
+        <rect x="158" y="66" width="16" height="16" fill="#e8c84a" opacity=".3"/><rect x="174" y="82" width="16" height="16" fill="#e8c84a" opacity=".3"/>
+        <rect x="142" y="50" width="16" height="16" rx="1" fill="#2a2010" stroke="#e8c84a" stroke-width="1.5"/>
+        <text x="150" y="62" text-anchor="middle" font-size="8" font-weight="800" fill="#e8c84a">角</text>
+        <text x="150" y="108" text-anchor="middle" font-size="8" fill="#9a8f7b">斜め・無制限</text>
+        <!-- G3: 桂馬 grid -->
+        <rect x="210" y="18" width="80" height="80" fill="#1a1510" stroke="#5a5040" stroke-width="1"/>
+        <line x1="210" y1="34" x2="290" y2="34" stroke="#5a5040" stroke-width=".5"/><line x1="210" y1="50" x2="290" y2="50" stroke="#5a5040" stroke-width=".5"/>
+        <line x1="210" y1="66" x2="290" y2="66" stroke="#5a5040" stroke-width=".5"/><line x1="210" y1="82" x2="290" y2="82" stroke="#5a5040" stroke-width=".5"/>
+        <line x1="226" y1="18" x2="226" y2="98" stroke="#5a5040" stroke-width=".5"/><line x1="242" y1="18" x2="242" y2="98" stroke="#5a5040" stroke-width=".5"/>
+        <line x1="258" y1="18" x2="258" y2="98" stroke="#5a5040" stroke-width=".5"/><line x1="274" y1="18" x2="274" y2="98" stroke="#5a5040" stroke-width=".5"/>
+        <rect x="226" y="18" width="16" height="16" fill="#e8c84a" opacity=".4"/>
+        <rect x="258" y="18" width="16" height="16" fill="#e8c84a" opacity=".4"/>
+        <line x1="250" y1="58" x2="234" y2="26" stroke="#e8c84a" stroke-width="1" stroke-dasharray="3,2" opacity=".6"/>
+        <line x1="250" y1="58" x2="266" y2="26" stroke="#e8c84a" stroke-width="1" stroke-dasharray="3,2" opacity=".6"/>
+        <rect x="242" y="50" width="16" height="16" rx="1" fill="#2a2010" stroke="#e8c84a" stroke-width="1.5"/>
+        <text x="250" y="62" text-anchor="middle" font-size="8" font-weight="800" fill="#e8c84a">桂</text>
+        <text x="250" y="108" text-anchor="middle" font-size="8" fill="#9a8f7b">L字跳び・前のみ</text>
+      </svg>
+      <h3>持ち駒</h3>
+      <p>取った駒は自分の持ち駒になり、好きなマスに打って使える（制限あり）。</p>
+      <h3>成り</h3>
+      <p>相手陣（最奥3段）に入ったとき、または出たときに「成る」ことができる。</p>
+    </div>
+  </div>
+
+  <!-- テキサスホールデム ルールモーダル -->
+  <div id="rule-texas" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-texas').classList.remove('show')">×</button>
+      <h2>🃏 テキサスホールデム ルール</h2>
+      <h3>目的</h3>
+      <p>手札2枚＋場の共有カード（コミュニティ）5枚の中から5枚を選んで最強の役を作る。</p>
+      <h3>ゲームの流れ</h3>
+      <ul>
+        <li><b>プリフロップ</b>：手札2枚が配られベット。</li>
+        <li><b>フロップ</b>：コミュニティ3枚公開→ベット。</li>
+        <li><b>ターン</b>：コミュニティ4枚目公開→ベット。</li>
+        <li><b>リバー</b>：コミュニティ5枚目公開→最終ベット。</li>
+        <li><b>ショーダウン</b>：残ったプレイヤーで手役を比べて勝負。</li>
+      </ul>
+      <h3>ベットの選択肢</h3>
+      <ul>
+        <li><b>フォールド</b>：降りる。<b>チェック</b>：パス（追加なし）。</li>
+        <li><b>コール</b>：相手と同額を出す。<b>レイズ</b>：上乗せして賭ける。</li>
+      </ul>
+      <h3>役の強さ（弱→強）</h3>
+      <p>ハイカード→ワンペア→ツーペア→スリーカード→ストレート→フラッシュ→フルハウス→フォーカード→ストレートフラッシュ→ロイヤルフラッシュ</p>
+    </div>
+  </div>
+
+  <!-- ウノ ルールモーダル -->
+  <div id="rule-uno" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-uno').classList.remove('show')">×</button>
+      <h2>🎴 ウノ ルール</h2>
+      <h3>目的</h3>
+      <p>手札を全て出し切った人が勝ち。最後の1枚になったら「UNO！」と宣言する。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>場の一番上のカードと同じ「色」か「数字/記号」のカードを出せる。</li>
+        <li>出せるカードがなければ山札から1枚引く。</li>
+      </ul>
+      <h3>アクションカード</h3>
+      <ul>
+        <li><b>スキップ</b>：次のプレイヤーの手番を飛ばす。</li>
+        <li><b>リバース</b>：順番を逆回りにする。</li>
+        <li><b>ドロー2</b>：次のプレイヤーが2枚引いて手番スキップ。</li>
+        <li><b>ワイルド</b>：任意の色を指定して出せる。</li>
+        <li><b>ワイルドドロー4</b>：色を指定＋次のプレイヤーが4枚引いてスキップ。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- スピード ルールモーダル -->
+  <div id="rule-speed" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-speed').classList.remove('show')">×</button>
+      <h2>🃏 スピード ルール</h2>
+      <h3>目的</h3>
+      <p>手札と山札を先に全て出し切った方が勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>2人が同時に、場の2つの積み札のどちらかに出せるカードを出す（ターン制なし）。</li>
+        <li>場のカードより1つ上か1つ下の数字のカードを出せる（例：場に7→6か8が出せる）。</li>
+        <li>Aは最大（K→A）と最小（A→2）の両方に対応。</li>
+      </ul>
+      <h3>スタック（詰まり）</h3>
+      <ul>
+        <li>双方が出せるカードない場合、山札から1枚ずつ場に出してリスタート。</li>
+        <li>山札も尽きたら手札の先頭を出す。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 囲碁 ルールモーダル -->
+  <div id="rule-go" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-go').classList.remove('show')">×</button>
+      <h2>⚫ 囲碁 ルール</h2>
+      <h3>目的</h3>
+      <p>盤上により多くの「地（じ）」を囲んだ方が勝ち。地とは自分の石で囲まれた空点のこと。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>黒と白が交互に、盤の交点に石を置く。黒が先手。</li>
+        <li>上下左右に隣接する空点を「呼吸点（ダメ）」と呼ぶ。呼吸点が全てふさがれた石は取られる。</li>
+        <li>取られた石は相手の地から引かれる（アゲハマ）。</li>
+        <li>パスも可能。両者連続パスでゲーム終了。</li>
+      </ul>
+      <svg viewBox="0 0 300 108" xmlns="http://www.w3.org/2000/svg" style="width:100%;margin:10px 0 4px;border-radius:6px">
+        <rect width="300" height="108" rx="5" fill="#1a1810"/>
+        <!-- Panel 1: Stone with 4 liberties -->
+        <rect x="8" y="12" width="84" height="84" rx="2" fill="#c8a860"/>
+        <line x1="10" y1="14" x2="90" y2="14" stroke="#6a4820" stroke-width="1"/><line x1="10" y1="34" x2="90" y2="34" stroke="#6a4820" stroke-width="1"/>
+        <line x1="10" y1="54" x2="90" y2="54" stroke="#6a4820" stroke-width="1"/><line x1="10" y1="74" x2="90" y2="74" stroke="#6a4820" stroke-width="1"/>
+        <line x1="10" y1="94" x2="90" y2="94" stroke="#6a4820" stroke-width="1"/>
+        <line x1="10" y1="14" x2="10" y2="94" stroke="#6a4820" stroke-width="1"/><line x1="30" y1="14" x2="30" y2="94" stroke="#6a4820" stroke-width="1"/>
+        <line x1="50" y1="14" x2="50" y2="94" stroke="#6a4820" stroke-width="1"/><line x1="70" y1="14" x2="70" y2="94" stroke="#6a4820" stroke-width="1"/>
+        <line x1="90" y1="14" x2="90" y2="94" stroke="#6a4820" stroke-width="1"/>
+        <circle cx="50" cy="54" r="9" fill="#1a1a1a"/>
+        <circle cx="50" cy="34" r="5" fill="none" stroke="#2a9a2a" stroke-width="2"/>
+        <circle cx="30" cy="54" r="5" fill="none" stroke="#2a9a2a" stroke-width="2"/>
+        <circle cx="70" cy="54" r="5" fill="none" stroke="#2a9a2a" stroke-width="2"/>
+        <circle cx="50" cy="74" r="5" fill="none" stroke="#2a9a2a" stroke-width="2"/>
+        <text x="49" y="105" text-anchor="middle" font-size="8" fill="#7bc47b">呼吸点4つ → 安全</text>
+        <!-- Panel 2: Stone captured (all liberties taken) -->
+        <rect x="108" y="12" width="84" height="84" rx="2" fill="#c8a860"/>
+        <line x1="110" y1="14" x2="190" y2="14" stroke="#6a4820" stroke-width="1"/><line x1="110" y1="34" x2="190" y2="34" stroke="#6a4820" stroke-width="1"/>
+        <line x1="110" y1="54" x2="190" y2="54" stroke="#6a4820" stroke-width="1"/><line x1="110" y1="74" x2="190" y2="74" stroke="#6a4820" stroke-width="1"/>
+        <line x1="110" y1="94" x2="190" y2="94" stroke="#6a4820" stroke-width="1"/>
+        <line x1="110" y1="14" x2="110" y2="94" stroke="#6a4820" stroke-width="1"/><line x1="130" y1="14" x2="130" y2="94" stroke="#6a4820" stroke-width="1"/>
+        <line x1="150" y1="14" x2="150" y2="94" stroke="#6a4820" stroke-width="1"/><line x1="170" y1="14" x2="170" y2="94" stroke="#6a4820" stroke-width="1"/>
+        <line x1="190" y1="14" x2="190" y2="94" stroke="#6a4820" stroke-width="1"/>
+        <circle cx="150" cy="34" r="9" fill="#e8e8e0" stroke="#5a5a5a" stroke-width="0.5"/>
+        <circle cx="130" cy="54" r="9" fill="#e8e8e0" stroke="#5a5a5a" stroke-width="0.5"/>
+        <circle cx="170" cy="54" r="9" fill="#e8e8e0" stroke="#5a5a5a" stroke-width="0.5"/>
+        <circle cx="150" cy="74" r="9" fill="#e8e8e0" stroke="#5a5a5a" stroke-width="0.5"/>
+        <line x1="142" y1="46" x2="158" y2="62" stroke="#c23b26" stroke-width="3" stroke-linecap="round"/>
+        <line x1="158" y1="46" x2="142" y2="62" stroke="#c23b26" stroke-width="3" stroke-linecap="round"/>
+        <text x="149" y="105" text-anchor="middle" font-size="8" fill="#c47b7b">呼吸点0 → 取られる</text>
+        <!-- Panel 3: Territory (地) -->
+        <rect x="208" y="12" width="84" height="84" rx="2" fill="#c8a860"/>
+        <line x1="210" y1="14" x2="290" y2="14" stroke="#6a4820" stroke-width="1"/><line x1="210" y1="34" x2="290" y2="34" stroke="#6a4820" stroke-width="1"/>
+        <line x1="210" y1="54" x2="290" y2="54" stroke="#6a4820" stroke-width="1"/><line x1="210" y1="74" x2="290" y2="74" stroke="#6a4820" stroke-width="1"/>
+        <line x1="210" y1="94" x2="290" y2="94" stroke="#6a4820" stroke-width="1"/>
+        <line x1="210" y1="14" x2="210" y2="94" stroke="#6a4820" stroke-width="1"/><line x1="230" y1="14" x2="230" y2="94" stroke="#6a4820" stroke-width="1"/>
+        <line x1="250" y1="14" x2="250" y2="94" stroke="#6a4820" stroke-width="1"/><line x1="270" y1="14" x2="270" y2="94" stroke="#6a4820" stroke-width="1"/>
+        <line x1="290" y1="14" x2="290" y2="94" stroke="#6a4820" stroke-width="1"/>
+        <circle cx="210" cy="54" r="9" fill="#1a1a1a"/>
+        <circle cx="230" cy="54" r="9" fill="#1a1a1a"/>
+        <circle cx="250" cy="54" r="9" fill="#1a1a1a"/>
+        <circle cx="270" cy="54" r="9" fill="#1a1a1a"/>
+        <circle cx="290" cy="54" r="9" fill="#1a1a1a"/>
+        <rect x="211" y="15" width="78" height="38" fill="#1a1a1a" opacity=".12"/>
+        <text x="250" y="38" text-anchor="middle" font-size="14" font-weight="800" fill="#2a3a1a">地</text>
+        <text x="249" y="105" text-anchor="middle" font-size="8" fill="#9a9a7b">囲まれた空点 = 地（じ）</text>
+      </svg>
+      <h3>コウ</h3>
+      <p>直前に取られた形と同じ形に戻す着手は禁止（無限ループ防止）。</p>
+      <h3>このゲームの設定</h3>
+      <p>9路・13路・19路を選択可能。死石の指定と地の計算に対応。</p>
+    </div>
+  </div>
+
+  <!-- チェス ルールモーダル -->
+  <div id="rule-chess" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-chess').classList.remove('show')">×</button>
+      <h2>♞ チェス ルール</h2>
+      <h3>目的</h3>
+      <p>相手の「キング」を詰める（チェックメイト）と勝ち。</p>
+      <h3>駒の動き</h3>
+      <ul>
+        <li><b>キング</b>：全方向に1マス。<b>クイーン</b>：全方向に何マスでも。</li>
+        <li><b>ルーク</b>：縦横に何マスでも。<b>ビショップ</b>：斜めに何マスでも。</li>
+        <li><b>ナイト</b>：L字（縦2横1または縦1横2）。駒を飛び越えられる。</li>
+        <li><b>ポーン</b>：前に1マス（初手のみ2マス可）。斜め前に1マスで取る。</li>
+      </ul>
+      <h3>特殊ルール</h3>
+      <ul>
+        <li><b>キャスリング</b>：キングとルークを同時に動かす特殊手（条件あり）。</li>
+        <li><b>アンパッサン</b>：ポーンが2マス進んだ直後、隣のポーンで斜めに取れる。</li>
+        <li><b>プロモーション</b>：ポーンが相手陣の最終列に到達すると強い駒に昇格。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 花札こいこい ルールモーダル -->
+  <div id="rule-hanafuda" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-hanafuda').classList.remove('show')">×</button>
+      <h2>🎴 花札こいこい ルール</h2>
+      <h3>目的</h3>
+      <p>場の札と手札を合わせて「役」を作り、点数を稼ぐ。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>花札48枚（12か月×4枚）を使う。手札8枚・場8枚を配る。</li>
+        <li>手番に手札から1枚出し、同じ月の場の札があれば合わせて取る。</li>
+        <li>次に山札から1枚めくり、同様に合わせて取る。</li>
+        <li>取った札で役が完成したら「こいこい」か「あがり」を選ぶ。</li>
+      </ul>
+      <h3>こいこい vs あがり</h3>
+      <ul>
+        <li><b>あがり</b>：その場で得点を確定して勝ち。</li>
+        <li><b>こいこい</b>：続行してさらに役を狙う。ただし相手に役ができると相手の勝ち。</li>
+      </ul>
+      <h3>主な役</h3>
+      <p>五光（5点）・雨四光・四光・三光・月見で一杯・花見で一杯・猪鹿蝶・赤短・青短・たね・短冊・かすなど。</p>
+    </div>
+  </div>
+
+  <!-- 数独 ルールモーダル -->
+  <div id="rule-sudoku" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-sudoku').classList.remove('show')">×</button>
+      <h2>🔢 数独 ルール</h2>
+      <h3>目的</h3>
+      <p>9×9のマスに1〜9の数字を埋めて完成させる。</p>
+      <h3>ルール（たった3つ）</h3>
+      <ul>
+        <li>各行（横9マス）に1〜9が1つずつ入る。</li>
+        <li>各列（縦9マス）に1〜9が1つずつ入る。</li>
+        <li>各3×3ブロック（9個）に1〜9が1つずつ入る。</li>
+      </ul>
+      <h3>解き方のコツ</h3>
+      <ul>
+        <li>すでに埋まっている数字から、入れられない数字を消去していく。</li>
+        <li>あるマスに入れられる数字が1つだけになったら確定。</li>
+        <li>ある行・列・ブロックで特定の数字が入れるマスが1つだけなら確定。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ナインメンズモリス ルールモーダル -->
+  <div id="rule-morris" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-morris').classList.remove('show')">×</button>
+      <h2>⊞ ナインメンズモリス ルール</h2>
+      <h3>目的</h3>
+      <p>相手の駒を2枚以下にするか、相手が動けなくなったら勝ち。</p>
+      <svg viewBox="0 0 220 232" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:260px;margin:10px auto 4px;display:block;border-radius:6px">
+        <rect width="220" height="232" rx="5" fill="#0d0a07"/>
+        <rect x="20" y="26" width="180" height="180" fill="none" stroke="#7a6a4a" stroke-width="2"/>
+        <rect x="50" y="56" width="120" height="120" fill="none" stroke="#7a6a4a" stroke-width="2"/>
+        <rect x="80" y="86" width="60" height="60" fill="none" stroke="#7a6a4a" stroke-width="2"/>
+        <line x1="110" y1="26" x2="110" y2="86" stroke="#7a6a4a" stroke-width="2"/>
+        <line x1="110" y1="146" x2="110" y2="206" stroke="#7a6a4a" stroke-width="2"/>
+        <line x1="20" y1="116" x2="80" y2="116" stroke="#7a6a4a" stroke-width="2"/>
+        <line x1="140" y1="116" x2="200" y2="116" stroke="#7a6a4a" stroke-width="2"/>
+        <line x1="20" y1="26" x2="200" y2="26" stroke="#e8c84a" stroke-width="2.5" opacity=".6"/>
+        <text x="110" y="18" text-anchor="middle" font-size="10" font-weight="700" fill="#e8c84a">ミル！（3並べ達成）</text>
+        <circle cx="20" cy="26" r="7" fill="#e8c84a"/>
+        <circle cx="110" cy="26" r="7" fill="#e8c84a"/>
+        <circle cx="200" cy="26" r="7" fill="#e8c84a"/>
+        <circle cx="200" cy="116" r="7" fill="#3a6bc4"/>
+        <circle cx="200" cy="206" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="110" cy="206" r="7" fill="#3a6bc4"/>
+        <circle cx="20" cy="206" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="20" cy="116" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="50" cy="56" r="7" fill="#3a6bc4"/>
+        <circle cx="110" cy="56" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="170" cy="56" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="170" cy="116" r="7" fill="#3a6bc4"/>
+        <circle cx="170" cy="176" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="110" cy="176" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="50" cy="176" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="50" cy="116" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="80" cy="86" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="110" cy="86" r="7" fill="#3a6bc4"/>
+        <circle cx="140" cy="86" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="140" cy="116" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="140" cy="146" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="110" cy="146" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="80" cy="146" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="80" cy="116" r="7" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <circle cx="35" cy="222" r="5" fill="#e8c84a"/>
+        <text x="46" y="226" font-size="9" fill="#e8c84a">ミル</text>
+        <circle cx="100" cy="222" r="5" fill="#3a6bc4"/>
+        <text x="111" y="226" font-size="9" fill="#5b9bd5">相手の駒</text>
+        <circle cx="175" cy="222" r="5" fill="none" stroke="#5a5040" stroke-width="2"/>
+        <text x="186" y="226" font-size="9" fill="#7a6a4a">空き</text>
+      </svg>
+      <h3>フェーズ1：配置</h3>
+      <ul>
+        <li>交互に盤上の点に駒を1枚ずつ置く（各9枚）。</li>
+        <li>自分の駒が一直線に3つ並ぶと「ミル」完成。相手の駒を1枚取れる（ミルの駒は取れない）。</li>
+      </ul>
+      <h3>フェーズ2：移動</h3>
+      <ul>
+        <li>全9枚を置いたら、駒を隣接する点へ1つずつ動かす。</li>
+        <li>ミルが完成するたびに相手の駒を1枚取れる。</li>
+      </ul>
+      <h3>フェーズ3：飛び</h3>
+      <p>駒が3枚になったプレイヤーは、盤上の任意の点に「飛ぶ」ことができる。</p>
+    </div>
+  </div>
+
+  <!-- ニムト ルールモーダル -->
+  <div id="rule-nimmt" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-nimmt').classList.remove('show')">×</button>
+      <h2>🐮 ニムト ルール</h2>
+      <h3>目的</h3>
+      <p>牛の頭（ペナルティ）をできるだけ少なく取って、最終的に点数が最も低い人が勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>1〜104の数字カードを使用。各カードには牛の頭マーク（1〜7個）がある。</li>
+        <li>全員が同時に手札から1枚選んで出す。数字の小さい順に処理する。</li>
+        <li>出したカードは4列のいずれかの末尾に置く（その列の最大値の直上の数字）。</li>
+        <li>列の6枚目になるカードを出した人は、その列を引き取りペナルティを受ける。</li>
+        <li>どの列にも置けない場合は、好きな列を引き取りそこに置く。</li>
+      </ul>
+      <h3>終了条件</h3>
+      <p>手札がなくなったらラウンド終了。規定点数に達したプレイヤーが出たら全体終了。</p>
+    </div>
+  </div>
+
+  <!-- どうぶつしょうぎ ルールモーダル -->
+  <div id="rule-dobutsu" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-dobutsu').classList.remove('show')">×</button>
+      <h2>🦁 どうぶつしょうぎ ルール</h2>
+      <h3>目的</h3>
+      <p>相手の「ライオン」を取るか（キャッチ）、自分のライオンが相手陣の最前列まで進むと勝ち（トライ）。</p>
+      <h3>駒の種類と動き</h3>
+      <ul>
+        <li><b>ライオン</b>：全方向に1マス（将棋の王将と同じ）。</li>
+        <li><b>ぞう</b>：斜め方向に1マス。</li>
+        <li><b>きりん</b>：前後左右に1マス。</li>
+        <li><b>ひよこ</b>：前に1マスのみ。相手陣の最前列に到達すると「にわとり」に成る（前・横・斜め前に1マス）。</li>
+      </ul>
+      <h3>持ち駒</h3>
+      <p>取った駒は持ち駒になり、好きなタイミングで盤上の空きマスに打てる（成った駒は元に戻る）。</p>
+    </div>
+  </div>
+
+  <!-- カルカソンヌ ルールモーダル -->
+  <div id="rule-carcassonne" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-carcassonne').classList.remove('show')">×</button>
+      <h2>🏰 カルカソンヌ ルール</h2>
+      <h3>目的</h3>
+      <p>タイルを配置して道・都市・修道院を完成させ、ミープル（駒）で得点を稼ぐ。最終的に最も高得点の人が勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>手番にタイルを1枚引き、既存タイルと辺を合わせて配置する（道は道に、都市は都市に続くように）。</li>
+        <li>タイルを置いた後、自分のミープルをその地形に置ける（空き地形のみ）。</li>
+      </ul>
+      <h3>得点</h3>
+      <ul>
+        <li><b>道</b>：完成時に道のタイル数×1点（ミープルを回収）。</li>
+        <li><b>都市</b>：完成時にタイル数×2点＋紋章×2点。</li>
+        <li><b>修道院</b>：周囲8マスが埋まると9点。</li>
+        <li>ゲーム終了時の未完成地形は減点して計算。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 三目並べ ルールモーダル -->
+  <div id="rule-tictactoe" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-tictactoe').classList.remove('show')">×</button>
+      <h2>⭕ 三目並べ ルール</h2>
+      <h3>目的</h3>
+      <p>3×3のマスに○か×を置いて、先に縦・横・斜めのどれか一列を揃えた方が勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>○（先手）と×（後手）が交互に空きマスに置く。</li>
+        <li>縦・横・斜めいずれかが3つ揃うと勝ち。</li>
+        <li>9マス全て埋まって揃わなければ引き分け。</li>
+      </ul>
+      <h3>戦略</h3>
+      <p>先手が最善手を指し続けると必ず引き分けになる。このゲームのCPUは最善手で負けない。</p>
+    </div>
+  </div>
+
+  <!-- チンチロ ルールモーダル -->
+  <div id="rule-chinchiro" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-chinchiro').classList.remove('show')">×</button>
+      <h2>🎲 チンチロ ルール</h2>
+      <h3>目的</h3>
+      <p>サイコロ3個で役を出し合い、高い役を出した人が勝ち。</p>
+      <h3>役の強さ（強→弱）</h3>
+      <ul>
+        <li><b>ピンゾロ</b>（1・1・1）：最強。</li>
+        <li><b>ゾロ目</b>（同じ目×3）：6ゾロ＞5ゾロ…＞2ゾロ。</li>
+        <li><b>シゴロ</b>（4・5・6）：強い目。</li>
+        <li><b>目あり</b>（2個同じ＋1個）：残り1個の目が得点。6目＞5目…＞1目。</li>
+        <li><b>ヒフミ</b>（1・2・3）：最弱。</li>
+      </ul>
+      <h3>振り直し</h3>
+      <p>役なし（目ありでもヒフミでもシゴロでもゾロ目でもない）の場合は振り直す（最大3回まで）。</p>
+    </div>
+  </div>
+
+  <!-- ヨット ルールモーダル -->
+  <div id="rule-yacht" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-yacht').classList.remove('show')">×</button>
+      <h2>🎲 ヨット ルール</h2>
+      <h3>目的</h3>
+      <p>12ラウンドで役を揃えて合計得点を競う。最も高い合計点が勝ち。</p>
+      <h3>手番の流れ</h3>
+      <ul>
+        <li>サイコロ5個を最大3回振れる。振るたびに残したいサイコロをキープできる。</li>
+        <li>3回振り終えたら、12の役欄のどれか1つにスコアを記入する。</li>
+        <li>全12欄が埋まったらゲーム終了。</li>
+      </ul>
+      <h3>主な役</h3>
+      <ul>
+        <li><b>1〜6の数字</b>：その目の合計（例：3が3個→9点）。</li>
+        <li><b>フルハウス</b>：ゾロ目×2＋ゾロ目×3で25点。</li>
+        <li><b>スモールストレート</b>：連続4目で30点。</li>
+        <li><b>ラージストレート</b>：連続5目で40点。</li>
+        <li><b>ヨット</b>（5個同じ目）：50点。</li>
+        <li><b>チャンス</b>：全サイコロの合計。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ボンバーマン ルールモーダル -->
+  <div id="rule-bomberman" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-bomberman').classList.remove('show')">×</button>
+      <h2>💣 ボンバーマン ルール</h2>
+      <h3>目的</h3>
+      <p>爆弾を置いて炎で敵（またはオンライン対戦相手）を全滅させればクリア。自分が炎に当たるとミス（ライフ3）。</p>
+      <h3>操作</h3>
+      <ul>
+        <li><b>移動</b>：矢印キー / WASD（スマホは画面下の十字パッド）</li>
+        <li><b>爆弾設置</b>：スペースキー / Zキー（スマホは💣ボタン）</li>
+      </ul>
+      <h3>パワーアップ</h3>
+      <ul>
+        <li>💣 <b>爆弾</b>：同時に置ける爆弾数＋1</li>
+        <li>🔥 <b>炎</b>：爆弾の炎射程＋1</li>
+        <li>👟 <b>スピード</b>：移動速度アップ</li>
+      </ul>
+      <h3>オンライン対戦</h3>
+      <ul>
+        <li>「🌐 オンライン」からゲーム内ロビーへ。部屋を作るか、ルームコードを入力して参加。</li>
+        <li>相手を先に倒したプレイヤーが勝ち。同時に爆風に当たった場合は爆弾を置いたプレイヤーの勝利。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ロシアンルーレット ルールモーダル -->
+  <div id="rule-russian" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-russian').classList.remove('show')">×</button>
+      <h2>💀 ロシアンルーレット ルール</h2>
+      <h3>目的</h3>
+      <p>6穴リボルバーに弾を1発装填。順番に引き金を引き、最後まで生き残ったプレイヤーの勝利。</p>
+      <h3>進め方</h3>
+      <ul>
+        <li>ゲーム開始時にシリンダーがランダムに回転し、弾の位置が決まる</li>
+        <li>プレイヤーが順番に「引き金を引く」ボタンを押す</li>
+        <li>「カチッ」→ セーフ！次のプレイヤーへ</li>
+        <li>「BANG」→ そのプレイヤーは脱落</li>
+        <li>シリンダーは毎回1コマ進む（6発目は必ず当たる）</li>
+      </ul>
+      <h3>人数</h3>
+      <p>2〜6人。プレイヤー名は自由に入力できます。</p>
+    </div>
+  </div>
 
   <!-- 部屋を作成：ゲーム選択画面 -->
   <div id="create-modal" class="cm-overlay" hidden>
@@ -685,45 +2137,45 @@
       <h2>どのゲームで対戦しますか？</h2>
       <p class="cm-sub">選ぶとすぐに部屋番号が発行されます。番号を相手に送ってください。</p>
       <div class="cm-grid">
-        <a href="games/othello.html?online=1&_v=2&create=1">⚫️<span>オセロ</span></a>
-        <a href="games/gomoku.html?online=1&_v=2&create=1">⭕️<span>五目並べ</span></a>
-        <a href="games/shogi.html?online=1&_v=2&create=1">☗<span>将棋</span></a>
-        <a href="カタン/index.html?online=1&_v=2&create=1"><svg width="20" height="20" viewBox="0 0 40 40" fill="none" stroke-linejoin="round"><polygon points="20,3 27.3,7.5 27.3,15.8 20,20 12.7,15.8 12.7,7.5" fill="#2d7a3a" fill-opacity="0.42" stroke="#4aaa5e" stroke-width="2"/><polygon points="31.2,12.5 38.4,16.7 38.4,25 31.2,29.2 23.9,25 23.9,16.7" fill="#d4a827" fill-opacity="0.42" stroke="#d4a827" stroke-width="2"/><polygon points="8.8,12.5 16.1,16.7 16.1,25 8.8,29.2 1.6,25 1.6,16.7" fill="#7a4020" fill-opacity="0.42" stroke="#c0522a" stroke-width="2"/></svg><span>カタン</span></a>
-        <a href="games/chess.html?online=1&_v=2&create=1">♞<span>チェス</span></a>
-        <a href="games/go.html?online=1&_v=2&create=1">◉<span>囲碁</span></a>
-        <a href="games/checkers.html?online=1&_v=2&create=1">🔴<span>チェッカー</span></a>
-        <a href="games/backgammon.html?online=1&_v=2&create=1">🎲<span>バックギャモン</span></a>
-        <a href="games/hex.html?online=1&_v=2&create=1">⬡<span>ヘックス</span></a>
-        <a href="games/connect4.html?online=1&_v=2&create=1">🟡<span>コネクトフォー</span></a>
-        <a href="games/mancala.html?online=1&_v=2&create=1">🪨<span>マンカラ</span></a>
-        <a href="games/dobutsu.html?online=1&_v=2&create=1">🦁<span>どうぶつしょうぎ</span></a>
-        <a href="games/tictactoe.html?online=1&_v=2&create=1">⭕<span>三目並べ</span></a>
-        <a href="games/memory.html?online=1&_v=2&create=1">🎴<span>神経衰弱</span></a>
-        <a href="games/hasami.html?online=1&_v=2&create=1">✂️<span>はさみ将棋</span></a>
-        <a href="games/morris.html?online=1&_v=2&create=1">⊞<span>ナインメンズモリス</span></a>
-        <a href="games/hanafuda.html?online=1&_v=2&create=1">🎴<span>花札こいこい</span></a>
-        <a href="games/dots.html?online=1&_v=2&create=1"><svg width="20" height="20" viewBox="0 0 40 40" fill="none" stroke-linecap="round"><line x1="9" y1="9" x2="31" y2="9" stroke="#f48fb1" stroke-width="4"/><line x1="31" y1="9" x2="31" y2="31" stroke="#7fd1f2" stroke-width="4"/><line x1="31" y1="31" x2="9" y2="31" stroke="#f48fb1" stroke-width="4"/><line x1="9" y1="31" x2="9" y2="9" stroke="#7fd1f2" stroke-width="4"/></svg><span>ドットアンドボックス</span></a>
-        <a href="games/chinese.html?online=1&_v=2&create=1">✶<span>チャイニーズチェッカー</span></a>
-        <a href="games/quoridor.html?online=1&_v=2&create=1">🚧<span>コリドール</span></a>
-        <a href="games/otrio.html?online=1&_v=2&create=1">⊙<span>オートリオ</span></a>
-        <a href="games/tetris-vs.html?online=1&create=1">🟥<span>テトリスVS</span></a>
-        <a href="games/g2048-vs.html?online=1&create=1">🔢<span>2048 VS</span></a>
+        <a href="カタン/index.html?online=1&_v=2&create=1"><svg width="22" height="22" viewBox="0 0 40 40" fill="none" stroke-linejoin="round"><polygon points="20,3 27.3,7.5 27.3,15.8 20,20 12.7,15.8 12.7,7.5" fill="#2d7a3a" fill-opacity="0.42" stroke="#4aaa5e" stroke-width="2"/><polygon points="31.2,12.5 38.4,16.7 38.4,25 31.2,29.2 23.9,25 23.9,16.7" fill="#d4a827" fill-opacity="0.42" stroke="#d4a827" stroke-width="2"/><polygon points="8.8,12.5 16.1,16.7 16.1,25 8.8,29.2 1.6,25 1.6,16.7" fill="#7a4020" fill-opacity="0.42" stroke="#c0522a" stroke-width="2"/></svg><span>カタン</span></a>
         <a href="麻雀ゲーム/index.html?online=1&_v=2&create=1">🀄<span>麻雀</span></a>
-        <a href="games/geister.html?online=1&_v=2&create=1">👻<span>ガイスター</span></a>
-        <a href="games/daifugo.html?online=1&_v=2&create=1">🃏<span>大富豪</span></a>
-        <a href="games/sevens.html?online=1&_v=2&create=1">🃖<span>七並べ</span></a>
-        <a href="games/blackjack.html?online=1&_v=2&create=1">🂡<span>ブラックジャック</span></a>
-        <a href="games/chinchiro.html?online=1&_v=2&create=1">🎲<span>チンチロ</span></a>
-        <a href="games/yacht.html?online=1&_v=2&create=1">🎰<span>ヨット</span></a>
+        <a href="games/othello.html?online=1&_v=2&create=1"><span style="font-size:20px;letter-spacing:-4px;line-height:1">⚫⚪</span><span>オセロ</span></a>
+        <a href="games/tetris-vs.html?online=1&create=1"><svg width="22" height="22" viewBox="0 0 40 40" style="display:block;flex-shrink:0"><rect x="15" y="3" width="10" height="10" rx="2" fill="#9b59b6"/><rect x="3" y="15" width="10" height="10" rx="2" fill="#9b59b6"/><rect x="15" y="15" width="10" height="10" rx="2" fill="#9b59b6"/><rect x="27" y="15" width="10" height="10" rx="2" fill="#9b59b6"/></svg><span>テトリスVS</span></a>
+        <a href="games/g2048-vs.html?online=1&create=1"><div style="width:26px;height:26px;background:#edc22e;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#776e65;font-weight:900;font-size:9px;flex-shrink:0">2048</div><span>2048 VS</span></a>
+        <a href="games/hitblow.html?online=1&_v=2&create=1"><div style="display:inline-grid;grid-template-columns:1fr 1fr;gap:2px;width:22px;height:22px;flex-shrink:0"><span style="background:#e0473a;border-radius:50%"></span><span style="background:#3e87d6;border-radius:50%"></span><span style="background:#e8c244;border-radius:50%"></span><span style="background:#5cb568;border-radius:50%"></span></div><span>ヒットアンドブロー</span></a>
         <a href="games/hagetaka.html?online=1&_v=2&create=1">🦅<span>ハゲタカ</span></a>
+        <a href="games/algo.html?online=1&_v=2&create=1"><svg width="20" height="18" viewBox="0 0 40 36" fill="none" style="flex-shrink:0"><rect x="1" y="4" width="17" height="28" rx="3" fill="#222"/><text x="9.5" y="23" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">0</text><rect x="22" y="4" width="17" height="28" rx="3" fill="#fff" stroke="#ccc" stroke-width="1"/><text x="30.5" y="23" text-anchor="middle" font-size="13" font-weight="700" fill="#333">1</text></svg><span>アルゴ</span></a>
+        <a href="games/blokus.html?online=1&_v=2&create=1"><svg width="22" height="22" viewBox="0 0 44 44" style="display:block;flex-shrink:0"><rect x="2" y="2" width="7" height="7" rx="1" fill="#e0473a"/><rect x="10" y="2" width="7" height="7" rx="1" fill="#e0473a"/><rect x="18" y="2" width="7" height="7" rx="1" fill="#e0473a"/><rect x="2" y="10" width="7" height="7" rx="1" fill="#e0473a"/><rect x="10" y="10" width="7" height="7" rx="1" fill="#e0473a"/><rect x="26" y="2" width="7" height="7" rx="1" fill="#3e87d6"/><rect x="34" y="2" width="7" height="7" rx="1" fill="#3e87d6"/><rect x="34" y="10" width="7" height="7" rx="1" fill="#3e87d6"/><rect x="26" y="10" width="7" height="7" rx="1" fill="#3e87d6"/><rect x="34" y="18" width="7" height="7" rx="1" fill="#3e87d6"/><rect x="34" y="26" width="7" height="7" rx="1" fill="#4ec05e"/><rect x="34" y="34" width="7" height="7" rx="1" fill="#4ec05e"/><rect x="26" y="34" width="7" height="7" rx="1" fill="#4ec05e"/><rect x="18" y="34" width="7" height="7" rx="1" fill="#4ec05e"/><rect x="26" y="26" width="7" height="7" rx="1" fill="#4ec05e"/><rect x="2" y="18" width="7" height="7" rx="1" fill="#e0c34a"/><rect x="10" y="18" width="7" height="7" rx="1" fill="#e0c34a"/><rect x="2" y="26" width="7" height="7" rx="1" fill="#e0c34a"/><rect x="2" y="34" width="7" height="7" rx="1" fill="#e0c34a"/><rect x="10" y="34" width="7" height="7" rx="1" fill="#e0c34a"/></svg><span>ブロックス</span></a>
+        <a href="games/gomoku.html?online=1&_v=2&create=1"><span style="font-size:14px;letter-spacing:0;line-height:1">⚫⚪⚫⚪⚫</span><span>五目並べ</span></a>
+        <a href="games/mancala.html?online=1&_v=2&create=1"><span style="display:flex;gap:2px;align-items:center;flex-shrink:0"><span style="width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#7fd0ff,#2a6ea0)"></span><span style="width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffd56a,#c98a1a)"></span><span style="width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f08a76,#a8362a)"></span></span><span>マンカラ</span></a>
+        <a href="games/hex.html?online=1&_v=2&create=1"><span style="font-size:18px;letter-spacing:-3px;line-height:1"><span style="color:#e0473a">⬢</span><span style="color:#3e87d6">⬢</span></span><span>ヘックス</span></a>
+        <a href="games/backgammon.html?online=1&_v=2&create=1"><span style="display:flex;gap:1px;height:22px;align-items:flex-start;flex-shrink:0"><span style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:22px solid #d9b48a"></span><span style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:22px solid #8a5a3a"></span><span style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:22px solid #d9b48a"></span><span style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:22px solid #8a5a3a"></span></span><span>バックギャモン</span></a>
+        <a href="games/geister.html?online=1&_v=2&create=1">👻<span>ガイスター</span></a>
+        <a href="games/connect4.html?online=1&_v=2&create=1"><span style="font-size:15px;letter-spacing:0;line-height:1">🔴🟡🔴🟡</span><span>コネクトフォー</span></a>
+        <a href="games/checkers.html?online=1&_v=2&create=1"><div style="display:inline-grid;grid-template-columns:repeat(3,1fr);width:24px;height:24px;border-radius:3px;overflow:hidden;flex-shrink:0"><span style="background:#e8d8b8"></span><span style="background:#4a2f14"></span><span style="background:#e8d8b8"></span><span style="background:#4a2f14"></span><span style="background:#e0473a;border-radius:50%"></span><span style="background:#4a2f14"></span><span style="background:#e8d8b8"></span><span style="background:#4a2f14"></span><span style="background:#e8d8b8"></span></div><span>チェッカー</span></a>
+        <a href="games/15puzzle.html?online=1&_v=2&create=1"><div style="display:inline-grid;grid-template-columns:repeat(4,5px);gap:1px;width:24px;height:24px;align-content:center;justify-content:center;flex-shrink:0"><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:#c9a030;width:5px;height:5px;border-radius:1px"></div><div style="background:rgba(255,255,255,.08);width:5px;height:5px;border-radius:1px"></div></div><span>スライドパズル</span></a>
+        <a href="games/dots.html?online=1&_v=2&create=1"><svg width="20" height="20" viewBox="0 0 40 40" fill="none" stroke-linecap="round" style="flex-shrink:0"><rect x="6" y="6" width="14" height="14" fill="rgba(244,143,177,0.38)"/><rect x="20" y="6" width="14" height="14" fill="rgba(127,209,242,0.38)"/><rect x="6" y="20" width="14" height="14" fill="rgba(127,209,242,0.38)"/><rect x="20" y="20" width="14" height="14" fill="rgba(244,143,177,0.38)"/><line x1="6" y1="6" x2="34" y2="6" stroke="#f48fb1" stroke-width="2.8"/><line x1="6" y1="20" x2="34" y2="20" stroke="#7fd1f2" stroke-width="2.8"/><line x1="6" y1="34" x2="34" y2="34" stroke="#f48fb1" stroke-width="2.8"/><line x1="6" y1="6" x2="6" y2="34" stroke="#7fd1f2" stroke-width="2.8"/><line x1="20" y1="6" x2="20" y2="34" stroke="#f48fb1" stroke-width="2.8"/><line x1="34" y1="6" x2="34" y2="34" stroke="#7fd1f2" stroke-width="2.8"/><circle cx="6" cy="6" r="2.2" fill="#e9e2d2"/><circle cx="20" cy="6" r="2.2" fill="#e9e2d2"/><circle cx="34" cy="6" r="2.2" fill="#e9e2d2"/><circle cx="6" cy="20" r="2.2" fill="#e9e2d2"/><circle cx="20" cy="20" r="2.2" fill="#e9e2d2"/><circle cx="34" cy="20" r="2.2" fill="#e9e2d2"/><circle cx="6" cy="34" r="2.2" fill="#e9e2d2"/><circle cx="20" cy="34" r="2.2" fill="#e9e2d2"/><circle cx="34" cy="34" r="2.2" fill="#e9e2d2"/></svg><span>ドットアンドボックス</span></a>
+        <a href="games/chinese.html?online=1&_v=2&create=1"><svg width="22" height="22" viewBox="0 0 44 44" fill="none" style="display:block;flex-shrink:0"><polygon points="22,2 27.8,12 39.3,12 33.6,22 39.3,32 27.8,32 22,42 16.2,32 4.7,32 10.4,22 4.7,12 16.2,12" fill="#1a2a1a" stroke="#3a6a3a" stroke-width="1.2"/><circle cx="22" cy="5" r="2.5" fill="#e05050"/><circle cx="19.5" cy="9.5" r="2" fill="#e05050"/><circle cx="24.5" cy="9.5" r="2" fill="#e05050"/><circle cx="36.5" cy="30.5" r="2.5" fill="#5080e0"/><circle cx="31.5" cy="30.5" r="2" fill="#5080e0"/><circle cx="34" cy="26" r="2" fill="#5080e0"/><circle cx="7.5" cy="30.5" r="2.5" fill="#50c050"/><circle cx="12.5" cy="30.5" r="2" fill="#50c050"/><circle cx="10" cy="26" r="2" fill="#50c050"/><circle cx="22" cy="22" r="2.2" fill="#555" stroke="#888" stroke-width="0.5"/></svg><span>チャイニーズチェッカー</span></a>
+        <a href="games/otrio.html?online=1&_v=2&create=1"><div style="width:22px;height:22px;border-radius:50%;border:2.5px solid #e23b2e;display:flex;align-items:center;justify-content:center;flex-shrink:0"><div style="width:13px;height:13px;border-radius:50%;border:2.5px solid #e23b2e;display:flex;align-items:center;justify-content:center"><div style="width:5px;height:5px;border-radius:50%;background:#e23b2e"></div></div></div><span>オートリオ</span></a>
+        <a href="games/quoridor.html?online=1&_v=2&create=1"><svg width="22" height="22" viewBox="0 0 44 44" fill="none" style="display:block;flex-shrink:0"><rect x="2" y="2" width="40" height="40" rx="4" fill="#1b2334"/><line x1="10" y1="2" x2="10" y2="42" stroke="#2a3550" stroke-width="0.8"/><line x1="18" y1="2" x2="18" y2="42" stroke="#2a3550" stroke-width="0.8"/><line x1="26" y1="2" x2="26" y2="42" stroke="#2a3550" stroke-width="0.8"/><line x1="34" y1="2" x2="34" y2="42" stroke="#2a3550" stroke-width="0.8"/><line x1="2" y1="10" x2="42" y2="10" stroke="#2a3550" stroke-width="0.8"/><line x1="2" y1="18" x2="42" y2="18" stroke="#2a3550" stroke-width="0.8"/><line x1="2" y1="26" x2="42" y2="26" stroke="#2a3550" stroke-width="0.8"/><line x1="2" y1="34" x2="42" y2="34" stroke="#2a3550" stroke-width="0.8"/><line x1="18" y1="18" x2="18" y2="34" stroke="#e0a030" stroke-width="3" stroke-linecap="round"/><line x1="26" y1="10" x2="26" y2="26" stroke="#e0a030" stroke-width="3" stroke-linecap="round"/><circle cx="6" cy="38" r="3.5" fill="#5b9bd5"/><circle cx="38" cy="6" r="3.5" fill="#e05050"/></svg><span>コリドール</span></a>
+        <a href="games/hasami.html?online=1&_v=2&create=1"><svg width="18" height="21" viewBox="0 0 40 46" style="display:block;flex-shrink:0"><defs><linearGradient id="hcm-fill" x1="0.3" y1="0" x2="0.7" y2="1"><stop offset="0%" stop-color="#f5e090"/><stop offset="100%" stop-color="#c8940c"/></linearGradient></defs><polygon points="20,2 31.2,8.7 38,44 2,44 8.8,8.7" fill="url(#hcm-fill)" stroke="#6b4210" stroke-width="1.2" stroke-linejoin="round"/><text x="20" y="32" text-anchor="middle" font-size="19" font-weight="900" fill="#1a0800" font-family="serif">歩</text></svg><span>はさみ将棋</span></a>
+        <a href="games/memory.html?online=1&_v=2&create=1"><div style="position:relative;width:26px;height:22px;flex-shrink:0"><div style="position:absolute;left:0;top:2px;transform:rotate(-9deg);width:15px;height:20px;background:linear-gradient(145deg,#2c5a3c,#234a30);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.55);font-weight:800;font-size:9px">?</div><div style="position:absolute;right:0;top:0;transform:rotate(9deg);width:15px;height:20px;background:#f4efe3;border-radius:3px;border:0.5px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:10px">♥</div></div><span>神経衰弱</span></a>
+        <a href="games/blackjack.html?online=1&_v=2&create=1"><div style="position:relative;width:28px;height:22px;flex-shrink:0"><div style="position:absolute;left:0;top:2px;transform:rotate(-10deg);width:15px;height:20px;background:#f4efe3;border-radius:3px;border:0.5px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#1c1c1c;font-weight:800;font-size:7px">A♠</div><div style="position:absolute;right:0;top:0;transform:rotate(10deg);width:15px;height:20px;background:#f4efe3;border-radius:3px;border:0.5px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:7px">J♥</div></div><span>ブラックジャック</span></a>
+        <a href="games/daifugo.html?online=1&_v=2&create=1">🃏<span>大富豪</span></a>
+        <a href="games/sevens.html?online=1&_v=2&create=1"><div style="display:flex;align-items:center;height:24px;flex-shrink:0"><div style="width:13px;height:19px;background:#f4efe3;border:0.5px solid #c9bfa8;border-radius:2px;display:flex;align-items:center;justify-content:center;color:#1c1c1c;font-weight:800;font-size:7px;margin-right:-3px">6</div><div style="width:16px;height:23px;background:#fff;border:1px solid #c9a227;border-radius:3px;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:10px;position:relative;z-index:2">7</div><div style="width:13px;height:19px;background:#f4efe3;border:0.5px solid #c9bfa8;border-radius:2px;display:flex;align-items:center;justify-content:center;color:#1c1c1c;font-weight:800;font-size:7px;margin-left:-3px">8</div></div><span>七並べ</span></a>
+        <a href="games/speed.html?online=1&_v=2&create=1"><div style="position:relative;width:38px;height:22px;flex-shrink:0"><div style="position:absolute;left:0;top:2px;transform:rotate(-8deg);width:14px;height:19px;background:#f4efe3;border-radius:3px;border:0.5px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:6px">A♥</div><div style="position:absolute;left:12px;top:0;width:14px;height:19px;background:#f4efe3;border-radius:3px;border:0.5px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#1c1c1c;font-weight:800;font-size:6px">K♠</div><div style="position:absolute;right:0;top:2px;transform:rotate(8deg);width:14px;height:19px;background:#f4efe3;border-radius:3px;border:0.5px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:6px">Q♦</div></div><span>スピード</span></a>
+        <a href="games/poker.html?online=1&_v=2&create=1"><div style="position:relative;width:38px;height:22px;flex-shrink:0"><div style="position:absolute;left:0;top:2px;transform:rotate(-8deg);width:14px;height:19px;background:#f4efe3;border-radius:3px;border:0.5px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:6px">A♥</div><div style="position:absolute;left:12px;top:0;width:14px;height:19px;background:#f4efe3;border-radius:3px;border:0.5px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#1c1c1c;font-weight:800;font-size:6px">K♠</div><div style="position:absolute;right:0;top:2px;transform:rotate(8deg);width:14px;height:19px;background:#f4efe3;border-radius:3px;border:0.5px solid #c9bfa8;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:6px">Q♦</div></div><span>テキサスホールデム</span></a>
+        <a href="games/uno.html?online=1&_v=2&create=1"><div style="position:relative;width:32px;height:22px;flex-shrink:0"><div style="position:absolute;left:0;top:2px;transform:rotate(-8deg);width:13px;height:18px;background:#e0473a;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 5px sans-serif;color:#fff">UNO</div><div style="position:absolute;left:10px;top:0;width:13px;height:18px;background:#3e87d6;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 5px sans-serif;color:#fff">UNO</div><div style="position:absolute;right:0;top:2px;transform:rotate(8deg);width:13px;height:18px;background:#4ec05e;border-radius:3px;display:flex;align-items:center;justify-content:center;font:700 5px sans-serif;color:#fff">UNO</div></div><span>ウノ</span></a>
+        <a href="games/shogi.html?online=1&_v=2&create=1"><svg width="18" height="21" viewBox="0 0 40 46" style="display:block;flex-shrink:0"><defs><linearGradient id="sgcm-fill" x1="0.3" y1="0" x2="0.7" y2="1"><stop offset="0%" stop-color="#f5e090"/><stop offset="100%" stop-color="#c8940c"/></linearGradient></defs><polygon points="20,2 31.2,8.7 38,44 2,44 8.8,8.7" fill="url(#sgcm-fill)" stroke="#6b4210" stroke-width="1.2" stroke-linejoin="round"/><text x="20" y="26" text-anchor="middle" font-size="13" font-weight="900" fill="#1a0800" font-family="serif">王</text><text x="20" y="39" text-anchor="middle" font-size="13" font-weight="900" fill="#1a0800" font-family="serif">将</text></svg><span>将棋</span></a>
+        <a href="games/go.html?online=1&_v=2&create=1"><svg width="22" height="22" viewBox="0 0 42 42" style="display:block;flex-shrink:0"><rect width="42" height="42" rx="4" fill="#e3b765"/><g stroke="#5a3a1a" stroke-width="1.2"><line x1="9" y1="9" x2="33" y2="9"/><line x1="9" y1="21" x2="33" y2="21"/><line x1="9" y1="33" x2="33" y2="33"/><line x1="9" y1="9" x2="9" y2="33"/><line x1="21" y1="9" x2="21" y2="33"/><line x1="33" y1="9" x2="33" y2="33"/></g><circle cx="21" cy="9" r="5.6" fill="#1a1a1a"/><circle cx="33" cy="21" r="5.6" fill="#f4f1e8" stroke="#b8b29c" stroke-width="0.6"/><circle cx="9" cy="33" r="5.6" fill="#1a1a1a"/></svg><span>囲碁</span></a>
+        <a href="games/chess.html?online=1&_v=2&create=1">♞<span>チェス</span></a>
+        <a href="games/hanafuda.html?online=1&_v=2&create=1">🎴<span>花札こいこい</span></a>
+        <a href="games/morris.html?online=1&_v=2&create=1">⊞<span>ナインメンズモリス</span></a>
         <a href="games/nimmt.html?online=1&_v=2&create=1">🐮<span>ニムト</span></a>
-        <a href="games/algo.html?online=1&_v=2&create=1"><svg width="18" height="16" viewBox="0 0 40 36" fill="none" style="vertical-align:middle"><rect x="1" y="4" width="17" height="28" rx="3" fill="#222"/><text x="9.5" y="23" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">0</text><rect x="22" y="4" width="17" height="28" rx="3" fill="#fff" stroke="#ccc" stroke-width="1"/><text x="30.5" y="23" text-anchor="middle" font-size="13" font-weight="700" fill="#333">1</text></svg><span>アルゴ</span></a>
-        <a href="games/uno.html?online=1&_v=2&create=1">🎴<span>ウノ</span></a>
-        <a href="games/speed.html?online=1&_v=2&create=1">🃏<span>スピード</span></a>
-        <a href="games/blokus.html?online=1&_v=2&create=1">🟥<span>ブロックス</span></a>
-        <a href="games/poker.html?online=1&_v=2&create=1">🃏<span>テキサスホールデム</span></a>
-        <a href="games/15puzzle.html?online=1&_v=2&create=1">🔢<span>15パズル</span></a>
-        <a href="games/hitblow.html?online=1&_v=2&create=1">🔎<span>ヒットアンドブロー</span></a>
+        <a href="games/dobutsu.html?online=1&_v=2&create=1"><div style="display:inline-grid;grid-template-columns:repeat(3,1fr);gap:1px;width:24px;height:30px;background:#7a5c25;padding:1px;border-radius:3px;font-size:5px;flex-shrink:0"><span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🦒</span><span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🦁</span><span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🐘</span><span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center"></span><span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🐥</span><span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center"></span><span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center"></span><span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🐥</span><span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center"></span><span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🐘</span><span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🦁</span><span style="background:#f2dfa0;display:flex;align-items:center;justify-content:center">🦒</span></div><span>どうぶつしょうぎ</span></a>
+        <a href="games/tictactoe.html?online=1&_v=2&create=1"><div style="display:inline-grid;grid-template-columns:repeat(3,1fr);gap:1px;width:24px;height:24px;background:#8a93a8;padding:1px;border-radius:3px;font-weight:900;font-size:7px;flex-shrink:0"><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#5b9bd5">O</span><span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#e0473a">X</span><span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#e0473a">X</span><span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#5b9bd5">O</span><span style="background:#1b2334"></span><span style="background:#1b2334;display:flex;align-items:center;justify-content:center;color:#e0473a">X</span></div><span>三目並べ</span></a>
+        <a href="games/chinchiro.html?online=1&_v=2&create=1">🎲<span>チンチロ</span></a>
+        <a href="games/yacht.html?online=1&_v=2&create=1"><span style="font-size:14px;letter-spacing:0;line-height:1">🎲🎲🎲🎲🎲</span><span>ヨット</span></a>
       </div>
     </div>
   </div>
@@ -733,32 +2185,34 @@
     // ※ multi(複数人)には純粋な1VS1ゲームは含めない
     (function () {
       var TAGS = {
-        "2048": ["solo","duo"], "テトリス": ["solo","duo"], "ソリティア": ["solo"],
+        "2048": ["solo","duo"], "テトリス": ["solo","duo"], "ソリティア": ["solo","card"],
         "マインスイーパー": ["solo"], "数独": ["solo"], "インベーダー": ["solo"],
         "ヒットアンドブロー": ["duo", "multi"],
-        "ブラックジャック": ["duo", "multi"],
+        "ブラックジャック": ["duo", "multi", "card"],
         "ヨット": ["duo", "multi"],
-        "ハゲタカのえじき": ["duo", "multi"],
-        "ニムト": ["duo", "multi"],
-        "アルゴ": ["duo", "multi"],
+        "ハゲタカのえじき": ["duo", "multi", "card"],
+        "ニムト": ["duo", "multi", "card"],
+        "アルゴ": ["duo", "multi", "card"],
         "チンチロ": ["duo", "multi"],
-        "神経衰弱": ["duo", "multi"],
-        "オートリオ": ["duo", "multi"],
-        "コリドール": ["duo", "multi"],
-        "オセロ": ["duo"], "五目並べ": ["duo"], "チェッカー": ["duo"], "マンカラ": ["duo"],
-        "ヘックス": ["duo"], "コネクトフォー": ["duo"], "将棋": ["duo"], "囲碁": ["duo"],
-        "チェス": ["duo"], "三目並べ": ["duo"], "ガイスター": ["duo"],
-        "どうぶつしょうぎ": ["duo"], "バックギャモン": ["duo"], "はさみ将棋": ["duo"],
-        "ナインメンズモリス": ["duo"], "花札こいこい": ["duo"],
-        "ドットアンドボックス": ["duo"], "チャイニーズチェッカー": ["duo"],
-        "カタン": ["multi"], "麻雀": ["multi"],
-        "大富豪": ["duo", "multi"], "七並べ": ["duo", "multi"],
-        "カルカソンヌ": ["duo", "multi"],
-        "ブロックス": ["duo", "multi"],
-        "テキサスホールデム": ["duo", "multi"],
-        "15パズル": ["solo","duo"],
-        "ウノ": ["duo", "multi"],
-        "スピード": ["duo"]
+        "神経衰弱": ["duo", "multi", "card"],
+        "オートリオ": ["duo", "multi", "board"],
+        "コリドール": ["duo", "multi", "board"],
+        "オセロ": ["duo","board"], "五目並べ": ["duo","board"], "チェッカー": ["duo","board"], "マンカラ": ["duo","board"],
+        "ヘックス": ["duo","board"], "コネクトフォー": ["duo","board"], "将棋": ["duo","board"], "囲碁": ["duo","board"],
+        "チェス": ["duo","board"], "三目並べ": ["duo","board"], "ガイスター": ["duo","board"],
+        "どうぶつしょうぎ": ["duo","board"], "バックギャモン": ["duo","board"], "はさみ将棋": ["duo","board"],
+        "ナインメンズモリス": ["duo","board"], "花札こいこい": ["duo","card"],
+        "ドットアンドボックス": ["duo","board"], "チャイニーズチェッカー": ["duo","board"],
+        "カタン": ["multi", "board"], "麻雀": ["multi", "card"],
+        "大富豪": ["duo", "multi", "card"], "七並べ": ["duo", "multi", "card"],
+        "カルカソンヌ": ["duo", "multi", "board"],
+        "ブロックス": ["duo", "multi", "board"],
+        "テキサスホールデム": ["duo", "multi", "card"],
+        "スライドパズル": ["solo","duo"],
+        "ウノ": ["duo", "multi", "card"],
+        "スピード": ["duo", "card"],
+        "ボンバーマン": ["solo", "duo"],
+        "ロシアンルーレット": ["multi"]
       };
       var cards = [].slice.call(document.querySelectorAll(".col-games .grid .card"));
       cards.forEach(function (c) {
@@ -767,17 +2221,38 @@
         c.dataset.tags = t ? t.join(",") : "solo,duo,multi"; // 未登録は常に表示
       });
       var bar = document.getElementById("filterbar");
-      bar.addEventListener("click", function (e) {
-        var b = e.target.closest("button"); if (!b) return;
-        bar.querySelectorAll("button").forEach(function (x) { x.classList.remove("on"); });
-        b.classList.add("on");
-        var f = b.dataset.f, visible = 0;
+      var searchInput = document.getElementById("game-search");
+      var searchClear = document.getElementById("search-clear");
+      var currentFilter = "all";
+
+      function applyFilters() {
+        var q = searchInput.value.trim().toLowerCase();
+        var f = currentFilter;
+        var visible = 0;
         cards.forEach(function (c) {
-          var show = (f === "all") || (("," + c.dataset.tags + ",").indexOf("," + f + ",") >= 0);
+          var name = (c.querySelector(".name") ? c.querySelector(".name").textContent : "").toLowerCase();
+          var desc = (c.querySelector(".desc") ? c.querySelector(".desc").textContent : "").toLowerCase();
+          var tagMatch = (f === "all") || (("," + c.dataset.tags + ",").indexOf("," + f + ",") >= 0);
+          var searchMatch = !q || name.indexOf(q) >= 0 || desc.indexOf(q) >= 0;
+          var show = tagMatch && searchMatch;
           c.style.display = show ? "" : "none";
           if (show) visible++;
         });
         document.getElementById("filter-empty").style.display = visible ? "none" : "block";
+        searchClear.style.display = q ? "block" : "none";
+      }
+
+      bar.addEventListener("click", function (e) {
+        var b = e.target.closest("button"); if (!b) return;
+        bar.querySelectorAll("button").forEach(function (x) { x.classList.remove("on"); });
+        b.classList.add("on");
+        currentFilter = b.dataset.f;
+        applyFilters();
+      });
+
+      searchInput.addEventListener("input", applyFilters);
+      searchClear.addEventListener("click", function () {
+        searchInput.value = ""; applyFilters(); searchInput.focus();
       });
     })();
   </script>

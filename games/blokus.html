@@ -45,6 +45,11 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
 #end h2{color:var(--gold);margin-bottom:16px;font-size:20px}
 .rrow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #1e1e2c;font-size:14px}
 .rbtn{margin-top:16px;padding:10px 24px;background:var(--gold);color:#111;border:none;border-radius:10px;font:700 14px 'Segoe UI',sans-serif;cursor:pointer}
+.opp-panel{margin-top:8px;border-top:1px solid rgba(255,255,255,.12);padding-top:8px;display:flex;flex-direction:column;gap:8px}
+.opp-grp-lbl{font-size:11px;font-weight:700;margin-bottom:3px}
+.opp-pgrid{display:flex;flex-wrap:wrap;gap:2px}
+.opp-pc{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:3px;padding:2px}
+.opp-pc.used{opacity:.15;filter:grayscale(1)}
 @media(max-width:580px){
   :root{--cs:17px}
   .play{flex-direction:column}
@@ -101,6 +106,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
       </div>
       <div class="sprev" id="sprev">タイルを選択</div>
       <div class="pgrid" id="pgrid"></div>
+      <div id="opp-pcs" class="opp-panel"></div>
     </div>
   </div>
 </div>
@@ -233,9 +239,10 @@ function curShape(){
 }
 
 function placeAt(shape,ar,ac){
-  const rArr=shape.map(([r])=>r),cArr=shape.map(([,c])=>c);
-  const or=ar-Math.round((Math.max(...rArr))/2);
-  const oc=ac-Math.round((Math.max(...cArr))/2);
+  const maxR=Math.max(...shape.map(([r])=>r));
+  const maxC=Math.max(...shape.map(([,c])=>c));
+  const or=Math.max(0,Math.min(N-1-maxR,ar-Math.round(maxR/2)));
+  const oc=Math.max(0,Math.min(N-1-maxC,ac-Math.round(maxC/2)));
   return shape.map(([r,c])=>[r+or,c+oc]);
 }
 
@@ -412,6 +419,7 @@ function renderPieces(){
     grid.appendChild(btn);
   });
   if(G.sp!==null)renderSelPreview();
+  renderOppPieces();
 }
 
 function renderSelPreview(){
@@ -433,6 +441,44 @@ function renderSelPreview(){
   el.innerHTML='';el.appendChild(wrap);
 }
 
+function renderOppPieces(){
+  const el=document.getElementById('opp-pcs');
+  if(!el||!G.pcs)return;
+  el.innerHTML='';
+  for(let pi=0;pi<G.numP;pi++){
+    if(pi===G.cur)continue;
+    const col=PCOL[pi+1],name=PNAME[pi+1];
+    const rem=G.pcs[pi].filter(p=>!p.used).length;
+    const grp=document.createElement('div');
+    const lbl=document.createElement('div');
+    lbl.className='opp-grp-lbl';
+    lbl.style.color=col;
+    lbl.textContent=`${name} — 残り${rem}枚`;
+    grp.appendChild(lbl);
+    const pgrid=document.createElement('div');
+    pgrid.className='opp-pgrid';
+    G.pcs[pi].forEach(pc=>{
+      const cs=5;
+      const mr=Math.max(...pc.c.map(([r])=>r));
+      const mc=Math.max(...pc.c.map(([,c])=>c));
+      const wrap=document.createElement('div');
+      wrap.className='opp-pc'+(pc.used?' used':'');
+      const mini=document.createElement('div');
+      mini.style.cssText=`display:grid;grid-template-columns:repeat(${mc+1},${cs}px);grid-template-rows:repeat(${mr+1},${cs}px);gap:1px`;
+      const set=new Set(pc.c.map(([r,c])=>r+','+c));
+      for(let r=0;r<=mr;r++) for(let c=0;c<=mc;c++){
+        const cell=document.createElement('div');
+        cell.style.cssText=`width:${cs}px;height:${cs}px;border-radius:1px;background:${set.has(r+','+c)?col:'transparent'}`;
+        mini.appendChild(cell);
+      }
+      wrap.appendChild(mini);
+      pgrid.appendChild(wrap);
+    });
+    grp.appendChild(pgrid);
+    el.appendChild(grp);
+  }
+}
+
 function renderScores(){
   const row=document.getElementById('srow');
   row.innerHTML='';
@@ -444,6 +490,7 @@ function renderScores(){
     ch.textContent=`${PNAME[pi+1]} ${rem}`;
     row.appendChild(ch);
   });
+  renderOppPieces();
 }
 
 function endGame(){
@@ -498,6 +545,11 @@ function applyState(o){
   buildBoard();renderBoard();renderScores();turn();
 }
 
+</script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="../shared/lobby.js?v=7"></script>
+<script src="../shared/online-room.js?v=7"></script>
+<script>
 OnlineRoom.init({
   gameId:'blokus',minPlayers:2,maxPlayers:4,
   note:'20×20ボードにタイルを置くテリトリーゲーム',
@@ -519,9 +571,5 @@ OnlineRoom.init({
   onLeft:(seat)=>{if(ONLINE)turn();},
   getState,applyState
 });
-</script>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script src="../shared/lobby.js?v=7"></script>
-<script src="../shared/online-room.js?v=7"></script>
 </body>
 </html>

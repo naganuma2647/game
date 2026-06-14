@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ボンバーマン</title>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #111820;
+      color: #eef3fb;
+      font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
+      display: flex; flex-direction: column; align-items: center;
+      min-height: 100vh; padding: 10px 8px 100px;
+      user-select: none; -webkit-user-select: none;
+    }
+    h1 { font-size: 20px; margin-bottom: 8px; letter-spacing: 0.1em; }
+
+    /* 難易度 */
+    .drow { display: flex; gap: 8px; margin-bottom: 8px; }
+    .dbtn {
+      padding: 6px 18px; border: 1.5px solid rgba(255,255,255,0.18);
+      border-radius: 20px; background: rgba(255,255,255,0.05);
+      color: #bdd; cursor: pointer; font: 13px inherit;
+      transition: all .15s;
+    }
+    .dbtn.on { background: rgba(80,160,255,0.22); border-color: rgba(80,160,255,0.65); color:#fff; font-weight:700; }
+    .dbtn:hover { border-color: rgba(80,160,255,0.5); }
+
+    /* HUD */
+    #hud {
+      display: flex; gap: 8px; margin-bottom: 7px;
+      font-size: 13px; flex-wrap: wrap; justify-content: center;
+    }
+    .hi { background: rgba(255,255,255,0.07); border-radius: 8px; padding: 4px 10px; }
+    .hv { font-weight: 700; }
+
+    canvas { display: block; border-radius: 6px; max-width: 100%; cursor: pointer; touch-action: none; }
+
+    /* スマホ操作 */
+    #mctrl {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      display: none; justify-content: space-between; align-items: center;
+      padding: 8px 16px 12px; background: rgba(0,0,0,0.6);
+    }
+    #dpad { display: grid; grid-template-columns: repeat(3,50px); grid-template-rows: repeat(2,50px); gap: 4px; }
+    .dp {
+      width: 50px; height: 50px; border-radius: 10px;
+      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; color: #fff; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; touch-action: none;
+    }
+    .dp:active { background: rgba(255,255,255,0.32); }
+    #btbomb {
+      width: 76px; height: 76px; border-radius: 50%;
+      background: rgba(200,40,40,0.75); border: 2px solid rgba(255,80,80,0.5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 34px; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; touch-action: none;
+    }
+    #btbomb:active { background: rgba(220,40,40,1); }
+  </style>
+</head>
+<body>
+<a href="../index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
+<h1>💣 ボンバーマン</h1>
+
+<div class="drow">
+  <button class="dbtn on" data-d="0">かんたん</button>
+  <button class="dbtn"    data-d="1">ふつう</button>
+  <button class="dbtn"    data-d="2">むずかしい</button>
+</div>
+
+<div id="hud">
+  <div class="hi">❤️ <span class="hv" id="hl">3</span></div>
+  <div class="hi">💣 <span class="hv" id="hb">1</span></div>
+  <div class="hi">🔥 <span class="hv" id="hf">2</span></div>
+  <div class="hi">⚡ <span class="hv" id="hs">●○○</span></div>
+  <div class="hi">👾 <span class="hv" id="he">-</span></div>
+  <div class="hi">⏱ <span class="hv" id="ht">-</span></div>
+  <div class="hi">🏆 <span class="hv" id="hsc">0</span></div>
+</div>
+
+<canvas id="c"></canvas>
+
+<div id="olay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;z-index:100;">
+  <div style="background:#1a2210;border:2px solid #4a8;border-radius:14px;padding:24px 32px;text-align:center;min-width:280px;">
+    <div id="olay-title" style="font-size:18px;font-weight:bold;margin-bottom:16px;color:#8f8"></div>
+    <input id="olay-inp" type="text" placeholder="ルームコード" maxlength="20"
+      style="width:100%;padding:10px;border-radius:8px;border:1.5px solid #4a8;background:#0d1a0d;color:#eef;font-size:20px;text-align:center;letter-spacing:4px;outline:none;margin-bottom:12px;display:none;">
+    <div id="olay-code" style="font-size:22px;font-weight:bold;color:#4f8;letter-spacing:3px;margin-bottom:12px;display:none;word-break:break-all;"></div>
+    <div id="olay-msg" style="color:#aaa;margin-bottom:16px;font-size:14px;"></div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button id="olay-ok" style="padding:10px 24px;border-radius:8px;background:#2a5a2a;border:1.5px solid #4a8;color:#8f8;font:bold 15px inherit;cursor:pointer;">OK</button>
+      <button id="olay-cancel" style="padding:10px 24px;border-radius:8px;background:#333;border:1.5px solid #666;color:#aaa;font:15px inherit;cursor:pointer;">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<div id="mctrl">
+  <div id="dpad">
+    <div></div>
+    <div class="dp" id="du">↑</div>
+    <div></div>
+    <div class="dp" id="dl">←</div>
+    <div class="dp" id="ddown">↓</div>
+    <div class="dp" id="dr">→</div>
+  </div>
+  <div id="btbomb">💣</div>
+</div>
+
+<script>
+'use strict';
+// ─── Canvas ──────────────────────────────────────────────────────────────────
+const cv = document.getElementById('c');
+const cx = cv.getContext('2d');
+const COLS = 15, ROWS = 13;
+let T = 38; // タイルサイズ（可変）
+
+function resize() {
+  T = Math.floor(Math.min(window.innerWidth - 18, 600) / COLS);
+  cv.width  = COLS * T;
+  cv.height = ROWS * T;
+}
+resize();
+window.addEventListener('resize', () => { resize(); render(); });
+
+// ─── 定数 ──────────────────────────────────────────────────────────────────
+const ST   = { TITLE:0, PLAY:1, CLEAR:2, OVER:3, ONLINE:4 };
+const CELL = { E:0, H:1, S:2 }; // Empty / Hard / Soft
+const PU   = { BOMB:0, FIRE:1, SPD:2 };
+const D4   = [[0,-1],[1,0],[0,1],[-1,0]]; // 上右下左
+
+const CFG = [
+  { n:'かんたん',  en:2, es:1.3, den:.40, sec:180, bt:3.0 },
+  { n:'ふつう',    en:3, es:2.0, den:.55, sec:150, bt:2.6 },
+  { n:'むずかしい',en:5, es:2.8, den:.62, sec:120, bt:2.2 },
+];
+
+// ─── ゲーム変数 ──────────────────────────────────────────────────────────────
+let state = ST.TITLE;
+let diff  = 0;
+let mp, pl, ens, bbs, exps, pups; // map, player, enemies, bombs, explosions, powerups
+let score, hisc = 0, gsec;
+let raf, tickId, lastT;
+
+// ─── オンライン変数 ──────────────────────────────────────────────────────────
+let peer = null, conn = null;
+let isHost = false, onlineMode = false;
+let p2 = null;       // P2プレイヤー
+let guestKeys = {};  // ホストが受け取るゲストのキー入力
+let sendTimer = 0;   // state送信タイマー
+let mapSeed = 0;
+let currentSeed = 0; // 現在のマップシード
+
+// シードRNG (xorshift32)
+let _rngS = 1;
+function srng() {
+  _rngS ^= _rngS << 13; _rngS ^= _rngS >> 17; _rngS ^= _rngS << 5;
+  return (_rngS >>> 0) / 0x100000000;
+}
+function setRngSeed(s) { _rngS = (s | 0) || 1; }
+
+// ─── 入力 ────────────────────────────────────────────────────────────────────
+const K = {};
+document.addEventListener('keydown', e => {
+  K[e.code] = true;
+  if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+  if (e.code === 'Space') {
+    // ゲストはSpaceでbombをホストへ送信
+    if (onlineMode && !isHost && state===ST.PLAY && conn) {
+      conn.send({ type:'in', up:false, dn:false, lt:false, rt:false, bomb:true });
+    }
+    onAction();
+  }
+  if (e.code === 'Escape') {
+    if (state === ST.ONLINE) { state = ST.TITLE; }
+  }
+});
+document.addEventListener('keyup', e => { K[e.code] = false; });
+cv.addEventListener('click', e => onAction(e));
+cv.addEventListener('touchend', e => { e.preventDefault(); onAction(e.changedTouches[0]); });
+
+// オンラインロビーのボタン座標（描画時に記録）
+let _lobbyBtns = null;
+
+function onAction(e) {
+  // クリック/タップ座標を正規化
+  let cx_ = null, cy_ = null;
+  if (e) {
+    const rect = cv.getBoundingClientRect();
+    const scaleX = cv.width / rect.width;
+    const scaleY = cv.height / rect.height;
+    cx_ = (e.clientX - rect.left) * scaleX;
+    cy_ = (e.clientY - rect.top) * scaleY;
+  }
+
+  if (state === ST.PLAY) {
+    if (onlineMode && !isHost) return; // ゲストはSpaceキーで送信
+    placeBomb(); return;
+  }
+  if (state === ST.CLEAR || state === ST.OVER) { state = ST.TITLE; onlineMode=false; p2=null; return; }
+
+  if (state === ST.TITLE) {
+    // オンライン対戦ボタンのヒット判定
+    if (cx_ !== null && drawTitle._obx !== undefined) {
+      const {_obx,_oby,_obw,_obh} = drawTitle;
+      if (cx_>=_obx && cx_<=_obx+_obw && cy_>=_oby && cy_<=_oby+_obh) {
+        state = ST.ONLINE; return;
+      }
+    }
+    go(); return;
+  }
+
+  if (state === ST.ONLINE && cx_ !== null) {
+    const W=cv.width, H=cv.height;
+    const bw=Math.min(W*0.6,220), bh=T*1.4;
+    const b1x=(W-bw)/2, b1y=H*0.35;
+    const b2y=H*0.35+bh+T*0.6;
+    if (cx_>=b1x && cx_<=b1x+bw && cy_>=b1y && cy_<=b1y+bh) {
+      startOnline(true); return;
+    }
+    if (cx_>=b1x && cx_<=b1x+bw && cy_>=b2y && cy_<=b2y+bh) {
+      startOnline(false); return;
+    }
+  }
+}
+
+// 難易度ボタン
+document.querySelectorAll('.dbtn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.dbtn').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  diff = +b.dataset.d;
+}));
+
+// スマホ
+const isTouch = 'ontouchstart' in window;
+if (isTouch) document.getElementById('mctrl').style.display = 'flex';
+function mkTouch(id, code) {
+  const el = document.getElementById(id);
+  el.addEventListener('touchstart', e => { e.preventDefault(); K[code]=true; }, {passive:false});
+  el.addEventListener('touchend',   e => { e.preventDefault(); K[code]=false;}, {passive:false});
+}
+mkTouch('du','ArrowUp'); mkTouch('ddown','ArrowDown');
+mkTouch('dl','ArrowLeft'); mkTouch('dr','ArrowRight');
+document.getElementById('btbomb').addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (state===ST.TITLE) go();
+  else if (state===ST.PLAY) {
+    if (onlineMode && !isHost && conn) {
+      conn.send({ type:'in', up:false, dn:false, lt:false, rt:false, bomb:true });
+    } else {
+      placeBomb();
+    }
+  }
+}, {passive:false});
+
+// ─── マップ生成 ──────────────────────────────────────────────────────────────
+// 各コーナー付近はセーフゾーン
+const SAFE = new Set(['1,1','2,1','1,2',
+  `${COLS-2},1`,`${COLS-3},1`,`${COLS-2},2`,
+  `1,${ROWS-2}`,`2,${ROWS-2}`,`1,${ROWS-3}`,
+  `${COLS-2},${ROWS-2}`,`${COLS-3},${ROWS-2}`,`${COLS-2},${ROWS-3}`]);
+
+function buildMap() {
+  const d = CFG[diff];
+  mp = Array.from({length:ROWS}, (_,r) =>
+    Array.from({length:COLS}, (_,c) => {
+      if (r===0||r===ROWS-1||c===0||c===COLS-1) return CELL.H;
+      if (r%2===0 && c%2===0) return CELL.H;
+      if (SAFE.has(`${c},${r}`)) return CELL.E;
+      return srng() < d.den ? CELL.S : CELL.E;
+    })
+  );
+}
+
+function tile(c, r) {
+  if (c<0||c>=COLS||r<0||r>=ROWS) return CELL.H;
+  return mp[r][c];
+}
+
+// ─── ゲーム開始 ──────────────────────────────────────────────────────────────
+function go() {
+  clearInterval(tickId);
+  // オンライン時はホストが setRngSeed() 済み、オフライン時はここで生成
+  if (!onlineMode) {
+    currentSeed = Math.floor(Math.random() * 0x7fffffff) || 1;
+    setRngSeed(currentSeed);
+  }
+  buildMap();
+  const d = CFG[diff];
+
+  pl = {
+    px: T, py: T,   // ピクセル座標（タイル左上）
+    spd: 2.5,       // タイル毎秒
+    maxB: 1, actB: 0,
+    fire: 1,
+    lives: 3,
+    inv: 0,         // 無敵残り秒
+    dead: 0,        // 死亡アニメ残り秒
+    alive: true,
+    dir: 2          // 0上1右2下3左
+  };
+
+  if (onlineMode) {
+    p2 = {
+      px: (COLS-2)*T, py: T,
+      spd: 2.5, maxB: 1, actB: 0, fire: 1,
+      lives: 3, inv: 0, dead: 0, alive: true, dir: 2
+    };
+  } else {
+    p2 = null;
+  }
+
+  const ep = [[COLS-2,1],[1,ROWS-2],[COLS-2,ROWS-2],
+              [Math.floor(COLS/2),1],[Math.floor(COLS/2),ROWS-2]];
+  ens = ep.slice(0, d.en).map(([ec,er]) => ({
+    tx:ec, ty:er, px:ec*T, py:er*T,
+    ntx:ec, nty:er, movT:1,
+    spd: d.es, dir:0,
+    alive:true, ph: Math.random()*Math.PI*2,
+    wait: 0.1 + Math.random()*0.5
+  }));
+
+  bbs=[]; exps=[]; pups=[];
+  score=0; gsec=d.sec;
+  state=ST.PLAY;
+
+  document.getElementById('he').textContent = d.en;
+  document.getElementById('ht').textContent = gsec;
+
+  tickId = setInterval(() => {
+    if (state!==ST.PLAY) return;
+    gsec--; document.getElementById('ht').textContent = gsec;
+    if (gsec<=0) end(false);
+  }, 1000);
+
+  lastT = performance.now();
+}
+
+// ─── メインループ ──────────────────────────────────────────────────────────
+function loop(ts) {
+  raf = requestAnimationFrame(loop);
+  const dt = Math.min((ts-(lastT||ts))/1000, 0.05);
+  lastT = ts;
+  if (state===ST.PLAY) {
+    if (onlineMode && !isHost) {
+      // ゲストはキーをホストへ送信するだけ（update不要）
+      sendKeys();
+    } else {
+      update(dt);
+    }
+  }
+  render();
+}
+requestAnimationFrame(loop);
+
+// ?online=1 で直接オンラインロビーへ
+if (new URLSearchParams(location.search).get('online')) state = ST.ONLINE;
+
+// ─── 更新 ────────────────────────────────────────────────────────────────────
+function update(dt) {
+  // 死亡アニメ中
+  if (pl.dead > 0) {
+    pl.dead -= dt;
+    if (p2) { if (p2.dead>0) p2.dead-=dt; }
+    updExps(dt);
+    if (pl.dead <= 0 && !pl.alive) {
+      if (onlineMode) { end(false, 2); return; }
+      end(false);
+    }
+    return;
+  }
+  if (pl.alive) updPlayer(dt);
+  if (onlineMode && isHost && p2) updP2(dt);
+  updEnemies(dt);
+  updBombs(dt);
+  updExps(dt);
+  checkHit();
+  if (pl.inv > 0) pl.inv -= dt;
+  if (p2 && p2.inv > 0) p2.inv -= dt;
+  updHUD();
+
+  // ホストは50msごとにゲストへ状態送信
+  if (onlineMode && isHost && conn) {
+    sendTimer += dt;
+    if (sendTimer >= 0.05) {
+      sendTimer = 0;
+      sendState();
+    }
+  }
+}
+
+// ─── プレイヤー移動 ──────────────────────────────────────────────────────────
+function canGo(plr, npx, npy) {
+  const m = 3, sz = T-m*2-1;
+  const pts = [[npx+m,npy+m],[npx+m+sz,npy+m],[npx+m,npy+m+sz],[npx+m+sz,npy+m+sz]];
+  for (const [px,py] of pts) {
+    const gc=Math.floor(px/T), gr=Math.floor(py/T);
+    if (tile(gc,gr)!==CELL.E) return false;
+    for (const b of bbs) {
+      if (b.tx===gc && b.ty===gr) {
+        if (b.passable && b.owner===playerNum(plr)) {
+          // 現在位置のヒットボックスが爆弾マスと重なっていれば通過許可
+          const hx1=plr.px+m, hx2=plr.px+m+sz, hy1=plr.py+m, hy2=plr.py+m+sz;
+          const btX=b.tx*T, btY=b.ty*T;
+          if (hx1<btX+T && hx2>=btX && hy1<btY+T && hy2>=btY) continue;
+          b.passable = false; // 完全に離れた瞬間に施錠
+        }
+        return false;
+      }
+    }
+  }
+  return true;
+}
+function playerNum(plr) { return plr===pl ? 1 : 2; }
+
+function updPlayer(dt) {
+  const spd = pl.spd * T * dt;
+  const up=K['ArrowUp']||K['KeyW'], dn=K['ArrowDown']||K['KeyS'];
+  const lt=K['ArrowLeft']||K['KeyA'], rt=K['ArrowRight']||K['KeyD'];
+  const SNAP = T * 0.45; // 広いスナップ幅で曲がりやすく
+
+  let turned = false;
+
+  // 縦横同時押し: 縦方向への曲がりを優先して試みる
+  if ((up||dn) && (lt||rt)) {
+    const snapX = Math.round(pl.px/T)*T;
+    if (Math.abs(pl.px-snapX) < SNAP) {
+      const ny = pl.py + (up?-spd:spd);
+      if (canGo(pl, snapX, ny)) {
+        pl.px=snapX; pl.py=ny; pl.dir=up?0:2; turned=true;
+      }
+    }
+  }
+
+  if (!turned) {
+    let movedH = false;
+    if (lt||rt) {
+      const snap = Math.round(pl.py/T)*T;
+      if (Math.abs(pl.py-snap) < SNAP) pl.py = snap;
+      const nx = pl.px + (lt?-spd:spd);
+      if (canGo(pl, nx, pl.py)) { pl.px=nx; pl.dir=lt?3:1; movedH=true; }
+    }
+    if ((up||dn) && !movedH) {
+      const snap = Math.round(pl.px/T)*T;
+      if (Math.abs(pl.px-snap) < SNAP) pl.px = snap;
+      const ny = pl.py + (up?-spd:spd);
+      if (canGo(pl, pl.px, ny)) { pl.py=ny; pl.dir=up?0:2; }
+    }
+  }
+
+  // パワーアップ取得
+  const tc=Math.round(pl.px/T), tr=Math.round(pl.py/T);
+  const pi=pups.findIndex(p=>p.tx===tc&&p.ty===tr);
+  if (pi>=0) {
+    const p=pups.splice(pi,1)[0];
+    if (p.t===PU.BOMB) pl.maxB=Math.min(pl.maxB+1,6);
+    if (p.t===PU.FIRE) pl.fire=Math.min(pl.fire+1,8);
+    if (p.t===PU.SPD)  pl.spd =Math.min(pl.spd+0.35,5.5);
+  }
+}
+
+// ─── P2移動（ホストがゲストキーで動かす） ────────────────────────────────────
+function updP2(dt) {
+  if (!p2 || !p2.alive) return;
+  const K2 = guestKeys;
+  const spd = p2.spd * T * dt;
+  const up=K2.up, dn=K2.dn, lt=K2.lt, rt=K2.rt;
+
+  const SNAP2 = T * 0.45;
+  let turned2 = false;
+  if ((up||dn) && (lt||rt)) {
+    const snapX = Math.round(p2.px/T)*T;
+    if (Math.abs(p2.px-snapX) < SNAP2) {
+      const ny = p2.py + (up?-spd:spd);
+      if (canGo(p2, snapX, ny)) {
+        p2.px=snapX; p2.py=ny; p2.dir=up?0:2; turned2=true;
+      }
+    }
+  }
+  if (!turned2) {
+    let movedH2 = false;
+    if (lt||rt) {
+      const snap = Math.round(p2.py/T)*T;
+      if (Math.abs(p2.py-snap) < SNAP2) p2.py = snap;
+      const nx = p2.px + (lt?-spd:spd);
+      if (canGo(p2, nx, p2.py)) { p2.px=nx; p2.dir=lt?3:1; movedH2=true; }
+    }
+    if ((up||dn) && !movedH2) {
+      const snap = Math.round(p2.px/T)*T;
+      if (Math.abs(p2.px-snap) < SNAP2) p2.px = snap;
+      const ny = p2.py + (up?-spd:spd);
+      if (canGo(p2, p2.px, ny)) { p2.py=ny; p2.dir=up?0:2; }
+    }
+  }
+
+  if (K2.bomb) { placeBomb(p2); K2.bomb=false; }
+
+  const tc=Math.round(p2.px/T), tr=Math.round(p2.py/T);
+  const pi=pups.findIndex(p=>p.tx===tc&&p.ty===tr);
+  if (pi>=0) {
+    const pu=pups.splice(pi,1)[0];
+    if (pu.t===PU.BOMB) p2.maxB=Math.min(p2.maxB+1,6);
+    if (pu.t===PU.FIRE) p2.fire=Math.min(p2.fire+1,8);
+    if (pu.t===PU.SPD)  p2.spd =Math.min(p2.spd+0.35,5.5);
+  }
+  if (p2.inv>0) p2.inv-=dt;
+}
+
+// ─── 敵移動 ────────────────────────────────────────────────────────────────
+function updEnemies(dt) {
+  for (const e of ens) {
+    if (!e.alive) continue;
+    e.ph += dt*4;
+    e.wait -= dt;
+    if (e.movT < 1) {
+      e.movT = Math.min(1, e.movT + e.spd*dt);
+      e.px = lerp(e.tx*T, e.ntx*T, e.movT);
+      e.py = lerp(e.ty*T, e.nty*T, e.movT);
+    }
+    if (e.movT >= 1 && e.wait <= 0) {
+      e.tx=e.ntx; e.ty=e.nty;
+      e.wait = 0.04 + Math.random()*0.1;
+      nextMove(e);
+    }
+  }
+}
+
+function nextMove(e) {
+  // 危険なタイルを避けながら次の移動先を決定
+  const dirs = shuffle([0,1,2,3]);
+  if (Math.random()<0.45) dirs.unshift(e.dir); // 直進バイアス
+  for (const safe of [true, false]) { // 安全優先、なければ危険も可
+    for (const d of dirs) {
+      const [dx,dy]=D4[d], nx=e.tx+dx, ny=e.ty+dy;
+      if (tile(nx,ny)!==CELL.E || hasBomb(nx,ny)) continue;
+      if (safe && inDanger(nx,ny)) continue;
+      e.ntx=nx; e.nty=ny; e.dir=d; e.movT=0; return;
+    }
+  }
+  e.ntx=e.tx; e.nty=e.ty; // 動けない
+}
+
+function inDanger(tx,ty) {
+  return exps.some(ex=>ex.cs.some(c=>c.x===tx&&c.y===ty));
+}
+
+// ─── 爆弾 ────────────────────────────────────────────────────────────────────
+function placeBomb(plr=pl) {
+  if (!plr.alive || plr.actB>=plr.maxB) return;
+  const btx=Math.round(plr.px/T), bty=Math.round(plr.py/T);
+  if (hasBomb(btx,bty)) return;
+  bbs.push({ tx:btx, ty:bty, t:CFG[diff].bt, fire:plr.fire, ph:0, passable:true, owner:playerNum(plr) });
+  plr.actB++;
+}
+
+function hasBomb(tx,ty) { return bbs.some(b=>b.tx===tx&&b.ty===ty); }
+
+function updBombs(dt) {
+  for (const b of bbs) b.ph+=dt*5;
+  for (let i=bbs.length-1; i>=0; i--) {
+    bbs[i].t -= dt;
+    if (bbs[i].t<=0) explode(i);
+  }
+}
+
+function explode(i) {
+  const b=bbs.splice(i,1)[0];
+  if (b.owner===2 && p2) p2.actB=Math.max(0,p2.actB-1);
+  else pl.actB=Math.max(0,pl.actB-1);
+  const cs=[{x:b.tx,y:b.ty}];
+  for (const [dx,dy] of D4) {
+    for (let n=1; n<=b.fire; n++) {
+      const nx=b.tx+dx*n, ny=b.ty+dy*n;
+      const t=tile(nx,ny);
+      if (t===CELL.H) break;
+      cs.push({x:nx,y:ny});
+      if (t===CELL.S) {
+        mp[ny][nx]=CELL.E;
+        if (Math.random()<0.4) pups.push({tx:nx,ty:ny,t:Math.floor(Math.random()*3)});
+        break;
+      }
+      // 連鎖
+      const ci=bbs.findIndex(ob=>ob.tx===nx&&ob.ty===ny);
+      if (ci>=0) bbs[ci].t=Math.min(bbs[ci].t,0.08);
+    }
+  }
+  exps.push({cs, t:0.75, mt:0.75});
+}
+
+function updExps(dt) {
+  for (let i=exps.length-1;i>=0;i--) {
+    exps[i].t-=dt;
+    if (exps[i].t<=0) exps.splice(i,1);
+  }
+}
+
+// ─── 当たり判定 ──────────────────────────────────────────────────────────────
+function checkHit() {
+  const pcx=pl.px+T/2, pcy=pl.py+T/2, TH=T*0.62;
+  const p2cx=p2?p2.px+T/2:0, p2cy=p2?p2.py+T/2:0;
+  for (const ex of exps) {
+    for (const c of ex.cs) {
+      const ecx=c.x*T+T/2, ecy=c.y*T+T/2;
+      // 敵をやっつける
+      for (const e of ens) {
+        if (!e.alive) continue;
+        if (Math.abs(e.px+T/2-ecx)<TH && Math.abs(e.py+T/2-ecy)<TH) {
+          e.alive=false; score+=100;
+        }
+      }
+      // P1にダメージ
+      if (pl.alive && pl.inv<=0) {
+        if (Math.abs(pcx-ecx)<TH && Math.abs(pcy-ecy)<TH) {
+          if (ens.every(e=>!e.alive)) { end(true); return; }
+          hurt(); return;
+        }
+      }
+      // P2にダメージ（オンライン時）
+      if (onlineMode && p2 && p2.alive && p2.inv<=0) {
+        if (Math.abs(p2cx-ecx)<TH && Math.abs(p2cy-ecy)<TH) {
+          hurt2();
+        }
+      }
+    }
+  }
+  // 敵接触
+  if (pl.alive && pl.inv<=0) {
+    for (const e of ens) {
+      if (!e.alive) continue;
+      if (Math.abs(pcx-e.px-T/2)<TH && Math.abs(pcy-e.py-T/2)<TH) { hurt(); return; }
+    }
+  }
+  if (onlineMode && p2 && p2.alive && p2.inv<=0) {
+    for (const e of ens) {
+      if (!e.alive) continue;
+      if (Math.abs(p2cx-e.px-T/2)<TH && Math.abs(p2cy-e.py-T/2)<TH) { hurt2(); return; }
+    }
+  }
+  // クリア判定
+  if (ens.every(e=>!e.alive)) end(true);
+  // オンライン: 相手プレイヤー死亡で勝利
+  if (onlineMode && p2 && !p2.alive && p2.dead<=0 && pl.alive) { end(true, 1); }
+}
+
+function hurt() {
+  pl.lives--;
+  if (pl.lives<=0) {
+    pl.alive=false; pl.dead=1.4;
+  } else {
+    pl.px=T; pl.py=T; pl.inv=2.5;
+  }
+  updHUD();
+}
+
+function hurt2() {
+  if (!p2) return;
+  p2.lives--;
+  if (p2.lives<=0) { p2.alive=false; p2.dead=1.4; }
+  else { p2.px=(COLS-2)*T; p2.py=T; p2.inv=2.5; }
+}
+
+function end(won, winner=1) {
+  if (state!==ST.PLAY) return;
+  clearInterval(tickId);
+  if (won) { score+=gsec*10; hisc=Math.max(hisc,score); }
+  if (onlineMode) {
+    if (isHost && conn) conn.send({type:'end', won, winner});
+    state = (winner===1 || won) ? ST.CLEAR : ST.OVER;
+  } else {
+    state = won ? ST.CLEAR : ST.OVER;
+  }
+}
+
+// ─── オーバーレイ ────────────────────────────────────────────────────────────
+function showOlay(title, inputLabel, code, msg) {
+  const el = document.getElementById('olay');
+  document.getElementById('olay-title').textContent = title;
+  const inp = document.getElementById('olay-inp');
+  const cod = document.getElementById('olay-code');
+  if (inputLabel) {
+    inp.style.display = 'block';
+    inp.placeholder = inputLabel;
+    inp.value = '';
+  } else {
+    inp.style.display = 'none';
+  }
+  if (code) {
+    cod.style.display = 'block';
+    cod.textContent = code;
+  } else {
+    cod.style.display = 'none';
+  }
+  document.getElementById('olay-msg').textContent = msg || '';
+  el.style.display = 'flex';
+}
+
+function hideOlay() {
+  document.getElementById('olay').style.display = 'none';
+}
+
+// ─── PeerJS接続 ──────────────────────────────────────────────────────────────
+function makeRoomCode() {
+  // 8文字英数字のランダムID (ルームコードとしてそのままPeer IDに使用)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = 'BM-';
+  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+function startOnline(host) {
+  isHost = host;
+  onlineMode = true;
+  if (peer && !peer.destroyed) {
+    peer.destroy();
+  }
+
+  if (host) {
+    // ホスト: カスタムIDでPeer作成（= ルームコード）
+    const roomCode = makeRoomCode();
+    peer = new Peer(roomCode);
+
+    peer.on('error', err => {
+      // IDが使われていた場合は別コードで再試行
+      if (err.type === 'unavailable-id') {
+        peer.destroy();
+        startOnline(true);
+        return;
+      }
+      showOlay('エラー', null, null, 'エラー: ' + err.message);
+    });
+
+    peer.on('open', id => {
+      showOlay('部屋を作りました', null, id, '接続を待っています...');
+      document.getElementById('olay-ok').style.display = 'none';
+      document.getElementById('olay-cancel').onclick = () => {
+        hideOlay();
+        peer.destroy();
+        onlineMode = false;
+        state = ST.ONLINE;
+      };
+      peer.on('connection', c => {
+        conn = c;
+        setupConn();
+        hideOlay();
+        // ゲームを開始（シード付き）
+        mapSeed = Math.floor(Math.random() * 0x7fffffff);
+        setRngSeed(mapSeed);
+        go();
+        // init送信はsetupConn後少し待って送る
+        setTimeout(() => {
+          if (conn) conn.send({type:'init', seed:mapSeed, diff:diff});
+        }, 400);
+      });
+    });
+  } else {
+    // ゲスト: 普通にPeer作成してルームコードで接続
+    peer = new Peer();
+
+    peer.on('error', err => {
+      document.getElementById('olay-msg').textContent = 'エラー: ' + err.message;
+    });
+
+    peer.on('open', () => {
+      showOlay('部屋に入る', 'ルームコードを入力', null, 'ホストのコードを入力してください');
+      document.getElementById('olay-ok').style.display = '';
+      document.getElementById('olay-ok').onclick = () => {
+        const code = document.getElementById('olay-inp').value.trim().toUpperCase();
+        if (!code) return;
+        document.getElementById('olay-msg').textContent = '接続中...';
+        conn = peer.connect(code, {reliable:true});
+        setupConn();
+        conn.on('open', () => {
+          document.getElementById('olay-msg').textContent = '接続しました！ゲーム開始を待っています...';
+        });
+        conn.on('error', err => {
+          document.getElementById('olay-msg').textContent = '接続エラー: ' + err.message;
+        });
+      };
+      document.getElementById('olay-cancel').onclick = () => {
+        hideOlay();
+        peer.destroy();
+        onlineMode = false;
+        state = ST.ONLINE;
+      };
+    });
+  }
+}
+
+function setupConn() {
+  conn.on('data', d => {
+    if (isHost) {
+      // ホスト: ゲストのキー入力を受信
+      if (d.type === 'in') {
+        guestKeys.up   = d.up;
+        guestKeys.dn   = d.dn;
+        guestKeys.lt   = d.lt;
+        guestKeys.rt   = d.rt;
+        if (d.bomb) guestKeys.bomb = true;
+      }
+    } else {
+      // ゲスト: ゲーム状態を受信
+      if (d.type === 'init') {
+        setRngSeed(d.seed);
+        diff = d.diff;
+        go();
+        hideOlay();
+      } else if (d.type === 'gs') {
+        applyState(d);
+      } else if (d.type === 'end') {
+        clearInterval(tickId);
+        state = d.winner === 2 ? ST.CLEAR : ST.OVER;
+      }
+    }
+  });
+  conn.on('close', () => {
+    if (state === ST.PLAY) {
+      clearInterval(tickId);
+      state = ST.OVER;
+    }
+    onlineMode = false;
+    conn = null;
+  });
+  conn.on('error', err => {
+    console.error('conn error', err);
+  });
+}
+
+// ─── オンライン状態送受信 ─────────────────────────────────────────────────────
+function sendState() {
+  if (!conn) return;
+  conn.send({
+    type: 'gs',
+    p1: {px:pl.px,py:pl.py,alive:pl.alive,inv:pl.inv,dir:pl.dir,lives:pl.lives,fire:pl.fire,maxB:pl.maxB,actB:pl.actB,spd:pl.spd,dead:pl.dead},
+    p2: p2 ? {px:p2.px,py:p2.py,alive:p2.alive,inv:p2.inv,dir:p2.dir,lives:p2.lives,fire:p2.fire,maxB:p2.maxB,actB:p2.actB,spd:p2.spd,dead:p2.dead} : null,
+    ens: ens.map(e=>({px:e.px,py:e.py,alive:e.alive,dir:e.dir,ph:e.ph})),
+    bbs: bbs.map(b=>({tx:b.tx,ty:b.ty,t:b.t,fire:b.fire,ph:b.ph,passable:b.passable,owner:b.owner})),
+    exps: exps.map(ex=>({cs:ex.cs,t:ex.t,mt:ex.mt})),
+    pups: pups.map(p=>({tx:p.tx,ty:p.ty,t:p.t})),
+    mp: mp.map(r=>[...r]),
+    gsec, state
+  });
+}
+
+function applyState(d) {
+  if (d.p1) Object.assign(pl, d.p1);
+  if (d.p2 && p2) Object.assign(p2, d.p2);
+  if (d.ens) ens.forEach((e,i)=>{ if(d.ens[i]) Object.assign(e,d.ens[i]); });
+  if (d.bbs) bbs = d.bbs;
+  if (d.exps) exps = d.exps;
+  if (d.pups) pups = d.pups;
+  if (d.mp) mp = d.mp;
+  if (d.gsec !== undefined) { gsec = d.gsec; document.getElementById('ht').textContent = gsec; }
+  if (d.state !== undefined) state = d.state;
+}
+
+function sendKeys() {
+  if (!conn) return;
+  conn.send({
+    type: 'in',
+    up: K['ArrowUp']||K['KeyW'],
+    dn: K['ArrowDown']||K['KeyS'],
+    lt: K['ArrowLeft']||K['KeyA'],
+    rt: K['ArrowRight']||K['KeyD'],
+    bomb: false
+  });
+}
+
+// ─── HUD更新 ─────────────────────────────────────────────────────────────────
+function updHUD() {
+  document.getElementById('hl').textContent  = '❤️'.repeat(Math.max(0,pl.lives));
+  document.getElementById('hb').textContent  = pl.maxB;
+  document.getElementById('hf').textContent  = pl.fire;
+  const sv=Math.min(3,Math.ceil((pl.spd-2.4)/0.35));
+  document.getElementById('hs').textContent  = '●'.repeat(sv)+'○'.repeat(3-sv);
+  document.getElementById('he').textContent  = ens.filter(e=>e.alive).length;
+  document.getElementById('hsc').textContent = score;
+}
+
+// ─── 描画 ────────────────────────────────────────────────────────────────────
+function render() {
+  cx.clearRect(0,0,cv.width,cv.height);
+  if (state===ST.TITLE)  { drawTitle(); return; }
+  if (state===ST.ONLINE) { drawOnlineLobby(); return; }
+  drawMap(); drawPups(); drawExps(); drawBombs(); drawEns(); drawPl();
+  if (onlineMode && p2) drawPl2();
+  if (state===ST.CLEAR)      drawResult(true);
+  else if (state===ST.OVER)  drawResult(false);
+}
+
+// ─── オンラインロビー画面 ─────────────────────────────────────────────────────
+function drawOnlineLobby() {
+  cx.fillStyle='#1a2210'; cx.fillRect(0,0,cv.width,cv.height);
+  const W=cv.width, H=cv.height;
+  cx.fillStyle='#4f8'; cx.font=`bold ${T*0.8}px "Segoe UI",sans-serif`;
+  cx.textAlign='center'; cx.textBaseline='middle';
+  cx.fillText('🌐 オンライン対戦', W/2, H*0.18);
+
+  const bw=Math.min(W*0.6,220), bh=T*1.4;
+  // 部屋を作る
+  const b1x=(W-bw)/2, b1y=H*0.35;
+  cx.fillStyle='rgba(0,120,60,0.4)'; rrect(b1x,b1y,bw,bh,T*0.2); cx.fill();
+  cx.strokeStyle='#4a8'; cx.lineWidth=2; rrect(b1x,b1y,bw,bh,T*0.2); cx.stroke();
+  cx.fillStyle='#8fa'; cx.font=`${T*0.55}px "Segoe UI",sans-serif`;
+  cx.fillText('🏠 部屋を作る', W/2, b1y+bh/2);
+  // 部屋に入る
+  const b2y=H*0.35+bh+T*0.6;
+  cx.fillStyle='rgba(0,60,120,0.4)'; rrect(b1x,b2y,bw,bh,T*0.2); cx.fill();
+  cx.strokeStyle='#48a'; cx.lineWidth=2; rrect(b1x,b2y,bw,bh,T*0.2); cx.stroke();
+  cx.fillStyle='#8af'; cx.font=`${T*0.55}px "Segoe UI",sans-serif`;
+  cx.fillText('🔑 部屋に入る', W/2, b2y+bh/2);
+  // 戻るヒント
+  cx.fillStyle='#666'; cx.font=`${T*0.38}px "Segoe UI",sans-serif`;
+  cx.fillText('タイトルに戻る: Esc', W/2, H*0.88);
+
+  // ボタン座標を返す（クリック判定用）
+  return { b1x, b1y, b2x:b1x, b2y, bw, bh };
+}
+
+// ─── タイトル画面 ────────────────────────────────────────────────────────────
+function drawTitle() {
+  // 背景：ダークグリッド
+  cx.fillStyle='#1a2210';
+  cx.fillRect(0,0,cv.width,cv.height);
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
+    if (r===0||r===ROWS-1||c===0||c===COLS-1||(r%2===0&&c%2===0)) {
+      cx.fillStyle='#363646'; cx.fillRect(c*T,r*T,T,T);
+      cx.fillStyle='#2a2a38'; cx.fillRect(c*T+2,r*T+2,T-4,T-4);
+    }
+  }
+  cx.fillStyle='rgba(0,0,0,0.5)';
+  cx.fillRect(0,0,cv.width,cv.height);
+
+  const W=cv.width, H=cv.height, bw=Math.min(W*0.84,400);
+  const bh=T*6.2, bx=(W-bw)/2, by=H/2-bh/2-T*0.5;
+
+  // パネル
+  cx.fillStyle='rgba(8,18,8,0.88)';
+  rrect(bx,by,bw,bh,18); cx.fill();
+  cx.strokeStyle='rgba(80,200,80,0.45)'; cx.lineWidth=2;
+  rrect(bx,by,bw,bh,18); cx.stroke();
+
+  cx.textAlign='center'; cx.textBaseline='middle';
+
+  // 爆弾アイコン
+  cx.font=`${T*1.7}px serif`;
+  cx.fillText('💣', W/2, by+bh*0.22);
+
+  // タイトル
+  cx.fillStyle='#fff';
+  cx.font=`bold ${T*0.85}px "Segoe UI",sans-serif`;
+  cx.shadowBlur=16; cx.shadowColor='rgba(80,200,80,0.5)';
+  cx.fillText('ボンバーマン', W/2, by+bh*0.52);
+  cx.shadowBlur=0;
+
+  // 操作説明
+  cx.fillStyle='rgba(200,220,255,0.75)';
+  cx.font=`${T*0.38}px "Segoe UI",sans-serif`;
+  cx.fillText('矢印/WASD: 移動　スペース/タップ: 爆弾', W/2, by+bh*0.7);
+
+  // スタートプロンプト（点滅）
+  if (Math.floor(Date.now()/550)%2===0) {
+    cx.fillStyle='#7de0a0';
+    cx.font=`bold ${T*0.5}px "Segoe UI",sans-serif`;
+    cx.fillText('クリック / スペースでスタート', W/2, by+bh*0.86);
+  }
+
+  // オンライン対戦ボタン
+  const obw=bw*0.7, obx=(W-obw)/2, oby=by+bh+T*0.5;
+  cx.fillStyle='rgba(0,180,80,0.15)';
+  rrect(obx,oby,obw,T*1.3,T*0.25); cx.fill();
+  cx.strokeStyle='rgba(0,200,100,0.5)'; cx.lineWidth=1.5;
+  rrect(obx,oby,obw,T*1.3,T*0.25); cx.stroke();
+  cx.fillStyle='#4f8'; cx.font=`bold ${T*0.52}px "Segoe UI",sans-serif`;
+  cx.textAlign='center'; cx.textBaseline='middle';
+  cx.fillText('🌐 オンライン対戦', W/2, oby+T*0.65);
+  // ボタン座標を記憶
+  drawTitle._obx=obx; drawTitle._oby=oby; drawTitle._obw=obw; drawTitle._obh=T*1.3;
+
+  // ハイスコア
+  if (hisc>0) {
+    cx.fillStyle='rgba(255,220,60,0.9)';
+    cx.font=`${T*0.4}px "Segoe UI",sans-serif`;
+    cx.fillText(`🏆 ベストスコア: ${hisc}`, W/2, oby+T*1.3+T*0.5);
+  }
+}
+
+// ─── マップ描画 ──────────────────────────────────────────────────────────────
+function drawMap() {
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) {
+    const x=c*T, y=r*T, t=mp[r][c];
+    if (t===CELL.H) {
+      cx.fillStyle='#46465a'; cx.fillRect(x,y,T,T);
+      cx.fillStyle='#38384a'; cx.fillRect(x+2,y+2,T-4,T-4);
+      cx.fillStyle='rgba(255,255,255,0.07)';
+      cx.fillRect(x+2,y+2,T-4,3); cx.fillRect(x+2,y+2,3,T-4);
+    } else if (t===CELL.S) {
+      cx.fillStyle='#7a4c10'; cx.fillRect(x,y,T,T);
+      cx.fillStyle='#b07228'; cx.fillRect(x+3,y+3,T-6,T-6);
+      cx.strokeStyle='rgba(0,0,0,0.22)'; cx.lineWidth=1.5;
+      cx.beginPath(); cx.moveTo(x+5,y+5); cx.lineTo(x+T-5,y+T-5);
+      cx.moveTo(x+T-5,y+5); cx.lineTo(x+5,y+T-5); cx.stroke();
+    } else {
+      cx.fillStyle='#263818'; cx.fillRect(x,y,T,T);
+      cx.fillStyle='#1c2c10'; cx.fillRect(x+1,y+1,T-2,T-2);
+    }
+  }
+}
+
+// ─── パワーアップ ────────────────────────────────────────────────────────────
+const PUIC=['💣','🔥','👟'], PUCL=['#ffe000','#ff6600','#00ddff'];
+const PUBG=['#5a3a00','#5a1a00','#003a4a'];
+function drawPups() {
+  const n=Date.now()/1000;
+  cx.textAlign='center'; cx.textBaseline='middle';
+  for (const p of pups) {
+    const fx=p.tx*T+T/2, fy=p.ty*T+T/2;
+    const bob=Math.sin(n*3)*T*0.05;
+    const col=PUCL[p.t];
+    cx.save();
+
+    // 背景パネル
+    const pad=T*0.13;
+    cx.fillStyle=PUBG[p.t];
+    cx.strokeStyle=col;
+    cx.lineWidth=T*0.1;
+    cx.shadowBlur=16; cx.shadowColor=col;
+    rrect(p.tx*T+pad, p.ty*T+pad+bob, T-pad*2, T-pad*2, T*0.15);
+    cx.fill(); cx.stroke();
+
+    // アイコン
+    cx.shadowBlur=8; cx.shadowColor=col;
+    cx.font=`${T*0.52}px serif`;
+    cx.fillText(PUIC[p.t], fx, fy+bob);
+
+    cx.restore();
+  }
+}
+
+// ─── 爆弾描画 ────────────────────────────────────────────────────────────────
+function drawBombs() {
+  for (const b of bbs) {
+    const fx=b.tx*T+T/2, fy=b.ty*T+T/2;
+    const frac=b.t/CFG[diff].bt;
+    const pulse=1+0.12*Math.sin(b.ph)+(frac<0.3?(0.1*(1-frac/0.3)):0);
+    const r=T*0.33*pulse;
+
+    cx.save(); cx.translate(fx,fy);
+
+    // 爆発直前グロー
+    if (frac<0.3) {
+      cx.globalAlpha=(1-frac/0.3)*0.5;
+      cx.fillStyle='#ff4400';
+      cx.beginPath(); cx.arc(0,0,r*1.9,0,Math.PI*2); cx.fill();
+      cx.globalAlpha=1;
+    }
+
+    // ボディ
+    const g=cx.createRadialGradient(-r*.28,-r*.28,r*.05,0,0,r);
+    g.addColorStop(0,'#555'); g.addColorStop(1,'#0f0f0f');
+    cx.fillStyle=g;
+    cx.beginPath(); cx.arc(0,0,r,0,Math.PI*2); cx.fill();
+
+    // ハイライト
+    cx.fillStyle='rgba(255,255,255,0.2)';
+    cx.beginPath(); cx.arc(-r*.28,-r*.28,r*.24,0,Math.PI*2); cx.fill();
+
+    // 導火線
+    cx.strokeStyle=frac>.35?'#f80':'#f00';
+    cx.lineWidth=T*.055; cx.lineCap='round';
+    cx.beginPath();
+    cx.moveTo(r*.48,-r*.48);
+    cx.bezierCurveTo(r*.9,-r*.9,r*.8,-r*1.25,r*.3,-r*1.25);
+    cx.stroke();
+    // 火花
+    cx.fillStyle='#ff0'; cx.shadowBlur=10; cx.shadowColor='#ff0';
+    cx.beginPath(); cx.arc(r*.3,-r*1.25,T*.07,0,Math.PI*2); cx.fill();
+
+    cx.restore();
+  }
+}
+
+// ─── 爆発描画 ────────────────────────────────────────────────────────────────
+function drawExps() {
+  for (const ex of exps) {
+    const a=Math.pow(ex.t/ex.mt,.5), ctr=ex.cs[0];
+    for (const c of ex.cs) {
+      const x=c.x*T, y=c.y*T, isc=(c.x===ctr.x&&c.y===ctr.y);
+      cx.save(); cx.globalAlpha=a;
+      if (isc) {
+        const g=cx.createRadialGradient(x+T/2,y+T/2,1,x+T/2,y+T/2,T*.65);
+        g.addColorStop(0,'#fff'); g.addColorStop(.25,'#ffee00');
+        g.addColorStop(.65,'#ff6600'); g.addColorStop(1,'rgba(255,30,0,0)');
+        cx.fillStyle=g; cx.fillRect(x,y,T,T);
+      } else {
+        const g=cx.createRadialGradient(x+T/2,y+T/2,1,x+T/2,y+T/2,T*.58);
+        g.addColorStop(0,'#ffcc00'); g.addColorStop(.55,'#ff5500');
+        g.addColorStop(1,'rgba(255,20,0,0)');
+        cx.fillStyle=g; cx.fillRect(x+2,y+2,T-4,T-4);
+      }
+      cx.restore();
+    }
+  }
+}
+
+// ─── 敵描画 ──────────────────────────────────────────────────────────────────
+function drawEns() {
+  for (const e of ens) {
+    if (!e.alive) continue;
+    const ecx=e.px+T/2, ecy=e.py+T/2;
+    const r=T*.31, bob=Math.sin(e.ph)*T*.045;
+    cx.save(); cx.translate(ecx, ecy+bob);
+
+    // 影
+    cx.fillStyle='rgba(0,0,0,.28)';
+    cx.beginPath(); cx.ellipse(0,r*.92,r*.65,r*.19,0,0,Math.PI*2); cx.fill();
+
+    // 胴体
+    const bg=cx.createRadialGradient(-r*.22,-r*.22,r*.06,0,0,r);
+    bg.addColorStop(0,'#ff8888'); bg.addColorStop(1,'#cc1010');
+    cx.fillStyle=bg;
+    cx.beginPath(); cx.arc(0,0,r,0,Math.PI*2); cx.fill();
+
+    // 足
+    cx.fillStyle='#990000';
+    cx.beginPath(); cx.ellipse(-r*.36,r*.82,r*.22,r*.12,-.2,0,Math.PI*2); cx.fill();
+    cx.beginPath(); cx.ellipse( r*.36,r*.82,r*.22,r*.12, .2,0,Math.PI*2); cx.fill();
+
+    // 目（白）
+    cx.fillStyle='#fff';
+    cx.beginPath(); cx.arc(-r*.33,-r*.1,r*.21,0,Math.PI*2); cx.fill();
+    cx.beginPath(); cx.arc( r*.33,-r*.1,r*.21,0,Math.PI*2); cx.fill();
+    // 瞳
+    cx.fillStyle='#111';
+    cx.beginPath(); cx.arc(-r*.26,-r*.09,r*.1,0,Math.PI*2); cx.fill();
+    cx.beginPath(); cx.arc( r*.4, -r*.09,r*.1,0,Math.PI*2); cx.fill();
+    // 眉
+    cx.strokeStyle='#550000'; cx.lineWidth=r*.14; cx.lineCap='round';
+    cx.beginPath(); cx.moveTo(-r*.52,-r*.36); cx.lineTo(-r*.12,-r*.26); cx.stroke();
+    cx.beginPath(); cx.moveTo( r*.12,-r*.26); cx.lineTo( r*.52,-r*.36); cx.stroke();
+
+    cx.restore();
+  }
+}
+
+// ─── プレイヤー描画 ──────────────────────────────────────────────────────────
+function drawPl() {
+  // 無敵点滅
+  if (pl.inv>0 && Math.floor(pl.inv*8)%2===0) return;
+
+  const pcx=pl.px+T/2, pcy=pl.py+T/2, r=T*.31;
+  cx.save(); cx.translate(pcx,pcy);
+
+  // 死亡アニメ
+  if (!pl.alive && pl.dead>0) {
+    const fr=1-pl.dead/1.4;
+    cx.globalAlpha=1-fr;
+    cx.scale(1+fr*2.5,1+fr*2.5);
+    for (let i=0;i<8;i++) {
+      const a=i/8*Math.PI*2, d=r*(1+fr*2.2);
+      cx.fillStyle=['#ff0','#f80','#f00','#ff8'][i%4];
+      cx.beginPath(); cx.arc(Math.cos(a)*d,Math.sin(a)*d,r*.3,0,Math.PI*2); cx.fill();
+    }
+    cx.restore(); return;
+  }
+
+  // 影
+  cx.fillStyle='rgba(0,0,0,.28)';
+  cx.beginPath(); cx.ellipse(0,r*.92,r*.65,r*.19,0,0,Math.PI*2); cx.fill();
+
+  // 足
+  cx.fillStyle='#1a4a9a';
+  cx.beginPath(); cx.ellipse(-r*.32,r*.84,r*.19,r*.11,-.15,0,Math.PI*2); cx.fill();
+  cx.beginPath(); cx.ellipse( r*.32,r*.84,r*.19,r*.11, .15,0,Math.PI*2); cx.fill();
+
+  // 胴体
+  const bg=cx.createRadialGradient(-r*.22,-r*.1,r*.06,0,0,r);
+  bg.addColorStop(0,'#90d0ff'); bg.addColorStop(1,'#1858c8');
+  cx.fillStyle=bg;
+  cx.beginPath(); cx.arc(0,0,r,0,Math.PI*2); cx.fill();
+
+  // ベルト
+  cx.fillStyle='#0a2868'; cx.fillRect(-r*.82,r*.22,r*1.64,r*.25);
+
+  // 帽子つば
+  cx.fillStyle='#dde';
+  cx.beginPath(); cx.ellipse(0,-r*.62,r*.72,r*.13,0,0,Math.PI*2); cx.fill();
+  // 帽子本体
+  cx.fillStyle='#1858c8'; cx.fillRect(-r*.44,-r*1.18,r*.88,r*.6);
+  // 帽子ライン
+  cx.fillStyle='#0a2868'; cx.fillRect(-r*.44,-r*.73,r*.88,r*.12);
+
+  // 顔
+  cx.fillStyle='#ffe0b0';
+  cx.beginPath(); cx.arc(0,-r*.08,r*.42,0,Math.PI*2); cx.fill();
+
+  // 目
+  cx.fillStyle='#222';
+  cx.beginPath(); cx.arc(-r*.17,-r*.18,r*.1,0,Math.PI*2); cx.fill();
+  cx.beginPath(); cx.arc( r*.17,-r*.18,r*.1,0,Math.PI*2); cx.fill();
+
+  // 口
+  cx.strokeStyle='#333'; cx.lineWidth=r*.09; cx.lineCap='round';
+  cx.beginPath(); cx.arc(0,-r*.02,r*.2,.15,Math.PI-.15); cx.stroke();
+
+  cx.restore();
+}
+
+// ─── P2プレイヤー描画（赤系） ─────────────────────────────────────────────────
+function drawPl2() {
+  if (!p2) return;
+  if (p2.inv>0 && Math.floor(p2.inv*8)%2===0) return;
+
+  const pcx=p2.px+T/2, pcy=p2.py+T/2, r=T*.31;
+  cx.save(); cx.translate(pcx,pcy);
+
+  // 死亡アニメ
+  if (!p2.alive && p2.dead>0) {
+    const fr=1-p2.dead/1.4;
+    cx.globalAlpha=1-fr;
+    cx.scale(1+fr*2.5,1+fr*2.5);
+    for (let i=0;i<8;i++) {
+      const a=i/8*Math.PI*2, d=r*(1+fr*2.2);
+      cx.fillStyle=['#ff0','#f80','#f00','#ff8'][i%4];
+      cx.beginPath(); cx.arc(Math.cos(a)*d,Math.sin(a)*d,r*.3,0,Math.PI*2); cx.fill();
+    }
+    cx.restore(); return;
+  }
+
+  // 影
+  cx.fillStyle='rgba(0,0,0,.28)';
+  cx.beginPath(); cx.ellipse(0,r*.92,r*.65,r*.19,0,0,Math.PI*2); cx.fill();
+
+  // 足（赤系）
+  cx.fillStyle='#8a1010';
+  cx.beginPath(); cx.ellipse(-r*.32,r*.84,r*.19,r*.11,-.15,0,Math.PI*2); cx.fill();
+  cx.beginPath(); cx.ellipse( r*.32,r*.84,r*.19,r*.11, .15,0,Math.PI*2); cx.fill();
+
+  // 胴体（赤系）
+  const bg=cx.createRadialGradient(-r*.22,-r*.1,r*.06,0,0,r);
+  bg.addColorStop(0,'#ff9090'); bg.addColorStop(1,'#c81818');
+  cx.fillStyle=bg;
+  cx.beginPath(); cx.arc(0,0,r,0,Math.PI*2); cx.fill();
+
+  // ベルト
+  cx.fillStyle='#680a0a'; cx.fillRect(-r*.82,r*.22,r*1.64,r*.25);
+
+  // 帽子つば
+  cx.fillStyle='#eedd';
+  cx.beginPath(); cx.ellipse(0,-r*.62,r*.72,r*.13,0,0,Math.PI*2); cx.fill();
+  // 帽子本体
+  cx.fillStyle='#c81818'; cx.fillRect(-r*.44,-r*1.18,r*.88,r*.6);
+  // 帽子ライン
+  cx.fillStyle='#680a0a'; cx.fillRect(-r*.44,-r*.73,r*.88,r*.12);
+
+  // 顔
+  cx.fillStyle='#ffe0b0';
+  cx.beginPath(); cx.arc(0,-r*.08,r*.42,0,Math.PI*2); cx.fill();
+
+  // 目
+  cx.fillStyle='#222';
+  cx.beginPath(); cx.arc(-r*.17,-r*.18,r*.1,0,Math.PI*2); cx.fill();
+  cx.beginPath(); cx.arc( r*.17,-r*.18,r*.1,0,Math.PI*2); cx.fill();
+
+  // 口
+  cx.strokeStyle='#333'; cx.lineWidth=r*.09; cx.lineCap='round';
+  cx.beginPath(); cx.arc(0,-r*.02,r*.2,.15,Math.PI-.15); cx.stroke();
+
+  // P2ラベル
+  cx.fillStyle='rgba(255,100,100,0.9)';
+  cx.font=`bold ${r*.7}px "Segoe UI",sans-serif`;
+  cx.textAlign='center'; cx.textBaseline='middle';
+  cx.fillText('P2', 0, -r*1.6);
+
+  cx.restore();
+}
+
+// ─── リザルト画面 ────────────────────────────────────────────────────────────
+function drawResult(won) {
+  cx.fillStyle='rgba(0,0,0,.58)';
+  cx.fillRect(0,0,cv.width,cv.height);
+  const W=cv.width, H=cv.height;
+  const bw=Math.min(W*.84,380), bh=T*5.5;
+  const bx=(W-bw)/2, by=H/2-bh/2;
+
+  cx.fillStyle=won?'rgba(10,40,10,.9)':'rgba(40,10,10,.9)';
+  rrect(bx,by,bw,bh,18); cx.fill();
+  cx.strokeStyle=won?'rgba(60,200,100,.5)':'rgba(200,60,60,.5)'; cx.lineWidth=2;
+  rrect(bx,by,bw,bh,18); cx.stroke();
+
+  cx.textAlign='center'; cx.textBaseline='middle';
+
+  // アイコン
+  cx.font=`${T*1.2}px serif`;
+  cx.fillText(won?'🎉':'💥', W/2, by+bh*.22);
+
+  // タイトル
+  cx.fillStyle=won?'#7dd4a0':'#e06060';
+  cx.font=`bold ${T*.8}px "Segoe UI",sans-serif`;
+  cx.shadowBlur=12; cx.shadowColor=won?'rgba(80,200,80,.6)':'rgba(200,60,60,.6)';
+  cx.fillText(won?'クリア！':'ゲームオーバー', W/2, by+bh*.46);
+  cx.shadowBlur=0;
+
+  // スコア
+  cx.fillStyle='#fff';
+  cx.font=`${T*.5}px "Segoe UI",sans-serif`;
+  cx.fillText(`スコア: ${score}`, W/2, by+bh*.64);
+  cx.fillStyle='#ffdd44';
+  cx.font=`${T*.42}px "Segoe UI",sans-serif`;
+  cx.fillText(`🏆 ベスト: ${hisc}`, W/2, by+bh*.78);
+
+  // 点滅テキスト
+  if (Math.floor(Date.now()/580)%2===0) {
+    cx.fillStyle='rgba(200,220,255,.8)';
+    cx.font=`${T*.38}px "Segoe UI",sans-serif`;
+    cx.fillText('クリック / スペースでタイトルへ', W/2, by+bh*.92);
+  }
+}
+
+// ─── ユーティリティ ──────────────────────────────────────────────────────────
+function lerp(a,b,t) { return a+(b-a)*t; }
+function shuffle(a)  { return [...a].sort(()=>Math.random()-.5); }
+function rrect(x,y,w,h,r) {
+  cx.beginPath();
+  cx.moveTo(x+r,y); cx.lineTo(x+w-r,y); cx.arcTo(x+w,y,x+w,y+r,r);
+  cx.lineTo(x+w,y+h-r); cx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  cx.lineTo(x+r,y+h); cx.arcTo(x,y+h,x,y+h-r,r);
+  cx.lineTo(x,y+r); cx.arcTo(x,y,x+r,y,r);
+  cx.closePath();
+}
+</script>
+</body>
+</html>
