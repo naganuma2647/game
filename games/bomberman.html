@@ -419,9 +419,12 @@ function checkHit() {
           e.alive=false; score+=100;
         }
       }
-      // プレイヤーにダメージ
+      // プレイヤーにダメージ（同時死亡はプレイヤー勝利）
       if (pl.alive && pl.inv<=0) {
-        if (Math.abs(pcx-ecx)<TH && Math.abs(pcy-ecy)<TH) { hurt(); return; }
+        if (Math.abs(pcx-ecx)<TH && Math.abs(pcy-ecy)<TH) {
+          if (ens.every(e=>!e.alive)) { end(true); return; }
+          hurt(); return;
+        }
       }
     }
   }
