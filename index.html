@@ -665,19 +665,19 @@
           </div>
           <div class="name">三目並べ</div>
           <div class="desc">○×。CPUは最善手で負けなし。2人対戦も。</div>
-          <div class="tagrow"><a class="tag" href="games/tictactoe.html">プレイする →</a><a class="tag tag-online" href="games/tictactoe.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/tictactoe.html">プレイする →</a><a class="tag tag-online" href="games/tictactoe.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-tictactoe').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon">🎲</div>
           <div class="name">チンチロ</div>
           <div class="desc">サイコロ3個の出目勝負。1人／複数人で役を競う。</div>
-          <div class="tagrow"><a class="tag" href="games/chinchiro.html">プレイする →</a><a class="tag tag-online" href="games/chinchiro.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/chinchiro.html">プレイする →</a><a class="tag tag-online" href="games/chinchiro.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-chinchiro').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="font-size:17px;letter-spacing:1px">🎲🎲🎲🎲🎲</div>
           <div class="name">ヨット</div>
           <div class="desc">サイコロ5個で役作り。1〜4人でスコアを競う。</div>
-          <div class="tagrow"><a class="tag" href="games/yacht.html">プレイする →</a><a class="tag tag-online" href="games/yacht.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/yacht.html">プレイする →</a><a class="tag tag-online" href="games/yacht.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-yacht').classList.add('show')">📖 ルール</button></div></div>
 
         <a class="card" href="games/bomberman.html">
           <div class="icon">💣</div>
@@ -1727,6 +1727,69 @@
         <li><b>都市</b>：完成時にタイル数×2点＋紋章×2点。</li>
         <li><b>修道院</b>：周囲8マスが埋まると9点。</li>
         <li>ゲーム終了時の未完成地形は減点して計算。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 三目並べ ルールモーダル -->
+  <div id="rule-tictactoe" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-tictactoe').classList.remove('show')">×</button>
+      <h2>⭕ 三目並べ ルール</h2>
+      <h3>目的</h3>
+      <p>3×3のマスに○か×を置いて、先に縦・横・斜めのどれか一列を揃えた方が勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>○（先手）と×（後手）が交互に空きマスに置く。</li>
+        <li>縦・横・斜めいずれかが3つ揃うと勝ち。</li>
+        <li>9マス全て埋まって揃わなければ引き分け。</li>
+      </ul>
+      <h3>戦略</h3>
+      <p>先手が最善手を指し続けると必ず引き分けになる。このゲームのCPUは最善手で負けない。</p>
+    </div>
+  </div>
+
+  <!-- チンチロ ルールモーダル -->
+  <div id="rule-chinchiro" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-chinchiro').classList.remove('show')">×</button>
+      <h2>🎲 チンチロ ルール</h2>
+      <h3>目的</h3>
+      <p>サイコロ3個で役を出し合い、高い役を出した人が勝ち。</p>
+      <h3>役の強さ（強→弱）</h3>
+      <ul>
+        <li><b>ピンゾロ</b>（1・1・1）：最強。</li>
+        <li><b>ゾロ目</b>（同じ目×3）：6ゾロ＞5ゾロ…＞2ゾロ。</li>
+        <li><b>シゴロ</b>（4・5・6）：強い目。</li>
+        <li><b>目あり</b>（2個同じ＋1個）：残り1個の目が得点。6目＞5目…＞1目。</li>
+        <li><b>ヒフミ</b>（1・2・3）：最弱。</li>
+      </ul>
+      <h3>振り直し</h3>
+      <p>役なし（目ありでもヒフミでもシゴロでもゾロ目でもない）の場合は振り直す（最大3回まで）。</p>
+    </div>
+  </div>
+
+  <!-- ヨット ルールモーダル -->
+  <div id="rule-yacht" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-yacht').classList.remove('show')">×</button>
+      <h2>🎲 ヨット ルール</h2>
+      <h3>目的</h3>
+      <p>12ラウンドで役を揃えて合計得点を競う。最も高い合計点が勝ち。</p>
+      <h3>手番の流れ</h3>
+      <ul>
+        <li>サイコロ5個を最大3回振れる。振るたびに残したいサイコロをキープできる。</li>
+        <li>3回振り終えたら、12の役欄のどれか1つにスコアを記入する。</li>
+        <li>全12欄が埋まったらゲーム終了。</li>
+      </ul>
+      <h3>主な役</h3>
+      <ul>
+        <li><b>1〜6の数字</b>：その目の合計（例：3が3個→9点）。</li>
+        <li><b>フルハウス</b>：ゾロ目×2＋ゾロ目×3で25点。</li>
+        <li><b>スモールストレート</b>：連続4目で30点。</li>
+        <li><b>ラージストレート</b>：連続5目で40点。</li>
+        <li><b>ヨット</b>（5個同じ目）：50点。</li>
+        <li><b>チャンス</b>：全サイコロの合計。</li>
       </ul>
     </div>
   </div>
