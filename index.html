@@ -1371,6 +1371,99 @@
     </div>
   </div>
 
+  <!-- 神経衰弱 ルールモーダル -->
+  <div id="rule-memory" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-memory').classList.remove('show')">×</button>
+      <h2>🎴 神経衰弱 ルール</h2>
+      <h3>目的</h3>
+      <p>裏向きに並んだカードをめくってペアを揃える。ゲーム終了時にペアが多い方の勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>全カードを裏向きに並べる。</li>
+        <li>手番のプレイヤーがカードを2枚めくる。</li>
+        <li>2枚が同じペアなら獲得してもう1回手番を得る。</li>
+        <li>違えば裏返して相手の手番へ。</li>
+      </ul>
+      <h3>このゲームのモード</h3>
+      <ul>
+        <li>絵文字カード：小（4×4）・中（4×6）・大（6×6）の3サイズ。</li>
+        <li>トランプ52枚のペア対戦も選択可能。</li>
+        <li>1人練習・2人対戦・オンライン対戦に対応。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ブラックジャック ルールモーダル -->
+  <div id="rule-blackjack" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-blackjack').classList.remove('show')">×</button>
+      <h2>🂡 ブラックジャック ルール</h2>
+      <h3>目的</h3>
+      <p>手札の合計を21に近づけてディーラーに勝つ。21を超えるとバーストで負け。</p>
+      <h3>カードの数え方</h3>
+      <ul>
+        <li>2〜10：そのままの数字。絵札（J・Q・K）：10。</li>
+        <li>A（エース）：1 または 11（有利な方を自動選択）。</li>
+      </ul>
+      <h3>プレイヤーの選択</h3>
+      <ul>
+        <li><b>ヒット</b>：カードを1枚追加。</li>
+        <li><b>スタンド</b>：カードを引くのをやめる。</li>
+        <li><b>ダブルダウン</b>：チップを2倍にして1枚だけ追加（最初の2枚後のみ）。</li>
+      </ul>
+      <h3>ブラックジャック</h3>
+      <p>最初の2枚がA+10点カードで合計21になるとブラックジャック。通常の勝ちより1.5倍の払い戻し。</p>
+      <h3>ディーラールール</h3>
+      <p>ディーラーは17以上になるまで必ずヒットし続ける。</p>
+    </div>
+  </div>
+
+  <!-- 大富豪 ルールモーダル -->
+  <div id="rule-daifugo" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-daifugo').classList.remove('show')">×</button>
+      <h2>🃏 大富豪 ルール</h2>
+      <h3>目的</h3>
+      <p>手札をすべて出し切った順番で順位がつく。最初に出し切ると「大富豪」。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>カードの強さ：3＜4＜…＜K＜A＜2（2が最強）。</li>
+        <li>場に出たカードより強いカードを出す（パスも可）。</li>
+        <li>全員パスになると場を流して先手になる。</li>
+        <li>出し方：1枚・同数字の複数枚・連続する同数枚の階段。</li>
+      </ul>
+      <h3>特殊ルール</h3>
+      <ul>
+        <li><b>8切り</b>：8を出すと場を流してリセット。</li>
+        <li><b>革命</b>：同じ数字を4枚同時に出すと強さの順番が逆転。</li>
+        <li><b>ジョーカー</b>：任意の数字として使える最強カード。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 七並べ ルールモーダル -->
+  <div id="rule-sevens" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-sevens').classList.remove('show')">×</button>
+      <h2>🃖 七並べ ルール</h2>
+      <h3>目的</h3>
+      <p>手札を早く全て出し切った人の勝ち。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>まず各スート（♠♥♦♣）の7を場の中央に並べる。</li>
+        <li>手番に場の端に続く数字を出せる（例：♠7があれば♠6か♠8を出せる）。</li>
+        <li>出せるカードがない、または出したくない場合はパス。</li>
+      </ul>
+      <h3>パス制限</h3>
+      <ul>
+        <li>パスできる回数に上限あり。使い果たすと手番に必ず出さなければならない。</li>
+      </ul>
+      <h3>戦略</h3>
+      <p>7に近いカードを手元に残して相手の展開を妨害するのが定石。パスの使いどころが勝負の分かれ目。</p>
+    </div>
+  </div>
+
   <!-- 部屋を作成：ゲーム選択画面 -->
   <div id="create-modal" class="cm-overlay" hidden>
     <div class="cm-card">
