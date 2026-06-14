@@ -62,6 +62,8 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
 .hand-card.selected{border-color:var(--gold2);background:#302808;transform:translateY(-6px);box-shadow:0 6px 16px rgba(201,160,48,.4)}
 .hand-card.playable{border-color:#4e4e6a}
 .hand-card.dragging{opacity:.3;transform:translateY(-2px)!important}
+.hand-card.stack-target{border-color:var(--gold2)!important;box-shadow:0 0 14px rgba(240,208,96,.55)!important;background:#302808!important}
+.stack-badge{position:absolute;bottom:2px;right:2px;font-size:8px;color:var(--gold);background:rgba(0,0,0,.7);padding:1px 4px;border-radius:3px;pointer-events:none;font-weight:800;line-height:1.3}
 
 /* Bottom controls */
 .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--dim)}
@@ -116,13 +118,21 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
       <option value="hard">強い (0.5秒/枚)</option>
     </select>
   </div>
+  <div class="form-row">
+    <label>重ねあり（手札を重ねて枚数を減らせる）</label>
+    <select id="sel-stack">
+      <option value="on" selected>ON（重ねあり）</option>
+      <option value="off">OFF（重ねなし）</option>
+    </select>
+  </div>
   <button class="start-btn" id="start-btn">ゲームスタート</button>
   <div class="rules-box">
     <b>ルール：</b>各自の手札から中央2つの山に交互なしで同時にカードを出す。<br>
     出せるカード: 山のトップと<b>数字が1つ差</b>のカード。AはKの次またはKはAの前もOK（ラップアラウンド）。<br>
     手札が減ったら山札から補充（最大5枚）。<b>手札と山札が両方空になったら勝ち！</b><br>
     行き詰まったら「スピード！」ボタンで各中央山に補充カードを1枚ずつ追加。<br>
-    <b>操作：</b>手札を<b>ドラッグ</b>して中央の山に落とす（PC）／<b>スワイプ</b>して山の上で指を離す（スマホ）。またはタップで選択→山をタップ。
+    <b>操作：</b>手札を<b>ドラッグ</b>して中央の山に落とす（PC）／<b>スワイプ</b>して山の上で指を離す（スマホ）。またはタップで選択→山をタップ。<br>
+    <b>重ねあり時：</b>手札を別の手札カードの上に<b>ドラッグ</b>すると重ねられる。上のカードから順に出せる。
   </div>
 </section>
 
@@ -196,9 +206,11 @@ let G = {
   piles: [[], []],
   center: [[], []],
   repl: [[], []],
+  beneath: [[], []],
   selected: -1,
   won: null,
   diff: 'normal',
+  stackMode: true,
   online: false,
   mySeat: 0,
   cpuTimer: null,
@@ -207,6 +219,7 @@ let G = {
 
 // ========== DRAG / TOUCH STATE ==========
 let dragSrcIdx = -1;
+let dragFromHand = false;
 let touchSrcIdx = -1;
 let touchGhost = null;
 
@@ -242,6 +255,7 @@ document.getElementById('sel-mode').addEventListener('change', function(){
 
 document.getElementById('start-btn').addEventListener('click', () => {
   const mode = document.getElementById('sel-mode').value;
+  G.stackMode = document.getElementById('sel-stack').value === 'on';
   if (mode === 'online') {
     startOnlineMode();
   } else {
@@ -282,6 +296,7 @@ function initGame(p0pile, p1pile, p0hand, p1hand, centerCards, replCards) {
     idx += 2;
     G.hands = [G.piles[0].splice(0, 5), G.piles[1].splice(0, 5)];
   }
+  G.beneath = [G.hands[0].map(() => []), G.hands[1].map(() => [])];
 
   document.getElementById('setup').style.display = 'none';
   document.getElementById('game').style.display = 'flex';
@@ -338,39 +353,71 @@ function renderCpuArea() {
   document.getElementById('cpu-pile-count').textContent = `山：${pile.length}`;
   document.getElementById('cpu-hand-count').textContent = `手札：${hand.length}`;
 
+  const ben = G.beneath[cpuIdx];
   const el = document.getElementById('cpu-hand');
-  el.innerHTML = hand.map(card => cardHTML(card, false, true)).join('');
+  el.innerHTML = hand.map((card, i) => {
+    const stackSize = 1 + (ben[i] ? ben[i].length : 0);
+    const badge = stackSize > 1 ? `<span class="stack-badge">×${stackSize}</span>` : '';
+    return `<div style="position:relative;display:inline-flex">${cardHTML(card, false, true)}${badge}</div>`;
+  }).join('');
 }
 
 function renderPlayerHand() {
   const myIdx = G.online ? G.mySeat : 0;
   const hand = G.hands[myIdx];
+  const ben = G.beneath[myIdx];
   const el = document.getElementById('player-hand');
   el.innerHTML = '';
   hand.forEach((card, i) => {
     const top0 = G.center[0].length > 0 ? G.center[0][G.center[0].length - 1] : null;
     const top1 = G.center[1].length > 0 ? G.center[1][G.center[1].length - 1] : null;
     const playable = (top0 && canPlay(card, top0)) || (top1 && canPlay(card, top1));
+    const stackSize = 1 + (ben[i] ? ben[i].length : 0);
     const div = document.createElement('div');
+    div.style.position = 'relative';
     div.className = 'card hand-card' + (i === G.selected ? ' selected' : '') + (playable ? ' playable' : '');
     const col = SUIT_COL[card.s];
     div.innerHTML = `<span style="color:${col}">${RANKS[card.r]}<br>${SUITS[card.s]}</span>`;
+    if (stackSize > 1) div.innerHTML += `<span class="stack-badge">×${stackSize}</span>`;
 
-    // Click to select
     div.addEventListener('click', () => selectCard(i));
 
     // ---- PC drag-and-drop ----
     div.draggable = true;
     div.addEventListener('dragstart', (e) => {
       dragSrcIdx = i;
+      dragFromHand = true;
       e.dataTransfer.effectAllowed = 'move';
       requestAnimationFrame(() => div.classList.add('dragging'));
     });
     div.addEventListener('dragend', () => {
       div.classList.remove('dragging');
       dragSrcIdx = -1;
+      dragFromHand = false;
       clearPileHighlights();
+      clearHandHighlights();
     });
+
+    // Stack target: another hand card dragged onto this one
+    if (G.stackMode) {
+      div.addEventListener('dragover', (e) => {
+        if (dragFromHand && dragSrcIdx >= 0 && dragSrcIdx !== i) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          div.classList.add('stack-target');
+        }
+      });
+      div.addEventListener('dragleave', () => div.classList.remove('stack-target'));
+      div.addEventListener('drop', (e) => {
+        e.preventDefault();
+        div.classList.remove('stack-target');
+        if (dragFromHand && dragSrcIdx >= 0 && dragSrcIdx !== i) {
+          stackCards(myIdx, dragSrcIdx, i);
+          dragSrcIdx = -1;
+          dragFromHand = false;
+        }
+      });
+    }
 
     // ---- Mobile touch / swipe ----
     div.addEventListener('touchstart', (e) => {
@@ -390,16 +437,31 @@ function renderPlayerHand() {
       const pIdx = pileAtPoint(t.clientX, t.clientY);
       document.getElementById('center-left').classList.toggle('drag-over', pIdx === 0);
       document.getElementById('center-right').classList.toggle('drag-over', pIdx === 1);
+      if (G.stackMode && pIdx < 0) {
+        clearHandHighlights();
+        const hIdx = handCardAtPoint(t.clientX, t.clientY);
+        if (hIdx >= 0 && hIdx !== touchSrcIdx) {
+          el.children[hIdx]?.classList.add('stack-target');
+        }
+      }
       e.preventDefault();
     }, {passive: false});
 
     div.addEventListener('touchend', (e) => {
       removeTouchGhost();
       clearPileHighlights();
+      clearHandHighlights();
       if (touchSrcIdx >= 0) {
         const t = e.changedTouches[0];
         const pIdx = pileAtPoint(t.clientX, t.clientY);
-        if (pIdx >= 0) playCardFromHand(touchSrcIdx, pIdx);
+        if (pIdx >= 0) {
+          playCardFromHand(touchSrcIdx, pIdx);
+        } else if (G.stackMode) {
+          const hIdx = handCardAtPoint(t.clientX, t.clientY);
+          if (hIdx >= 0 && hIdx !== touchSrcIdx) {
+            stackCards(myIdx, touchSrcIdx, hIdx);
+          }
+        }
       }
       touchSrcIdx = -1;
       e.preventDefault();
@@ -422,7 +484,7 @@ function renderInfo() {
   const canAny = canAnyonePlay();
   const speedBtn = document.getElementById('speed-btn');
   const replEmpty = G.repl[0].length === 0 && G.repl[1].length === 0;
-  speedBtn.disabled = canAny || (replEmpty && myHand.length === 0);
+  speedBtn.disabled = canAny || (replEmpty && hand.length === 0);
   speedBtn.textContent = replEmpty ? 'スピード！（手札から）' : 'スピード！';
 }
 
@@ -430,6 +492,19 @@ function renderInfo() {
 function clearPileHighlights() {
   document.getElementById('center-left').classList.remove('drag-over');
   document.getElementById('center-right').classList.remove('drag-over');
+}
+
+function clearHandHighlights() {
+  document.querySelectorAll('.hand-card.stack-target').forEach(el => el.classList.remove('stack-target'));
+}
+
+function handCardAtPoint(x, y) {
+  const cards = document.getElementById('player-hand').querySelectorAll('.hand-card');
+  for (let i = 0; i < cards.length; i++) {
+    const r = cards[i].getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return i;
+  }
+  return -1;
 }
 
 function pileAtPoint(x, y) {
@@ -490,10 +565,20 @@ function playCardFromHand(handIdx, pileIdx) {
 
 function applyPlay(playerIdx, slot, pileIdx) {
   const hand = G.hands[playerIdx];
+  const ben = G.beneath[playerIdx];
   const card = hand.splice(slot, 1)[0];
   G.center[pileIdx].push(card);
-  while (hand.length < 5 && G.piles[playerIdx].length > 0) {
-    hand.push(G.piles[playerIdx].shift());
+  const below = ben.splice(slot, 1)[0] || [];
+  if (below.length > 0) {
+    // Reveal next card in stack — slot stays, no refill needed
+    hand.splice(slot, 0, below.shift());
+    ben.splice(slot, 0, below);
+  } else {
+    // Slot gone — refill from pile
+    while (hand.length < 5 && G.piles[playerIdx].length > 0) {
+      hand.push(G.piles[playerIdx].shift());
+      ben.push([]);
+    }
   }
   if (playerIdx === (G.online ? G.mySeat : 0)) {
     G.selected = -1;
@@ -528,11 +613,21 @@ function doFlip() {
 function applyFlipWithHand(playerSlot, senderSeat) {
   const otherSeat = 1 - senderSeat;
   const senderCard = G.hands[senderSeat].splice(playerSlot, 1)[0];
+  const senderBelow = G.beneath[senderSeat].splice(playerSlot, 1)[0] || [];
   G.center[0].push(senderCard);
+  if (senderBelow.length > 0) {
+    G.hands[senderSeat].splice(playerSlot, 0, senderBelow.shift());
+    G.beneath[senderSeat].splice(playerSlot, 0, senderBelow);
+  }
   if (G.hands[otherSeat].length > 0) {
     const otherSlot = Math.floor(Math.random() * G.hands[otherSeat].length);
     const otherCard = G.hands[otherSeat].splice(otherSlot, 1)[0];
+    const otherBelow = G.beneath[otherSeat].splice(otherSlot, 1)[0] || [];
     G.center[1].push(otherCard);
+    if (otherBelow.length > 0) {
+      G.hands[otherSeat].splice(otherSlot, 0, otherBelow.shift());
+      G.beneath[otherSeat].splice(otherSlot, 0, otherBelow);
+    }
   }
   G.selected = -1;
   render();
@@ -545,6 +640,24 @@ function applyFlip() {
   G.selected = -1;
   render();
   setStatus('補充カードを追加しました');
+}
+
+function stackCards(pi, fromSlot, toSlot) {
+  if (fromSlot === toSlot || fromSlot < 0 || toSlot < 0) return;
+  const hand = G.hands[pi];
+  const ben = G.beneath[pi];
+  if (fromSlot >= hand.length || toSlot >= hand.length) return;
+  const fromCard = hand[fromSlot];
+  const fromBen = [...(ben[fromSlot] || [])];
+  hand.splice(fromSlot, 1);
+  ben.splice(fromSlot, 1);
+  const adjTo = fromSlot < toSlot ? toSlot - 1 : toSlot;
+  // fromCard goes on top; its hidden cards, then toCard, then toBen beneath
+  ben[adjTo] = [...fromBen, hand[adjTo], ...(ben[adjTo] || [])];
+  hand[adjTo] = fromCard;
+  G.selected = -1;
+  if (G.online) roomSend({t:'stack', from: fromSlot, to: toSlot});
+  render();
 }
 
 function canAnyonePlay() {
@@ -729,11 +842,14 @@ OnlineRoom.init({
       G.hands = [msg.p0hand, msg.p1hand];
       G.center = msg.center;
       G.repl = msg.repl;
+      G.beneath = [G.hands[0].map(() => []), G.hands[1].map(() => [])];
       G.won = null;
       G.selected = -1;
       document.getElementById('game').style.display = 'flex';
       document.getElementById('overlay').style.display = 'none';
       render();
+    } else if (msg.t === 'stack') {
+      stackCards(fromSeat, msg.from, msg.to);
     } else if (msg.t === 'play') {
       applyPlay(fromSeat, msg.slot, msg.pile);
       if (checkWin()) return;
