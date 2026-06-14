@@ -47,6 +47,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
 .center-pile{width:64px;height:90px;border-radius:10px;border:3px solid #3e3e5a;background:#20203a;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0;position:relative}
 .center-pile.valid{border-color:var(--grn);box-shadow:0 0 14px rgba(61,186,106,.45);background:#1a2c1e}
 .center-pile.valid:hover{box-shadow:0 0 22px rgba(61,186,106,.65)}
+.center-pile.drag-over{border-color:var(--gold2)!important;box-shadow:0 0 24px rgba(240,208,96,.7)!important;background:#2a2010!important}
 .center-pile .card{pointer-events:none;width:52px;height:82px;border:none;background:transparent}
 .center-pile-label{position:absolute;bottom:3px;font-size:8px;color:var(--dim)}
 .center-piles{display:flex;gap:12px;align-items:center}
@@ -56,10 +57,11 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
 .player-area{width:100%;background:var(--surf);border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
 .player-info{display:flex;gap:10px;align-items:center;font-size:11px;color:var(--dim)}
 .player-hand{display:flex;gap:5px;justify-content:center;flex-wrap:wrap}
-.hand-card{cursor:pointer;transition:all .15s}
+.hand-card{cursor:pointer;transition:all .15s;touch-action:none}
 .hand-card:hover{transform:translateY(-4px);border-color:var(--gold)}
 .hand-card.selected{border-color:var(--gold2);background:#302808;transform:translateY(-6px);box-shadow:0 6px 16px rgba(201,160,48,.4)}
 .hand-card.playable{border-color:#4e4e6a}
+.hand-card.dragging{opacity:.3;transform:translateY(-2px)!important}
 
 /* Bottom controls */
 .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--dim)}
@@ -119,7 +121,8 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
     <b>ルール：</b>各自の手札から中央2つの山に交互なしで同時にカードを出す。<br>
     出せるカード: 山のトップと<b>数字が1つ差</b>のカード。AはKの次またはKはAの前もOK（ラップアラウンド）。<br>
     手札が減ったら山札から補充（最大5枚）。<b>手札と山札が両方空になったら勝ち！</b><br>
-    行き詰まったら「スピード！」ボタンで各中央山に補充カードを1枚ずつ追加。
+    行き詰まったら「スピード！」ボタンで各中央山に補充カードを1枚ずつ追加。<br>
+    <b>操作：</b>手札を<b>ドラッグ</b>して中央の山に落とす（PC）／<b>スワイプ</b>して山の上で指を離す（スマホ）。またはタップで選択→山をタップ。
   </div>
 </section>
 
@@ -151,7 +154,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
     <div class="repl-pile" id="repl-right" title="補充山（右）">補充<br>右</div>
   </div>
 
-  <div id="status-msg">カードを選んで中央に出そう</div>
+  <div id="status-msg">カードをドラッグ or タップして中央に出そう</div>
 
   <!-- Player area -->
   <div class="player-area">
@@ -189,18 +192,23 @@ const SUIT_COL = ['#eee','#e05050','#e05050','#eee'];
 
 // ========== GAME STATE ==========
 let G = {
-  hands: [[], []],       // [p0=player, p1=cpu/opponent]
-  piles: [[], []],       // draw piles
-  center: [[], []],      // center discard piles
-  repl: [[], []],        // replacement piles
-  selected: -1,          // player's selected hand index
-  won: null,             // 0=player, 1=cpu/opp
+  hands: [[], []],
+  piles: [[], []],
+  center: [[], []],
+  repl: [[], []],
+  selected: -1,
+  won: null,
   diff: 'normal',
   online: false,
   mySeat: 0,
   cpuTimer: null,
   stuckCheckTimer: null,
 };
+
+// ========== DRAG / TOUCH STATE ==========
+let dragSrcIdx = -1;
+let touchSrcIdx = -1;
+let touchGhost = null;
 
 // ========== CARD UTILS ==========
 function makeCard(r, s){ return {r, s}; }
@@ -215,7 +223,7 @@ function cardHTML(card, facedown=false, small=false) {
 function canPlay(card, topCard) {
   if (!topCard) return false;
   const diff = Math.abs(card.r - topCard.r);
-  return diff === 1 || diff === 12; // 12 = A(0) and K(12) wrap
+  return diff === 1 || diff === 12;
 }
 
 function shuffle(arr) {
@@ -259,25 +267,19 @@ function initGame(p0pile, p1pile, p0hand, p1hand, centerCards, replCards) {
   G.won = null;
 
   if (p0pile !== undefined) {
-    // Online: state provided by host
     G.piles = [p0pile, p1pile];
     G.hands = [p0hand, p1hand];
     G.center = [centerCards[0], centerCards[1]];
     G.repl = [replCards[0], replCards[1]];
   } else {
-    // Offline: build deck
     const deck = buildDeck();
     let idx = 0;
-    // 20 cards each for draw piles
     G.piles = [deck.slice(idx, idx+20), deck.slice(idx+20, idx+40)];
     idx += 40;
-    // 5 replacement cards each
     G.repl = [deck.slice(idx, idx+5), deck.slice(idx+5, idx+10)];
     idx += 10;
-    // 1 center starter card each
     G.center = [[deck[idx]], [deck[idx+1]]];
     idx += 2;
-    // Each player draws 5 into hand
     G.hands = [G.piles[0].splice(0, 5), G.piles[1].splice(0, 5)];
   }
 
@@ -308,7 +310,6 @@ function render() {
 }
 
 function renderCenter() {
-  // Replacement piles
   const rl = document.getElementById('repl-left');
   const rr = document.getElementById('repl-right');
   const lc = G.repl[0].length, rc = G.repl[1].length;
@@ -317,7 +318,6 @@ function renderCenter() {
   rr.classList.toggle('has-cards', rc > 0);
   rr.innerHTML = rc > 0 ? `<div style="font-size:11px;color:var(--dim)">${rc}</div>` : `補充<br>右`;
 
-  // Center piles
   const myHand = G.hands[G.online ? G.mySeat : 0];
   const sel = G.selected >= 0 ? myHand[G.selected] : null;
 
@@ -355,7 +355,56 @@ function renderPlayerHand() {
     div.className = 'card hand-card' + (i === G.selected ? ' selected' : '') + (playable ? ' playable' : '');
     const col = SUIT_COL[card.s];
     div.innerHTML = `<span style="color:${col}">${RANKS[card.r]}<br>${SUITS[card.s]}</span>`;
+
+    // Click to select
     div.addEventListener('click', () => selectCard(i));
+
+    // ---- PC drag-and-drop ----
+    div.draggable = true;
+    div.addEventListener('dragstart', (e) => {
+      dragSrcIdx = i;
+      e.dataTransfer.effectAllowed = 'move';
+      requestAnimationFrame(() => div.classList.add('dragging'));
+    });
+    div.addEventListener('dragend', () => {
+      div.classList.remove('dragging');
+      dragSrcIdx = -1;
+      clearPileHighlights();
+    });
+
+    // ---- Mobile touch / swipe ----
+    div.addEventListener('touchstart', (e) => {
+      touchSrcIdx = i;
+      G.selected = i;
+      render();
+      const t = e.touches[0];
+      touchGhost = createTouchGhost(card, t.clientX, t.clientY);
+      e.preventDefault();
+    }, {passive: false});
+
+    div.addEventListener('touchmove', (e) => {
+      if (!touchGhost) return;
+      const t = e.touches[0];
+      touchGhost.style.left = t.clientX + 'px';
+      touchGhost.style.top = t.clientY + 'px';
+      const pIdx = pileAtPoint(t.clientX, t.clientY);
+      document.getElementById('center-left').classList.toggle('drag-over', pIdx === 0);
+      document.getElementById('center-right').classList.toggle('drag-over', pIdx === 1);
+      e.preventDefault();
+    }, {passive: false});
+
+    div.addEventListener('touchend', (e) => {
+      removeTouchGhost();
+      clearPileHighlights();
+      if (touchSrcIdx >= 0) {
+        const t = e.changedTouches[0];
+        const pIdx = pileAtPoint(t.clientX, t.clientY);
+        if (pIdx >= 0) playCardFromHand(touchSrcIdx, pIdx);
+      }
+      touchSrcIdx = -1;
+      e.preventDefault();
+    }, {passive: false});
+
     el.appendChild(div);
   });
 }
@@ -370,10 +419,38 @@ function renderInfo() {
   document.getElementById('sel-info').textContent =
     selCard ? `選択: ${RANKS[selCard.r]}${SUITS[selCard.s]}` : '選択: -';
 
-  // Speed button: only active when nobody can play
   const canAny = canAnyonePlay();
   const speedBtn = document.getElementById('speed-btn');
   speedBtn.disabled = canAny || G.repl[0].length === 0 && G.repl[1].length === 0;
+}
+
+// ========== DRAG / TOUCH HELPERS ==========
+function clearPileHighlights() {
+  document.getElementById('center-left').classList.remove('drag-over');
+  document.getElementById('center-right').classList.remove('drag-over');
+}
+
+function pileAtPoint(x, y) {
+  const ids = ['center-left', 'center-right'];
+  for (let i = 0; i < ids.length; i++) {
+    const r = document.getElementById(ids[i]).getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return i;
+  }
+  return -1;
+}
+
+function createTouchGhost(card, x, y) {
+  const g = document.createElement('div');
+  g.className = 'card';
+  g.style.cssText = `position:fixed;z-index:9999;pointer-events:none;opacity:.85;transform:translate(-50%,-60%);left:${x}px;top:${y}px;transition:none;`;
+  const col = SUIT_COL[card.s];
+  g.innerHTML = `<span style="color:${col}">${RANKS[card.r]}<br>${SUITS[card.s]}</span>`;
+  document.body.appendChild(g);
+  return g;
+}
+
+function removeTouchGhost() {
+  if (touchGhost) { touchGhost.remove(); touchGhost = null; }
 }
 
 // ========== GAMEPLAY ==========
@@ -386,24 +463,23 @@ function selectCard(idx) {
 }
 
 function clickCenter(pileIdx) {
+  if (G.selected < 0) { setStatus('カードを選んでください'); return; }
+  playCardFromHand(G.selected, pileIdx);
+}
+
+function playCardFromHand(handIdx, pileIdx) {
   if (G.won !== null) return;
-  if (G.selected < 0) {
-    setStatus('カードを選んでください');
-    return;
-  }
   const myIdx = G.online ? G.mySeat : 0;
   const hand = G.hands[myIdx];
-  if (G.selected >= hand.length) return;
-  const card = hand[G.selected];
+  if (handIdx < 0 || handIdx >= hand.length) return;
+  const card = hand[handIdx];
   const top = G.center[pileIdx].length > 0 ? G.center[pileIdx][G.center[pileIdx].length - 1] : null;
-  if (!top || !canPlay(card, top)) {
-    setStatus('そのカードはここに出せません');
-    return;
-  }
+  if (!top || !canPlay(card, top)) { setStatus('そのカードはここに出せません'); return; }
+  G.selected = handIdx;
   if (G.online) {
-    roomSend({t:'play', slot: G.selected, pile: pileIdx});
+    roomSend({t:'play', slot: handIdx, pile: pileIdx});
   } else {
-    applyPlay(myIdx, G.selected, pileIdx);
+    applyPlay(myIdx, handIdx, pileIdx);
     if (checkWin()) return;
     scheduleCpu();
     scheduleStuckCheck();
@@ -414,7 +490,6 @@ function applyPlay(playerIdx, slot, pileIdx) {
   const hand = G.hands[playerIdx];
   const card = hand.splice(slot, 1)[0];
   G.center[pileIdx].push(card);
-  // Refill hand from draw pile
   while (hand.length < 5 && G.piles[playerIdx].length > 0) {
     hand.push(G.piles[playerIdx].shift());
   }
@@ -475,6 +550,7 @@ function checkWin() {
 function showWin(winner) {
   clearCpuTimer();
   clearTimeout(G.stuckCheckTimer);
+  removeTouchGhost();
   let title, msg;
   if (G.online) {
     const iAm = G.mySeat;
@@ -508,7 +584,6 @@ function scheduleCpu() {
 
 function doCpuTurn() {
   if (G.won !== null || G.online) return;
-  // Find a valid play
   const cpuHand = G.hands[1];
   const plays = [];
   for (let slot = 0; slot < cpuHand.length; slot++) {
@@ -525,7 +600,7 @@ function doCpuTurn() {
       scheduleStuckCheck();
     }
   } else {
-    scheduleCpu(); // retry soon
+    scheduleCpu();
   }
 }
 
@@ -536,7 +611,7 @@ function scheduleStuckCheck() {
     if (G.won !== null || G.online) return;
     if (!canAnyonePlay()) {
       setStatus('行き詰まり！「スピード！」で補充してください');
-      renderInfo(); // re-enable button
+      renderInfo();
     }
   }, 800);
 }
@@ -557,12 +632,30 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// ========== CENTER PILE DRAG LISTENERS (set up once) ==========
+['center-left', 'center-right'].forEach((id, pIdx) => {
+  const el = document.getElementById(id);
+  el.addEventListener('dragover', (e) => {
+    if (dragSrcIdx < 0) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    el.classList.add('drag-over');
+  });
+  el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+  el.addEventListener('drop', (e) => {
+    e.preventDefault();
+    el.classList.remove('drag-over');
+    if (dragSrcIdx >= 0) {
+      playCardFromHand(dragSrcIdx, pIdx);
+      dragSrcIdx = -1;
+    }
+  });
+});
+
 // ========== ONLINE ==========
 let roomSend = () => {};
-// Called from setup button when online mode selected
 function startOnlineMode() {
   document.getElementById('setup').style.display = 'none';
-  // Trigger online-btn injected by OnlineRoom
   const btn = document.getElementById('online-btn');
   if (btn) btn.click();
 }
@@ -583,7 +676,6 @@ OnlineRoom.init({
     roomSend = send;
     document.getElementById('setup').style.display = 'none';
     if (seat === 0) {
-      // Host deals the game
       const deck = buildDeck();
       let idx = 0;
       const p0pile = deck.slice(idx, idx+20); idx += 20;
@@ -602,9 +694,6 @@ OnlineRoom.init({
   },
   onMessage(fromSeat, msg) {
     if (msg.t === 'init') {
-      // Both clients use identical canonical indexing:
-      // G.piles[0]/G.hands[0] = seat 0's cards; G.piles[1]/G.hands[1] = seat 1's cards
-      // mySeat tells the renderer which to show at the bottom
       G.piles = [msg.p0pile, msg.p1pile];
       G.hands = [msg.p0hand, msg.p1hand];
       G.center = msg.center;
@@ -615,7 +704,6 @@ OnlineRoom.init({
       document.getElementById('overlay').style.display = 'none';
       render();
     } else if (msg.t === 'play') {
-      // fromSeat maps directly to pile/hand index
       applyPlay(fromSeat, msg.slot, msg.pile);
       if (checkWin()) return;
       scheduleStuckCheck();
