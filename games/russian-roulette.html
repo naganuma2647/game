@@ -1,0 +1,442 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ロシアンルーレット</title><style>
+:root{--bg:#080404;--panel:#120808;--txt:#f0e6d8;--sub:#8a6a5a;--red:#cc2222;--gold:#c9a020;--gun:#3a3630;--gun2:#504840;--safe:#3a8a3a;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:radial-gradient(ellipse at 50% 20%,#1a0808,#080404);color:var(--txt);font-family:"Hiragino Sans","Yu Gothic UI",sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:14px 10px 30px;user-select:none}
+h1{font-family:"Hiragino Mincho ProN",serif;font-size:26px;letter-spacing:.15em;margin:2px 0;color:var(--red)}
+.sub{font-size:10px;color:var(--sub);letter-spacing:.22em;margin-bottom:12px}
+/* Setup */
+#setup{display:flex;flex-direction:column;align-items:center;gap:14px;width:min(96vw,360px)}
+.setup-box{background:var(--panel);border:1px solid #2a1a1a;border-radius:12px;padding:18px 20px;width:100%}
+.setup-box .lbl{font-size:11px;color:var(--sub);margin-bottom:8px;letter-spacing:.12em}
+.np-row{display:flex;gap:8px;justify-content:center}
+.np-btn{background:rgba(255,255,255,.06);border:1px solid #3a2020;color:var(--sub);padding:8px 16px;border-radius:20px;font-size:14px;cursor:pointer;font-family:inherit;transition:all .15s}
+.np-btn.on{background:rgba(180,20,20,.25);border-color:var(--red);color:var(--txt);font-weight:700}
+.names{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.names input{background:#1a0808;border:1px solid #3a2020;color:var(--txt);padding:7px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;width:100%}
+.names input:focus{border-color:var(--red)}
+.start-btn{background:var(--red);border:none;color:#fff;font-weight:800;padding:13px 0;border-radius:10px;font-size:16px;cursor:pointer;font-family:inherit;width:100%;letter-spacing:.1em;transition:opacity .15s}
+.start-btn:hover{opacity:.85}
+/* Game */
+#game{display:none;flex-direction:column;align-items:center;gap:10px;width:min(96vw,400px)}
+.player-display{text-align:center;min-height:56px}
+.cur-label{font-size:11px;color:var(--sub);letter-spacing:.18em;margin-bottom:4px}
+.cur-name{font-size:28px;font-weight:800;color:var(--gold);letter-spacing:.06em}
+/* Revolver SVG area */
+.gun-wrap{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.gun-wrap svg{display:block;width:min(86vw,360px);height:auto;filter:drop-shadow(0 8px 24px rgba(0,0,0,.7))}
+/* Cylinder spin animation */
+@keyframes cylspin{
+  0%{transform:rotate(0deg) scale(1)}
+  40%{transform:rotate(1080deg) scale(1.04)}
+  70%{transform:rotate(1380deg) scale(1.01)}
+  100%{transform:rotate(var(--spin-end,1440deg)) scale(1)}
+}
+.cyl-group{transform-origin:152px 94px;transform-box:fill-box}
+.cyl-group.spinning{animation:cylspin .9s cubic-bezier(.2,.8,.4,1) forwards}
+/* Flash overlay */
+#flash{position:fixed;inset:0;pointer-events:none;opacity:0;z-index:50}
+@keyframes flash-red{0%{opacity:.85}100%{opacity:0}}
+@keyframes flash-white{0%{opacity:.6}100%{opacity:0}}
+#flash.bang{background:#cc0000;animation:flash-red .5s ease-out forwards}
+#flash.safe{background:#aaffaa;animation:flash-white .3s ease-out forwards}
+/* Result */
+.result-msg{min-height:40px;font-size:22px;font-weight:800;letter-spacing:.06em;text-align:center;transition:opacity .2s}
+.result-msg.bang{color:var(--red)}
+.result-msg.safe{color:var(--safe)}
+/* Chamber indicator */
+.chambers{display:flex;gap:7px;justify-content:center;margin:4px 0}
+.ch{width:18px;height:26px;border-radius:3px;border:1.5px solid #3a2a2a;background:#1a1010;transition:background .3s}
+.ch.fired{background:#2a1a1a;border-color:#2a1a1a}
+.ch.bullet{background:var(--gold)}
+.ch.current{border-color:var(--red)}
+/* Players list */
+.players{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;width:100%}
+.player-chip{background:var(--panel);border:1px solid #2a1818;border-radius:20px;padding:6px 14px;font-size:13px;transition:all .2s}
+.player-chip.active{border-color:var(--gold);color:var(--gold);font-weight:700;box-shadow:0 0 0 2px rgba(201,160,32,.2)}
+.player-chip.out{opacity:.35;text-decoration:line-through;font-size:11px}
+/* Trigger button */
+.trigger-btn{background:var(--red);border:none;color:#fff;font-weight:800;padding:14px 0;border-radius:12px;font-size:18px;cursor:pointer;font-family:inherit;width:min(86vw,320px);letter-spacing:.12em;transition:transform .1s,opacity .2s;box-shadow:0 4px 18px rgba(180,0,0,.5)}
+.trigger-btn:active{transform:scale(.96)}
+.trigger-btn:disabled{opacity:.4;cursor:default;transform:none}
+/* Foot */
+.foot{display:flex;gap:8px;margin-top:6px}
+.foot button{background:transparent;border:1px solid #2a1818;color:var(--sub);padding:8px 18px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit}
+.foot button:hover{border-color:var(--red);color:var(--txt)}
+/* Win overlay */
+.over{position:fixed;inset:0;background:rgba(4,0,0,.88);display:none;align-items:center;justify-content:center;z-index:40;padding:16px}
+.over.show{display:flex}
+.over .c{background:#140808;border:1px solid var(--gold);border-radius:14px;padding:28px 32px;text-align:center;max-width:90vw}
+.over .t{font-size:24px;color:var(--gold);font-family:"Hiragino Mincho ProN",serif;margin-bottom:8px}
+.over .d{font-size:14px;color:var(--sub);margin-bottom:20px;line-height:1.8}
+.over button{background:var(--red);border:none;color:#fff;font-weight:700;padding:10px 28px;border-radius:8px;cursor:pointer;font-size:14px;font-family:inherit;margin:0 4px}
+.over .back-btn{background:transparent;border:1px solid #3a2020;color:var(--sub)}
+@media(max-width:480px){
+  h1{font-size:22px}
+  .cur-name{font-size:22px}
+  .trigger-btn{font-size:15px;padding:12px 0}
+}
+</style></head><body>
+<a href="../index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
+
+<h1>🔫 ロシアンルーレット</h1>
+<div class="sub">RUSSIAN ROULETTE</div>
+
+<!-- Setup -->
+<div id="setup">
+  <div class="setup-box">
+    <div class="lbl">プレイヤー人数</div>
+    <div class="np-row" id="np-row">
+      <button class="np-btn" data-n="2">2人</button>
+      <button class="np-btn on" data-n="3">3人</button>
+      <button class="np-btn" data-n="4">4人</button>
+      <button class="np-btn" data-n="5">5人</button>
+      <button class="np-btn" data-n="6">6人</button>
+    </div>
+  </div>
+  <div class="setup-box">
+    <div class="lbl">プレイヤー名（省略可）</div>
+    <div class="names" id="names"></div>
+  </div>
+  <button class="start-btn" id="start-btn">ゲーム開始</button>
+</div>
+
+<!-- Game -->
+<div id="game">
+  <div class="player-display">
+    <div class="cur-label">現在のプレイヤー</div>
+    <div class="cur-name" id="cur-name">—</div>
+  </div>
+
+  <!-- Revolver -->
+  <div class="gun-wrap" id="gun-wrap">
+    <svg viewBox="0 0 360 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- Gun body -->
+      <g fill="var(--gun)" stroke="var(--gun2)" stroke-width="1.2">
+        <!-- Handle -->
+        <path d="M230 120 Q240 130 238 170 Q235 185 220 188 Q200 190 195 180 L200 140 Z" fill="#2a2420" stroke="#3a3028"/>
+        <!-- Guard -->
+        <path d="M195 140 L245 140 L248 150 L192 150 Z"/>
+        <!-- Trigger -->
+        <line x1="220" y1="142" x2="215" y2="158" stroke="#5a5048" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- Barrel -->
+        <rect x="240" y="72" width="110" height="22" rx="4"/>
+        <rect x="342" y="68" width="12" height="30" rx="3" fill="#252220"/>
+        <!-- Frame top -->
+        <path d="M230 74 L240 74 L240 120 L230 125 Z"/>
+      </g>
+      <!-- Cylinder group (rotates around center 152,94) -->
+      <g class="cyl-group" id="cyl-group">
+        <!-- Cylinder body -->
+        <circle cx="152" cy="94" r="52" fill="#3a3430" stroke="#504840" stroke-width="2"/>
+        <circle cx="152" cy="94" r="48" fill="#302c28" stroke="#443c34" stroke-width="1"/>
+        <!-- 6 chambers -->
+        <g id="chambers-svg"></g>
+        <!-- Center pin -->
+        <circle cx="152" cy="94" r="6" fill="#606060" stroke="#808080" stroke-width="1.5"/>
+      </g>
+      <!-- Hammer -->
+      <path d="M228 74 L238 68 L242 72 L232 80 Z" fill="#404038" stroke="#585850" stroke-width="1"/>
+    </svg>
+  </div>
+
+  <!-- Chamber status -->
+  <div class="chambers" id="chambers-ui"></div>
+
+  <div class="result-msg" id="result-msg"></div>
+
+  <!-- Players -->
+  <div class="players" id="players-ui"></div>
+
+  <button class="trigger-btn" id="trigger-btn">🔫 引き金を引く</button>
+
+  <div class="foot">
+    <button id="restart-btn">最初から</button>
+    <button id="back-btn">設定に戻る</button>
+  </div>
+</div>
+
+<!-- Flash overlay -->
+<div id="flash"></div>
+
+<!-- Game over overlay -->
+<div class="over" id="over">
+  <div class="c">
+    <div class="t" id="over-title">💀 脱落！</div>
+    <div class="d" id="over-desc"></div>
+    <button id="again-btn">もう一度</button>
+    <button class="back-btn" id="over-back">設定へ</button>
+  </div>
+</div>
+
+<script>
+// Chamber positions (angle in degrees from top, 6 chambers at 60° intervals)
+const CHAMBER_ANGLES = [0, 60, 120, 180, 240, 300];
+const CX = 152, CY = 94, CR = 32; // cylinder center and chamber orbit radius
+const CHAM_R = 13; // chamber hole radius
+
+let numPlayers = 3;
+let playerNames = [];
+let players = []; // {name, alive}
+let bulletPos = 0;
+let currentChamber = 0;
+let currentPlayerIdx = 0;
+let firedCount = 0;
+let busy = false;
+
+// Build name inputs
+function buildNames(n) {
+  const div = document.getElementById('names');
+  div.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = 'プレイヤー ' + (i + 1);
+    inp.value = playerNames[i] || '';
+    inp.addEventListener('input', () => { playerNames[i] = inp.value; });
+    div.appendChild(inp);
+  }
+}
+
+document.getElementById('np-row').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('.np-btn').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  numPlayers = +b.dataset.n;
+  buildNames(numPlayers);
+});
+buildNames(3);
+
+// Draw SVG chambers
+function drawChambers(bullet, fired, current) {
+  const g = document.getElementById('chambers-svg');
+  g.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const angle = (CHAMBER_ANGLES[i] - 90) * Math.PI / 180;
+    const x = CX + CR * Math.cos(angle);
+    const y = CY + CR * Math.sin(angle);
+    const isBullet = i === bullet;
+    const isFired = fired.has(i);
+    const isCurrent = i === current;
+    // Shadow / depth
+    const shadow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    shadow.setAttribute('cx', x + 1); shadow.setAttribute('cy', y + 1);
+    shadow.setAttribute('r', CHAM_R); shadow.setAttribute('fill', 'rgba(0,0,0,.5)');
+    g.appendChild(shadow);
+    // Hole
+    const hole = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    hole.setAttribute('cx', x); hole.setAttribute('cy', y);
+    hole.setAttribute('r', CHAM_R);
+    if (isFired) {
+      hole.setAttribute('fill', '#1a1410'); hole.setAttribute('stroke', '#2a2018'); hole.setAttribute('stroke-width', '1.5');
+    } else if (isBullet && firedCount >= 6) {
+      hole.setAttribute('fill', '#c9a020'); hole.setAttribute('stroke', '#e0b830'); hole.setAttribute('stroke-width', '1.5');
+    } else {
+      hole.setAttribute('fill', '#0a0806'); hole.setAttribute('stroke', isCurrent ? '#cc2222' : '#3a3028'); hole.setAttribute('stroke-width', isCurrent ? '2.5' : '1.5');
+    }
+    g.appendChild(hole);
+    // Bullet glint
+    if (isBullet && !isFired && firedCount >= 6) {
+      const glint = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      glint.setAttribute('cx', x - 3); glint.setAttribute('cy', y - 3);
+      glint.setAttribute('r', 3); glint.setAttribute('fill', 'rgba(255,230,120,.5)');
+      g.appendChild(glint);
+    }
+  }
+}
+
+// Chamber UI (below gun)
+function buildChambersUI() {
+  const div = document.getElementById('chambers-ui');
+  div.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const ch = document.createElement('div');
+    ch.className = 'ch' + (i === currentChamber ? ' current' : '');
+    div.appendChild(ch);
+  }
+}
+function updateChambersUI(fired, current) {
+  const chs = document.querySelectorAll('#chambers-ui .ch');
+  chs.forEach((ch, i) => {
+    ch.className = 'ch';
+    if (i < fired) ch.classList.add('fired');
+    if (i === current) ch.classList.add('current');
+  });
+}
+
+// Players UI
+function buildPlayersUI() {
+  const div = document.getElementById('players-ui');
+  div.innerHTML = '';
+  players.forEach((p, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'player-chip' + (!p.alive ? ' out' : '') + (i === currentPlayerIdx && p.alive ? ' active' : '');
+    chip.textContent = p.name;
+    chip.id = 'chip-' + i;
+    div.appendChild(chip);
+  });
+}
+function updatePlayersUI() {
+  players.forEach((p, i) => {
+    const chip = document.getElementById('chip-' + i);
+    if (!chip) return;
+    chip.className = 'player-chip' + (!p.alive ? ' out' : '') + (i === currentPlayerIdx && p.alive ? ' active' : '');
+  });
+}
+
+// Start game
+document.getElementById('start-btn').addEventListener('click', () => {
+  const inputs = document.querySelectorAll('#names input');
+  playerNames = [...inputs].map((inp, i) => inp.value.trim() || ('P' + (i + 1)));
+  startGame();
+});
+
+function startGame() {
+  players = playerNames.slice(0, numPlayers).map(n => ({ name: n, alive: true }));
+  bulletPos = Math.floor(Math.random() * 6);
+  currentChamber = 0;
+  firedCount = 0;
+  currentPlayerIdx = 0;
+  busy = false;
+  document.getElementById('result-msg').textContent = '';
+  document.getElementById('result-msg').className = 'result-msg';
+  document.getElementById('trigger-btn').disabled = false;
+  document.getElementById('over').classList.remove('show');
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('game').style.display = 'flex';
+  buildPlayersUI();
+  buildChambersUI();
+  drawChambers(bulletPos, new Set(), currentChamber);
+  document.getElementById('cur-name').textContent = players[currentPlayerIdx].name;
+  spinCylinder(true);
+}
+
+// Spin cylinder animation
+function spinCylinder(initial) {
+  const group = document.getElementById('cyl-group');
+  group.classList.remove('spinning');
+  void group.offsetWidth; // reflow
+  const extraSpins = initial ? (5 + Math.floor(Math.random() * 3)) : 0;
+  const targetAngle = (360 * extraSpins) + CHAMBER_ANGLES[currentChamber];
+  group.style.setProperty('--spin-end', targetAngle + 'deg');
+  if (initial) group.classList.add('spinning');
+}
+
+// Pull trigger
+document.getElementById('trigger-btn').addEventListener('click', pullTrigger);
+
+function pullTrigger() {
+  if (busy) return;
+  const p = players[currentPlayerIdx];
+  if (!p || !p.alive) return;
+  busy = true;
+  document.getElementById('trigger-btn').disabled = true;
+  document.getElementById('result-msg').textContent = '';
+  document.getElementById('result-msg').className = 'result-msg';
+
+  const isBang = (currentChamber === bulletPos);
+  firedCount++;
+  const firedSet = new Set();
+  // Mark all chambers up to and including current as "fired" in display
+  for (let i = 0; i < currentChamber; i++) firedSet.add(i);
+
+  // Spin briefly then show result
+  const group = document.getElementById('cyl-group');
+  group.classList.remove('spinning');
+  void group.offsetWidth;
+  // Quick spin to current chamber
+  const spins = Math.floor(Math.random() * 2) + 1;
+  const targetAngle = 360 * spins + CHAMBER_ANGLES[currentChamber];
+  group.style.setProperty('--spin-end', targetAngle + 'deg');
+  group.classList.add('spinning');
+
+  setTimeout(() => {
+    showResult(isBang, p.name, firedSet);
+  }, 950);
+}
+
+function showResult(isBang, name, firedSet) {
+  const flash = document.getElementById('flash');
+  const msg = document.getElementById('result-msg');
+  if (isBang) {
+    flash.className = 'bang';
+    msg.textContent = '💥 BANG！　' + name + ' が脱落！';
+    msg.className = 'result-msg bang';
+    players[currentPlayerIdx].alive = false;
+    // Show bullet now
+    drawChambers(bulletPos, firedSet, currentChamber);
+    setTimeout(() => {
+      firedSet.add(currentChamber);
+      const alive = players.filter(p => p.alive);
+      if (alive.length <= 1) {
+        endGame(alive[0]);
+      } else {
+        updatePlayersUI();
+        advancePlayer();
+        setTimeout(() => {
+          busy = false;
+          document.getElementById('trigger-btn').disabled = false;
+        }, 600);
+      }
+    }, 1200);
+  } else {
+    flash.className = 'safe';
+    msg.textContent = '🔘 カチッ！　' + name + ' はセーフ！';
+    msg.className = 'result-msg safe';
+    firedSet.add(currentChamber);
+    currentChamber++;
+    drawChambers(bulletPos, firedSet, currentChamber);
+    updateChambersUI(firedCount, currentChamber < 6 ? currentChamber : -1);
+    setTimeout(() => {
+      advancePlayer();
+      busy = false;
+      document.getElementById('trigger-btn').disabled = false;
+    }, 1000);
+  }
+  flash.addEventListener('animationend', () => { flash.className = ''; }, { once: true });
+}
+
+function advancePlayer() {
+  do {
+    currentPlayerIdx = (currentPlayerIdx + 1) % players.length;
+  } while (!players[currentPlayerIdx].alive);
+  document.getElementById('cur-name').textContent = players[currentPlayerIdx].name;
+  updatePlayersUI();
+}
+
+function endGame(winner) {
+  const title = document.getElementById('over-title');
+  const desc = document.getElementById('over-desc');
+  if (winner) {
+    title.textContent = '🏆 勝者！';
+    desc.textContent = winner.name + ' の勝利！\n最後まで生き残りました。';
+  } else {
+    title.textContent = '全員脱落';
+    desc.textContent = '引き分けです。';
+  }
+  setTimeout(() => {
+    document.getElementById('over').classList.add('show');
+  }, 800);
+  updatePlayersUI();
+}
+
+document.getElementById('restart-btn').addEventListener('click', () => {
+  playerNames = players.map(p => p.name);
+  startGame();
+});
+document.getElementById('back-btn').addEventListener('click', backToSetup);
+document.getElementById('again-btn').addEventListener('click', () => {
+  playerNames = players.map(p => p.name);
+  document.getElementById('over').classList.remove('show');
+  startGame();
+});
+document.getElementById('over-back').addEventListener('click', backToSetup);
+
+function backToSetup() {
+  document.getElementById('over').classList.remove('show');
+  document.getElementById('game').style.display = 'none';
+  document.getElementById('setup').style.display = 'flex';
+}
+</script>
+<script src="../shared/firebase-counter.js"></script></body></html>

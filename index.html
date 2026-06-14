@@ -711,6 +711,12 @@
           <div class="tagrow"><a class="tag" href="games/bomberman.html">プレイする →</a><a class="tag tag-online" href="games/bomberman.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-bomberman').classList.add('show')">📖 ルール</button></div>
         </div>
 
+        <div class="card">
+          <div class="icon">🔫</div>
+          <div class="name">ロシアンルーレット</div>
+          <div class="desc">6穴リボルバーに弾1発。順番に引き金を引け。最後まで生き残れ！2〜6人。</div>
+          <div class="tagrow"><a class="tag" href="games/russian-roulette.html">プレイする →</a><button class="tag tag-rule" onclick="document.getElementById('rule-russian').classList.add('show')">📖 ルール</button></div></div>
+
             </div>
       <p class="filter-empty" id="filter-empty">この人数で遊べるゲームはありません</p>
     </div>
@@ -2104,6 +2110,26 @@
     </div>
   </div>
 
+  <!-- ロシアンルーレット ルールモーダル -->
+  <div id="rule-russian" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-russian').classList.remove('show')">×</button>
+      <h2>🔫 ロシアンルーレット ルール</h2>
+      <h3>目的</h3>
+      <p>6穴リボルバーに弾を1発装填。順番に引き金を引き、最後まで生き残ったプレイヤーの勝利。</p>
+      <h3>進め方</h3>
+      <ul>
+        <li>ゲーム開始時にシリンダーがランダムに回転し、弾の位置が決まる</li>
+        <li>プレイヤーが順番に「引き金を引く」ボタンを押す</li>
+        <li>「カチッ」→ セーフ！次のプレイヤーへ</li>
+        <li>「BANG」→ そのプレイヤーは脱落</li>
+        <li>シリンダーは毎回1コマ進む（6発目は必ず当たる）</li>
+      </ul>
+      <h3>人数</h3>
+      <p>2〜6人。プレイヤー名は自由に入力できます。</p>
+    </div>
+  </div>
+
   <!-- 部屋を作成：ゲーム選択画面 -->
   <div id="create-modal" class="cm-overlay" hidden>
     <div class="cm-card">
@@ -2185,7 +2211,8 @@
         "スライドパズル": ["solo","duo"],
         "ウノ": ["duo", "multi", "card"],
         "スピード": ["duo", "card"],
-        "ボンバーマン": ["solo", "duo"]
+        "ボンバーマン": ["solo", "duo"],
+        "ロシアンルーレット": ["multi"]
       };
       var cards = [].slice.call(document.querySelectorAll(".col-games .grid .card"));
       cards.forEach(function (c) {
