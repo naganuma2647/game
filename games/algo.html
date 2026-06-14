@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>アルゴ</title>
+<style>
+:root{--bg:#0e0e18;--surf:#1a1a28;--gold:#c9a030;--gold2:#f0d060;--txt:#e8e8f0;--dim:#555;--red:#d94040;--grn:#3dba6a;--bcard:#2a2a3e;--wcard:#f0ede0;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:56px 10px 32px}
+.back{position:fixed;top:12px;left:12px;z-index:9999;background:rgba(0,0,0,.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.25)}
+
+/* SETUP */
+#setup{width:100%;max-width:360px;margin-top:12px;background:var(--surf);border-radius:16px;padding:22px 18px}
+#setup h1{font-size:22px;text-align:center;color:var(--gold);margin-bottom:2px}
+.subtitle{font-size:11px;color:var(--dim);text-align:center;margin-bottom:18px}
+.form-row{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.form-row label{font-size:11px;color:var(--gold2)}
+.form-row select{background:#141420;border:1px solid #333;color:var(--txt);padding:7px 10px;border-radius:8px;font-size:13px;font-family:inherit}
+.start-btn{width:100%;padding:11px;background:var(--gold);color:#111;border:none;border-radius:10px;font:700 15px 'Segoe UI',sans-serif;cursor:pointer}
+.start-btn:hover{background:var(--gold2)}
+.rules-box{margin-top:14px;padding:11px;background:rgba(255,255,255,.04);border-radius:8px;font-size:11px;color:var(--dim);line-height:1.7}
+.rules-box b{color:var(--txt)}
+
+/* GAME */
+#game{display:none;width:100%;max-width:520px;flex-direction:column;align-items:center;gap:10px}
+
+/* Opponents area */
+.opponents{width:100%;display:flex;flex-direction:column;gap:8px}
+.opp-row{background:var(--surf);border-radius:10px;padding:8px 10px}
+.opp-name{font-size:11px;font-weight:700;margin-bottom:6px}
+.opp-cards{display:flex;gap:5px;flex-wrap:wrap}
+
+/* Card elements */
+.card-el{
+  width:40px;height:58px;border-radius:6px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-weight:900;font-size:16px;cursor:default;
+  border:2px solid transparent;transition:all .12s;
+  position:relative;user-select:none;flex-shrink:0;
+}
+.card-el.black-card{background:#1e1e2e;color:#e0e0ff;border-color:#3a3a5a}
+.card-el.white-card{background:#e8e4d0;color:#1a1a2a;border-color:#c8c4a8}
+.card-el.hidden-black{background:#1e1e2e;border-color:#3a3a5a}
+.card-el.hidden-white{background:#e8e4d0;border-color:#c8c4a8}
+.card-el .cval{font-size:17px;font-weight:900;line-height:1}
+.card-el .ccolor{font-size:8px;opacity:.6;margin-top:1px}
+.card-el.target{border-color:var(--gold2)!important;box-shadow:0 0 0 3px rgba(240,208,96,.35);cursor:pointer}
+.card-el.target:hover{transform:translateY(-3px)}
+.card-el.selectable{border-color:rgba(240,208,96,.5)!important;cursor:pointer}
+.card-el.selectable:hover{border-color:var(--gold2)!important;transform:translateY(-3px)}
+.card-el.eliminated{opacity:.3}
+.card-qmark{font-size:18px;opacity:.35}
+@keyframes flipReveal{0%{transform:rotateY(90deg);opacity:.4}100%{transform:rotateY(0);opacity:1}}
+.card-el.just-revealed{animation:flipReveal .3s ease-out}
+
+/* Drawn card */
+.drawn-area{display:flex;align-items:center;gap:10px;background:var(--surf);border-radius:10px;padding:10px 14px;width:100%}
+.drawn-label{font-size:11px;color:var(--dim);flex-shrink:0}
+#drawn-card-slot{display:flex;gap:8px;align-items:center}
+
+/* Status */
+#status{font-size:13px;min-height:20px;text-align:center;font-weight:600;color:var(--gold2)}
+
+/* Action buttons */
+.action-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.act-btn{padding:9px 20px;border-radius:8px;font:700 13px 'Segoe UI',sans-serif;cursor:pointer;border:none}
+.act-btn.primary{background:var(--gold);color:#111}
+.act-btn.primary:hover{background:var(--gold2)}
+.act-btn.secondary{background:#2a2a3e;color:var(--txt)}
+.act-btn.secondary:hover{background:#34344e}
+.act-btn:disabled{opacity:.35;cursor:default}
+
+/* Number picker */
+.num-picker{display:none;width:100%;background:var(--surf);border-radius:10px;padding:10px}
+.num-label{font-size:11px;color:var(--dim);margin-bottom:7px;text-align:center}
+.num-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.num-btn{padding:8px 4px;border-radius:6px;border:2px solid #2e2e44;background:#1e1e30;color:var(--txt);font:700 14px 'Segoe UI',sans-serif;cursor:pointer;transition:all .1s}
+.num-btn:hover{border-color:var(--gold);background:#252535}
+.num-btn.selected{border-color:var(--gold2);background:#302808;color:var(--gold2)}
+.num-btn.impossible{opacity:.2}
+
+/* My cards */
+.my-area{width:100%}
+.my-label{font-size:11px;color:var(--dim);margin-bottom:7px;text-align:center}
+.my-cards{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
+
+/* Log */
+.log-area{width:100%;background:var(--surf);border-radius:10px;padding:8px 12px;max-height:90px;overflow-y:auto}
+.log-line{font-size:11px;color:var(--dim);line-height:1.6}
+.log-line.hit{color:var(--grn)}
+.log-line.miss{color:var(--red)}
+
+/* Gameover */
+#gameover{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.83);align-items:center;justify-content:center;padding:16px}
+.go-card{background:var(--surf);border-radius:16px;padding:22px 18px;max-width:360px;width:100%;text-align:center}
+.go-card h2{font-size:20px;color:var(--gold);margin-bottom:14px}
+.go-rows{display:flex;flex-direction:column;gap:7px;margin-bottom:18px}
+.go-row{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.04)}
+.go-row.top{background:rgba(201,160,48,.12);border:1px solid var(--gold)}
+.go-btns{display:flex;gap:8px;justify-content:center}
+.go-btns button{padding:9px 20px;border-radius:8px;font:700 13px 'Segoe UI',sans-serif;cursor:pointer;border:none}
+.go-btns .again{background:var(--gold);color:#111}
+.go-btns .home{background:#2a2a38;color:var(--txt)}
+</style>
+</head>
+<body>
+<a href="../index.html" class="back">← 一覧に戻る</a>
+
+<!-- SETUP -->
+<section id="setup">
+  <h1>🎴 アルゴ</h1>
+  <p class="subtitle">数字当て推理カードゲーム 2〜4人</p>
+  <div class="form-row">
+    <label>人数（CPU含む）</label>
+    <select id="sel-players">
+      <option value="2">2人（CPU 1体）</option>
+      <option value="3" selected>3人（CPU 2体）</option>
+      <option value="4">4人（CPU 3体）</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label>CPUの強さ</label>
+    <select id="sel-diff">
+      <option value="easy">弱い</option>
+      <option value="normal" selected>ふつう</option>
+      <option value="hard">強い</option>
+    </select>
+  </div>
+  <button class="start-btn" id="start-btn">ゲームスタート</button>
+  <div class="rules-box">
+    <b>ルール：</b>黒0〜11・白0〜11の計24枚。各プレイヤーに4枚配り、昇順に伏せて並べる（自分のカードは見える）。<br>
+    自分の番: 山から1枚引いて見る → 相手の伏せカードを指定して数字を宣言。<b>正解→</b>そのカードが表になり、もう1回攻撃可（続けるかやめるか選択）。<b>不正解→</b>引いたカードが表向きで自分の手元に追加。全カードが表になったら脱落。最後まで残った人の勝ち。<br>
+    <b>同値の並び順：</b>黒が白より左（例: 黒5 → 白5 の順）
+  </div>
+</section>
+
+<!-- GAME -->
+<div id="game">
+  <div class="opponents" id="opponents"></div>
+
+  <div class="drawn-area" id="drawn-area" style="display:none">
+    <span class="drawn-label">引いたカード</span>
+    <div id="drawn-card-slot"></div>
+    <span id="drawn-hint" style="font-size:11px;color:var(--dim)"></span>
+  </div>
+
+  <div id="status">準備中…</div>
+  <div class="action-row" id="action-row"></div>
+
+  <div class="num-picker" id="num-picker">
+    <div class="num-label">数字を選んでください（0〜11）</div>
+    <div class="num-grid" id="num-grid"></div>
+  </div>
+
+  <div class="my-area">
+    <div class="my-label">あなたのカード</div>
+    <div class="my-cards" id="my-cards"></div>
+  </div>
+
+  <div class="log-area" id="log-area"></div>
+</div>
+
+<!-- GAMEOVER -->
+<div id="gameover">
+  <div class="go-card">
+    <h2>ゲーム終了</h2>
+    <div class="go-rows" id="go-rows"></div>
+    <div class="go-btns">
+      <button class="again" id="again-btn">もう一度</button>
+      <button class="home" onclick="location.href='../index.html'">一覧へ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PCOLS=['#c9a030','#e0473a','#3e87d6','#4ec05e'];
+function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=0|Math.random()*(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+function cardSort(a,b){return a.value!==b.value?a.value-b.value:a.color==='B'?-1:1;}
+function insertSorted(arr,c){const n=[...arr,{...c}];n.sort(cardSort);return n;}
+
+let G={};
+
+function initGame(numP,diff){
+  const deck=shuffle([...Array(12).keys()].flatMap(v=>[{value:v,color:'B'},{value:v,color:'W'}]));
+  const players=[];
+  for(let i=0;i<numP;i++){
+    const cards=deck.splice(0,4).sort(cardSort).map(c=>({...c,revealed:false}));
+    players.push({name:i===0?'あなた':`CPU ${i}`,cards,eliminated:false,isHuman:i===0});
+  }
+  G={players,deck,numP,diff,cur:0,drawn:null,phase:'draw',target:null,selectedNum:null,log:[]};
+  document.getElementById('setup').style.display='none';
+  document.getElementById('game').style.display='flex';
+  buildNumGrid();
+  renderAll();
+  if(!G.players[0].isHuman)cpuTurn(); // shouldn't happen but just in case
+}
+
+// ============ KNOWLEDGE / AI ============
+function knownSet(viewerIdx){
+  const s={};
+  for(const p of G.players){
+    for(const c of p.cards){
+      if(c.revealed) s[c.color+c.value]=1;
+    }
+  }
+  // viewer knows own unrevealed cards
+  if(viewerIdx>=0){
+    for(const c of G.players[viewerIdx].cards) s[c.color+c.value]=1;
+  }
+  if(G.drawn&&viewerIdx===G.cur) s[G.drawn.color+G.drawn.value]=1;
+  return s;
+}
+
+function leftReveal(cards,pos){for(let i=pos-1;i>=0;i--)if(cards[i].revealed)return cards[i];return null;}
+function rightReveal(cards,pos){for(let i=pos+1;i<cards.length;i++)if(cards[i].revealed)return cards[i];return null;}
+
+function possibleValues(cards,pos,known){
+  const col=cards[pos].color;
+  const L=leftReveal(cards,pos),R=rightReveal(cards,pos);
+  const poss=[];
+  for(let v=0;v<=11;v++){
+    if(L&&cardSort({value:v,color:col},L)<=0)continue;
+    if(R&&cardSort({value:v,color:col},R)>=0)continue;
+    if(!known[col+v])poss.push(v);
+  }
+  return poss;
+}
+
+function cpuPickTarget(cpuIdx){
+  const known=knownSet(cpuIdx);
+  let best=null,bestLen=Infinity;
+  for(let pi=0;pi<G.numP;pi++){
+    if(pi===cpuIdx||G.players[pi].eliminated)continue;
+    const cards=G.players[pi].cards;
+    for(let i=0;i<cards.length;i++){
+      if(cards[i].revealed)continue;
+      const poss=possibleValues(cards,i,known);
+      if(poss.length===0)continue;
+      if(poss.length<bestLen){
+        bestLen=poss.length;
+        const guess=G.diff==='easy'?(0|Math.random()*12):G.diff==='normal'?poss[0|Math.random()*poss.length]:poss[0|poss.length/2];
+        best={player:pi,pos:i,guess};
+      }
+    }
+  }
+  if(!best){
+    for(let pi=0;pi<G.numP;pi++){
+      if(pi===cpuIdx||G.players[pi].eliminated)continue;
+      for(let i=0;i<G.players[pi].cards.length;i++){
+        if(!G.players[pi].cards[i].revealed)return{player:pi,pos:i,guess:0|Math.random()*12};
+      }
+    }
+  }
+  return best;
+}
+
+// ============ TURN FLOW ============
+function nextAlive(from){
+  let n=(from+1)%G.numP;
+  let tries=0;
+  while(G.players[n].eliminated&&tries<G.numP){n=(n+1)%G.numP;tries++;}
+  return n;
+}
+
+function activePlayers(){return G.players.filter(p=>!p.eliminated).length;}
+
+function drawCard(){
+  if(G.deck.length===0){endGame();return;}
+  G.drawn=G.deck.pop();
+  G.phase='attack';
+  G.target=null;G.selectedNum=null;
+  renderAll();
+  setStatus(`引いたカード: ${G.drawn.color==='B'?'黒':'白'} ${G.drawn.value} — 相手のカードを選んで数字を当ててください`);
+}
+
+function declareGuess(){
+  if(!G.target||G.selectedNum===null)return;
+  const targetCard=G.players[G.target.player].cards[G.target.pos];
+  const correct=(targetCard.value===G.selectedNum&&targetCard.color===G.target.col);
+
+  if(correct){
+    targetCard.revealed=true;
+    targetCard.justRevealed=true;
+    addLog(`✅ ${G.players[G.cur].name}: ${G.players[G.target.player].name}の${G.target.col==='B'?'黒':'白'}${G.selectedNum} — 正解！`, 'hit');
+    setTimeout(()=>{targetCard.justRevealed=false;},500);
+    checkElimination(G.target.player);
+    if(activePlayers()<=1){endGame();return;}
+    G.phase='continue';
+    G.target=null;G.selectedNum=null;
+    renderAll();
+    if(G.players[G.cur].isHuman){
+      setStatus('正解！続けて攻撃しますか？');
+      showActions([
+        {label:'続けて攻撃',fn:()=>{G.phase='attack';G.target=null;G.selectedNum=null;renderAll();setStatus('相手のカードを選んでください');}},
+        {label:'やめる（カードを伏せて追加）',fn:()=>endTurn(true)}
+      ]);
+    } else {
+      setTimeout(()=>{
+        // CPU decides to continue if there are easy targets
+        const known=knownSet(G.cur);
+        let hasCertain=false;
+        for(let pi=0;pi<G.numP;pi++){
+          if(pi===G.cur||G.players[pi].eliminated)continue;
+          for(let i=0;i<G.players[pi].cards.length;i++){
+            if(G.players[pi].cards[i].revealed)continue;
+            if(possibleValues(G.players[pi].cards,i,known).length===1){hasCertain=true;break;}
+          }
+          if(hasCertain)break;
+        }
+        if(hasCertain||G.diff==='hard'){G.phase='attack';G.target=null;G.selectedNum=null;setTimeout(cpuAttack,700);}
+        else endTurn(true);
+      },600);
+    }
+  } else {
+    // Wrong
+    addLog(`❌ ${G.players[G.cur].name}: ${G.players[G.target.player].name}の位置${G.target.pos+1}を${G.selectedNum}と予想 — 外れ（実際は${targetCard.value}）`,'miss');
+    // Add drawn card face-up
+    G.drawn.revealed=true;
+    G.players[G.cur].cards=insertSorted(G.players[G.cur].cards,G.drawn);
+    G.drawn=null;
+    checkElimination(G.cur);
+    if(activePlayers()<=1){endGame();return;}
+    endTurn(false);
+  }
+}
+
+function endTurn(hideDrawn){
+  if(hideDrawn&&G.drawn){
+    // Add drawn card face-down (hidden)
+    G.players[G.cur].cards=insertSorted(G.players[G.cur].cards,G.drawn);
+    G.drawn=null;
+  }
+  G.phase='next';
+  G.cur=nextAlive(G.cur);
+  G.drawn=null;G.target=null;G.selectedNum=null;
+  renderAll();
+  if(G.players[G.cur].isHuman){
+    G.phase='draw';
+    setStatus('あなたの番です。山からカードを引いてください。');
+    showActions([{label:'カードを引く',fn:drawCard}]);
+  } else {
+    G.phase='cpu';
+    setStatus(`${G.players[G.cur].name} の番…`);
+    showActions([]);
+    setTimeout(cpuTurn,800);
+  }
+}
+
+function cpuTurn(){
+  if(G.deck.length===0){endGame();return;}
+  G.drawn=G.deck.pop();
+  setStatus(`${G.players[G.cur].name} がカードを引きました…`);
+  renderOpponents();
+  setTimeout(cpuAttack,700);
+}
+
+function cpuAttack(){
+  const t=cpuPickTarget(G.cur);
+  if(!t){endTurn(true);return;}
+  G.target={player:t.player,pos:t.pos,col:G.players[t.player].cards[t.pos].color};
+  G.selectedNum=t.guess;
+  setStatus(`${G.players[G.cur].name}: ${G.players[t.player].name}の位置${t.pos+1}を${t.guess}と宣言…`);
+  renderOpponents(); // highlight target
+  setTimeout(()=>{declareGuess();},900);
+}
+
+function checkElimination(pi){
+  const p=G.players[pi];
+  if(p.eliminated)return;
+  if(p.cards.every(c=>c.revealed)){p.eliminated=true;addLog(`💀 ${p.name} 全カード公開 — 脱落`,'miss');}
+}
+
+function endGame(){
+  G.phase='gameover';
+  const rows=document.getElementById('go-rows');rows.innerHTML='';
+  const ranked=[...G.players].sort((a,b)=>{
+    if(a.eliminated&&!b.eliminated)return 1;
+    if(!a.eliminated&&b.eliminated)return-1;
+    const aHid=a.cards.filter(c=>!c.revealed).length;
+    const bHid=b.cards.filter(c=>!c.revealed).length;
+    return bHid-aHid;
+  });
+  ranked.forEach((p,rank)=>{
+    const d=document.createElement('div');
+    const oi=G.players.indexOf(p);
+    const hid=p.cards.filter(c=>!c.revealed).length;
+    d.className='go-row'+(rank===0?' top':'');
+    d.innerHTML=`<span><span style="margin-right:6px">${rank===0?'🏆':rank+1+'位'}</span><span style="color:${PCOLS[oi]};font-weight:700">${p.name}</span></span><span style="color:var(--dim);font-size:13px">伏せ${hid}枚${p.eliminated?' (脱落)':''}</span>`;
+    rows.appendChild(d);
+  });
+  document.getElementById('gameover').style.display='flex';
+}
+
+// ============ RENDER ============
+function renderAll(){
+  renderOpponents();
+  renderDrawn();
+  renderMyCards();
+  renderNumPicker();
+  updateActionFromPhase();
+}
+
+function cardHTML(c,selectable,isTarget){
+  const isBlack=c.color==='B';
+  let cls=c.revealed?(isBlack?'black-card':'white-card'):(isBlack?'hidden-black':'hidden-white');
+  if(selectable)cls+=' selectable';
+  if(isTarget)cls+=' target';
+  if(c.justRevealed)cls+=' just-revealed';
+  const val=c.revealed?`<div class="cval">${c.value}</div><div class="ccolor">${isBlack?'黒':'白'}</div>`:`<div class="card-qmark">?</div>`;
+  return `<div class="card-el ${cls}">${val}</div>`;
+}
+
+function renderOpponents(){
+  const area=document.getElementById('opponents');area.innerHTML='';
+  for(let pi=0;pi<G.numP;pi++){
+    if(pi===0)continue;
+    const p=G.players[pi];
+    const div=document.createElement('div');div.className='opp-row';
+    const isCur=pi===G.cur;
+    div.innerHTML=`<div class="opp-name" style="color:${PCOLS[pi]}">${p.name}${isCur?' ◀ ターン':''} ${p.eliminated?'（脱落）':''}</div>`;
+    const cards=document.createElement('div');cards.className='opp-cards';
+    p.cards.forEach((c,i)=>{
+      const isSelectable=G.phase==='attack'&&G.players[G.cur].isHuman&&!p.eliminated&&!c.revealed;
+      const isTarget=G.target&&G.target.player===pi&&G.target.pos===i;
+      const el=document.createElement('div');
+      const isBlack=c.color==='B';
+      let cls=c.revealed?(isBlack?'black-card':'white-card'):(isBlack?'hidden-black':'hidden-white');
+      if(isSelectable)cls+=' selectable';
+      if(isTarget)cls+=' target';
+      if(c.justRevealed)cls+=' just-revealed';
+      if(p.eliminated)cls+=' eliminated';
+      el.className='card-el '+cls;
+      if(c.revealed){el.innerHTML=`<div class="cval">${c.value}</div><div class="ccolor">${isBlack?'黒':'白'}</div>`;}
+      else{el.innerHTML='<div class="card-qmark">?</div>';}
+      if(isSelectable){
+        el.addEventListener('click',()=>{
+          G.target={player:pi,pos:i,col:c.color};
+          G.selectedNum=null;
+          renderOpponents();
+          document.getElementById('num-picker').style.display='';
+          renderNumPicker();
+          setStatus(`${p.name}の位置${i+1}（${isBlack?'黒':'白'}）— 数字を選んでください`);
+        });
+      }
+      cards.appendChild(el);
+    });
+    div.appendChild(cards);
+    area.appendChild(div);
+  }
+}
+
+function renderDrawn(){
+  const area=document.getElementById('drawn-area');
+  const slot=document.getElementById('drawn-card-slot');
+  const hint=document.getElementById('drawn-hint');
+  if(!G.drawn||!G.players[G.cur].isHuman){area.style.display='none';return;}
+  area.style.display='flex';
+  const isBlack=G.drawn.color==='B';
+  const el=document.createElement('div');
+  el.className='card-el '+(isBlack?'black-card':'white-card');
+  el.innerHTML=`<div class="cval">${G.drawn.value}</div><div class="ccolor">${isBlack?'黒':'白'}</div>`;
+  slot.innerHTML='';slot.appendChild(el);
+  hint.textContent=G.phase==='attack'?'相手のカードを選んでください':'';
+}
+
+function renderMyCards(){
+  const area=document.getElementById('my-cards');area.innerHTML='';
+  const p=G.players[0];
+  p.cards.forEach(c=>{
+    const isBlack=c.color==='B';
+    const el=document.createElement('div');
+    el.className='card-el '+(isBlack?'black-card':'white-card')+(c.revealed?' ':'')+(p.eliminated?' eliminated':'');
+    el.innerHTML=`<div class="cval">${c.value}</div><div class="ccolor">${isBlack?'黒':'白'}</div>`;
+    if(c.revealed)el.style.opacity='.5';
+    area.appendChild(el);
+  });
+}
+
+function buildNumGrid(){
+  const grid=document.getElementById('num-grid');grid.innerHTML='';
+  for(let v=0;v<=11;v++){
+    const btn=document.createElement('button');btn.className='num-btn';btn.textContent=v;btn.dataset.v=v;
+    btn.addEventListener('click',()=>{
+      G.selectedNum=v;
+      document.querySelectorAll('.num-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      renderActions([{label:`${v} と宣言`,fn:declareGuess,cls:'primary'}]);
+    });
+    grid.appendChild(btn);
+  }
+}
+
+function renderNumPicker(){
+  const picker=document.getElementById('num-picker');
+  const shouldShow=G.phase==='attack'&&G.target!==null&&G.players[G.cur].isHuman;
+  picker.style.display=shouldShow?'block':'none';
+  if(!shouldShow)return;
+  // Mark impossible values
+  if(G.target){
+    const known=knownSet(0);
+    const cards=G.players[G.target.player].cards;
+    const poss=new Set(possibleValues(cards,G.target.pos,known));
+    document.querySelectorAll('.num-btn').forEach(btn=>{
+      const v=+btn.dataset.v;
+      btn.classList.toggle('impossible',!poss.has(v));
+      btn.classList.toggle('selected',v===G.selectedNum);
+    });
+  }
+}
+
+function setStatus(msg){document.getElementById('status').textContent=msg;}
+
+function showActions(actions){
+  renderActions(actions);
+}
+
+function renderActions(actions){
+  const row=document.getElementById('action-row');row.innerHTML='';
+  for(const a of actions){
+    const btn=document.createElement('button');
+    btn.className='act-btn '+(a.cls||'primary');btn.textContent=a.label;
+    btn.addEventListener('click',a.fn);
+    row.appendChild(btn);
+  }
+}
+
+function updateActionFromPhase(){
+  const isHuman=G.players[G.cur]&&G.players[G.cur].isHuman;
+  if(G.phase==='draw'&&isHuman){
+    setStatus('あなたの番です。山からカードを引いてください。');
+    showActions([{label:'カードを引く（残り'+G.deck.length+'枚）',fn:drawCard}]);
+    document.getElementById('drawn-area').style.display='none';
+    document.getElementById('num-picker').style.display='none';
+  }
+}
+
+function addLog(msg,cls){
+  G.log.unshift({msg,cls});if(G.log.length>30)G.log.pop();
+  const area=document.getElementById('log-area');area.innerHTML='';
+  G.log.forEach(l=>{const d=document.createElement('div');d.className='log-line '+(l.cls||'');d.textContent=l.msg;area.appendChild(d);});
+}
+
+// ============ EVENTS ============
+document.getElementById('start-btn').addEventListener('click',()=>{
+  initGame(+document.getElementById('sel-players').value,document.getElementById('sel-diff').value);
+});
+document.getElementById('again-btn').addEventListener('click',()=>{
+  document.getElementById('gameover').style.display='none';
+  document.getElementById('game').style.display='none';
+  document.getElementById('setup').style.display='';
+});
+</script>
+<script src="../shared/firebase-counter.js"></script>
+</body>
+</html>
