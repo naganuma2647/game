@@ -720,6 +720,131 @@
     </div>
   </div>
 
+  <!-- カタン ルールモーダル -->
+  <div id="rule-catan" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-catan').classList.remove('show')">×</button>
+      <h2>🏝️ カタン ルール</h2>
+      <h3>目的</h3>
+      <p>島を開拓して先に10勝利点を獲得したプレイヤーが勝ち。</p>
+      <h3>資源</h3>
+      <ul>
+        <li>木材・レンガ・羊毛・穀物・鉄鉱石の5種類。</li>
+        <li>手番開始時にサイコロを振り、出た目の地形タイルに隣接する開拓地・都市を持つ全員が資源を獲得。</li>
+        <li>7が出ると盗賊を移動させ、そのタイルからの資源産出を止め、隣接プレイヤーから1枚奪う。手札7枚超えは半分捨てる。</li>
+      </ul>
+      <h3>建設コスト</h3>
+      <ul>
+        <li><b>道路</b>：木材＋レンガ（勝利点なし）</li>
+        <li><b>開拓地</b>：木材＋レンガ＋羊毛＋穀物（1点）※道路の先にのみ建設可</li>
+        <li><b>都市</b>（開拓地→昇格）：穀物×2＋鉄鉱石×3（2点、資源2個産出）</li>
+        <li><b>発展カード</b>：羊毛＋穀物＋鉄鉱石（騎士・道路建設・年の豊作・独占・得点）</li>
+      </ul>
+      <h3>特別点数</h3>
+      <ul>
+        <li><b>最長交易路</b>（5本以上の連続道路）：2点</li>
+        <li><b>最大騎士力</b>（騎士カード3枚以上使用）：2点</li>
+      </ul>
+      <h3>交易</h3>
+      <ul>
+        <li>4対1：同じ資源4枚を任意1枚と交換（港なし）。</li>
+        <li>3対1港・2対1港を使うと有利な交換レートで交易できる。</li>
+        <li>他プレイヤーとの交渉交易も自由に行える。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 麻雀 ルールモーダル -->
+  <div id="rule-mahjong" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-mahjong').classList.remove('show')">×</button>
+      <h2>🀄 麻雀 ルール</h2>
+      <h3>目的</h3>
+      <p>4組の面子（3枚の組み合わせ）＋1組の雀頭（対子）の計14枚で「和了」を目指す。</p>
+      <h3>基本の流れ</h3>
+      <ul>
+        <li>4人で行い、各プレイヤーは13枚の牌を持ってスタート。</li>
+        <li>自分の番に山牌から1枚ツモり、不要な牌を1枚捨てる。</li>
+        <li>ツモ和了：自摸った牌で完成→ツモ上がり。</li>
+        <li>ロン和了：他のプレイヤーの捨て牌で完成→ロン上がり（捨てた人が点数を払う）。</li>
+      </ul>
+      <h3>面子の種類</h3>
+      <ul>
+        <li><b>順子</b>：同じ種類の連番3枚（例：2・3・4萬）</li>
+        <li><b>刻子</b>：同じ牌3枚（例：中・中・中）</li>
+        <li><b>槓子</b>：同じ牌4枚（カン）</li>
+      </ul>
+      <h3>鳴き（チー・ポン・カン）</h3>
+      <ul>
+        <li>他家の捨て牌を使って面子を完成させられる（鳴くと一部の役が制限される）。</li>
+        <li>チー：左隣の捨て牌で順子完成（上家のみ）。</li>
+        <li>ポン：誰の捨て牌でも刻子完成。</li>
+      </ul>
+      <h3>役（抜粋）</h3>
+      <ul>
+        <li>立直・断么九・平和・役牌・一盃口・混全帯么九など。</li>
+        <li><b>役なしでは和了できない</b>（門前のみ和了可能な役あり）。</li>
+      </ul>
+      <h3>点数</h3>
+      <p>役と符で基本点を計算。親は1.5倍。満貫（8000点）・跳満・倍満・三倍満・役満と上限あり。</p>
+    </div>
+  </div>
+
+  <!-- オセロ ルールモーダル -->
+  <div id="rule-othello" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-othello').classList.remove('show')">×</button>
+      <h2>⚫ オセロ ルール</h2>
+      <h3>目的</h3>
+      <p>8×8のボードに石を置き、ゲーム終了時に自分の色の石が多い方が勝ち。</p>
+      <h3>初期配置</h3>
+      <p>中央4マスに黒白2個ずつ斜めに配置（黒先手）。</p>
+      <h3>石の置き方</h3>
+      <ul>
+        <li>相手の石を自分の石で縦・横・斜めのいずれかの方向に「挟む」場所にのみ置ける。</li>
+        <li>挟んだ相手の石はすべて自分の色に返る（複数方向同時も可）。</li>
+        <li>置ける場所がない場合はパス。</li>
+      </ul>
+      <h3>終了条件</h3>
+      <ul>
+        <li>両者が連続してパスになる、またはボードが全て埋まったら終了。</li>
+        <li>石が多い方の勝ち。同数は引き分け。</li>
+      </ul>
+      <h3>コツ</h3>
+      <ul>
+        <li>角（コーナー）を取ると返されない強力な拠点になる。</li>
+        <li>終盤より序盤・中盤の「少なく取る」戦略が有効なことが多い。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- テトリス ルールモーダル -->
+  <div id="rule-tetris" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-tetris').classList.remove('show')">×</button>
+      <h2>🟪 テトリス ルール</h2>
+      <h3>基本</h3>
+      <ul>
+        <li>上から落ちてくる7種類のテトロミノ（4マスのブロック）を左右移動・回転させて積む。</li>
+        <li>横一列が隙間なく埋まると消えてスコアが入る。</li>
+        <li>一度に消す列数が多いほど高得点（4列同時＝テトリス）。</li>
+        <li>ブロックが天井まで積み上がるとゲームオーバー。</li>
+      </ul>
+      <h3>操作</h3>
+      <ul>
+        <li>←→：左右移動　↑：回転　↓：ソフトドロップ（加速）</li>
+        <li>スペース / ↓長押し：ハードドロップ（即着地）</li>
+        <li>HOLD（C / Shift）：現在のピースを保持、後で使える</li>
+      </ul>
+      <h3>対戦モード</h3>
+      <ul>
+        <li>画面2分割で同時プレイ。</li>
+        <li>列を消すと「おじゃまブロック」が相手の画面下から追加される（2列消し以上）。</li>
+        <li>相手がゲームオーバーになった方が勝ち。</li>
+      </ul>
+    </div>
+  </div>
+
   <!-- 部屋を作成：ゲーム選択画面 -->
   <div id="create-modal" class="cm-overlay" hidden>
     <div class="cm-card">
