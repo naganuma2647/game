@@ -36,6 +36,8 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
 .opp-chips{font-size:13px;font-weight:700;color:var(--gold)}
 .opp-bet{font-size:11px;color:var(--blue);min-height:14px}
 .opp-cards{display:flex;gap:3px;justify-content:center;margin-top:6px;min-height:56px;align-items:center}
+.chip-segs{display:flex;gap:2px;justify-content:center;margin:3px 0 1px}
+.chip-seg{width:12px;height:6px;border-radius:2px}
 
 /* Community */
 .community-area{background:var(--surf);border-radius:14px;padding:14px;text-align:center}
@@ -260,7 +262,7 @@ function startGame(){
   const startChips=+document.getElementById('sel-c').value;
   const bb=Math.max(10,startChips/50|0)*2;
   G={
-    numP,diff,
+    numP,diff,startChips,
     chips:Array(numP).fill(startChips),
     names:['あなた',...Array.from({length:numP-1},(_,i)=>`CPU${i+1}`)],
     dealer:0,
@@ -653,8 +655,14 @@ function renderOpp(showAll=false){
       ?G.hole[pi].map(c=>cardHTML(c,true)).join('')
       :G.hole[pi].map(()=>cardHTML('back',true)).join('');
     const handName=(showAll||G.phase==='showdown')&&!G.folded[pi]&&G.hole[pi].length?`<div style="font-size:10px;color:var(--gold2);margin-top:2px">${bestHand(G.hole[pi],G.community).name}</div>`:'';
+    const ref=G.startChips||1000;
+    const ratio=Math.min(G.chips[pi]/ref,1);
+    const segs=Math.round(ratio*5);
+    const segCol=ratio>0.5?'#4ec05e':ratio>0.2?'#c9a030':'#e05050';
+    const segsHTML='<div class="chip-segs">'+Array.from({length:5},(_,s)=>`<div class="chip-seg" style="background:${s<segs?segCol:'rgba(255,255,255,.1)'}"></div>`).join('')+'</div>';
     el.innerHTML=`<div class="opp-name">${G.names[pi]}${G.chips[pi]===0?' (オールイン)':''}</div>
       <div class="opp-chips">💰${G.chips[pi]}</div>
+      ${segsHTML}
       <div class="opp-bet">${G.bets[pi]>0?'BET:'+G.bets[pi]:''}</div>
       <div class="opp-cards">${cards}</div>${handName}`;
     row.appendChild(el);
