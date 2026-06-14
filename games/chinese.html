@@ -112,8 +112,17 @@ function updateTurn(){
 function isCpuSeat(){return ONLINE&&window.OnlineRoom&&OnlineRoom.isCpu(turn);}
 function isHuman(){if(ONLINE){if(isCpuSeat())return false;return turn===MYSEAT;}return mode==='pvp'||turn===0;}
 function shouldRunCpu(){if(over)return false;if(ONLINE)return isCpuSeat()&&OnlineRoom.isHost();return !isHuman();}
+function rotXY(c){
+  if(!ONLINE||MYSEAT===0)return{x:c.x,y:c.y};
+  const CY=4*Math.sqrt(3);
+  const rad=MYSEAT*(-120)*Math.PI/180;
+  const co=Math.cos(rad),si=Math.sin(rad);
+  const dx=c.x,dy=c.y-CY;
+  return{x:dx*co-dy*si,y:dx*si+dy*co+CY};
+}
 function render(){
-  const xs=cells.map(c=>c.x),ys=cells.map(c=>c.y);
+  const rxys=cells.map(c=>rotXY(c));
+  const xs=rxys.map(r=>r.x),ys=rxys.map(r=>r.y);
   const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
   const PAD=1.2,SC=22;
   const W=(maxX-minX+PAD*2)*SC,H=(maxY-minY+PAD*2)*SC;
@@ -128,18 +137,19 @@ function render(){
   // ゴール三角の薄い色付け
   const su=SETUPS[np];
   const goalTint={};su.goal.forEach((z,p)=>goalTint[z]=COLORS[p].tint);
-  for(const c of cells){
+  for(let i=0;i<cells.length;i++){const c=cells[i],rxy=rxys[i];
     const hole=document.createElementNS(NS,'circle');
-    hole.setAttribute('cx',px(c.x));hole.setAttribute('cy',py(c.y));hole.setAttribute('r',SC*0.36);
+    hole.setAttribute('cx',px(rxy.x));hole.setAttribute('cy',py(rxy.y));hole.setAttribute('r',SC*0.36);
     hole.setAttribute('class','hole');
     hole.setAttribute('fill',goalTint[c.zone]||'#2a2419');
     hole.addEventListener('click',()=>onCell(c.id));svg.appendChild(hole);
   }
-  for(const d of dests){const c=cellById(d);const m=document.createElementNS(NS,'circle');
-    m.setAttribute('cx',px(c.x));m.setAttribute('cy',py(c.y));m.setAttribute('r',SC*0.2);m.setAttribute('class','dest');
+  for(const d of dests){const c=cellById(d);const rxy=rotXY(c);const m=document.createElementNS(NS,'circle');
+    m.setAttribute('cx',px(rxy.x));m.setAttribute('cy',py(rxy.y));m.setAttribute('r',SC*0.2);m.setAttribute('class','dest');
     m.addEventListener('click',()=>onCell(c.id));svg.appendChild(m);}
-  for(const c of cells){if(occ[c.id]<0)continue;const p=document.createElementNS(NS,'circle');
-    p.setAttribute('cx',px(c.x));p.setAttribute('cy',py(c.y));p.setAttribute('r',SC*0.3);
+  for(let i=0;i<cells.length;i++){const c=cells[i];if(occ[c.id]<0)continue;const rxy=rxys[i];
+    const p=document.createElementNS(NS,'circle');
+    p.setAttribute('cx',px(rxy.x));p.setAttribute('cy',py(rxy.y));p.setAttribute('r',SC*0.3);
     p.setAttribute('class','peg'+(sel===c.id?' sel':''));
     p.setAttribute('fill',`url(#pg${occ[c.id]})`);
     p.addEventListener('click',()=>onCell(c.id));svg.appendChild(p);}
