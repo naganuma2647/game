@@ -458,7 +458,7 @@
           </div>
           <div class="name">オートリオ</div>
           <div class="desc">3サイズのリングで3目並べ。同サイズ/階段/同心円の3通りで勝てる。CPU対戦・2〜4人対応。</div>
-          <div class="tagrow"><a class="tag" href="games/otrio.html">プレイする →</a><a class="tag tag-online" href="games/otrio.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/otrio.html">プレイする →</a><a class="tag tag-online" href="games/otrio.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-otrio').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon">
@@ -480,15 +480,15 @@
           </div>
           <div class="name">コリドール</div>
           <div class="desc">9×9盤で駒を進めるか壁で阻む。読み合いの戦略系。CPU対戦・2/4人対応。</div>
-          <div class="tagrow"><a class="tag" href="games/quoridor.html">プレイする →</a><a class="tag tag-online" href="games/quoridor.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/quoridor.html">プレイする →</a><a class="tag tag-online" href="games/quoridor.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-quoridor').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon"><svg width="40" height="46" viewBox="0 0 40 46"><defs><linearGradient id="hasami-fill" x1="0.3" y1="0" x2="0.7" y2="1"><stop offset="0%" stop-color="#f5e090"/><stop offset="100%" stop-color="#c8940c"/></linearGradient></defs><polygon points="20,2 31.2,8.7 38,44 2,44 8.8,8.7" fill="url(#hasami-fill)" stroke="#6b4210" stroke-width="1.2" stroke-linejoin="round"/><text x="20" y="32" text-anchor="middle" font-size="19" font-weight="900" fill="#1a0800" font-family="'Hiragino Mincho ProN',serif">歩</text></svg></div>
           <div class="name">はさみ将棋</div>
           <div class="desc">縦横に走って挟んで取る。5枚先取。CPU対戦・2人対戦。</div>
-          <div class="tagrow"><a class="tag" href="games/hasami.html">プレイする →</a><a class="tag tag-online" href="games/hasami.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/hasami.html">プレイする →</a><a class="tag tag-online" href="games/hasami.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-hasami').classList.add('show')">📖 ルール</button></div></div>
 
-        <a class="card" href="games/solitaire.html">
+        <div class="card">
           <div class="icon" style="position:relative;width:42px;height:50px">
             <div style="position:absolute;left:0;top:0;width:26px;height:34px;background:#f4efe3;border:1px solid #c9bfa8;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#1c1c1c;font-weight:800;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.45)">K♠</div>
             <div style="position:absolute;left:8px;top:8px;width:26px;height:34px;background:#f4efe3;border:1px solid #c9bfa8;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#c23b26;font-weight:800;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.45)">Q♥</div>
@@ -496,8 +496,8 @@
           </div>
           <div class="name">ソリティア</div>
           <div class="desc">クロンダイク。山札を崩して4組を完成。</div>
-          <span class="tag">プレイする →</span>
-        </a>
+          <div class="tagrow"><a class="tag" href="games/solitaire.html">プレイする →</a><button class="tag tag-rule" onclick="document.getElementById('rule-solitaire').classList.add('show')">📖 ルール</button></div>
+        </div>
 
         <div class="card">
           <div class="icon" style="position:relative;width:46px;height:42px">
@@ -1261,6 +1261,106 @@
         <li>一度ゴールエリアに入った駒を外に出してはいけない（ルール設定による）。</li>
         <li>連続ジャンプは他の駒を「通過」するだけで、取ることはしない。</li>
       </ul>
+    </div>
+  </div>
+
+  <!-- オートリオ ルールモーダル -->
+  <div id="rule-otrio" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-otrio').classList.remove('show')">×</button>
+      <h2>⊙ オートリオ ルール</h2>
+      <h3>目的</h3>
+      <p>3×3のグリッドに小・中・大の3サイズのリングを置き、次の3パターンのいずれかで3目並べを完成させた方の勝ち。</p>
+      <h3>勝利条件（3通り）</h3>
+      <ul>
+        <li><b>同サイズ3連</b>：同じサイズのリングを縦・横・斜めに3つ並べる。</li>
+        <li><b>同心円3連</b>：1つのマスに小・中・大の3サイズをすべて置く。</li>
+        <li><b>階段3連</b>：斜めに小→中→大（または大→中→小）と並べる。</li>
+      </ul>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>2〜4人で交互に手番。各プレイヤーはそれぞれ小・中・大を3個ずつ持つ。</li>
+        <li>1手番に手持ちのリングを1個、任意のマスに置く。</li>
+        <li>すでに同サイズのリングがあるマスには置けない（異サイズは同じマスに重ねられる）。</li>
+      </ul>
+      <h3>戦略</h3>
+      <p>3通りの勝利条件があるため、複数の方向に同時に狙いを向けながら相手の3連を防ぐのが鍵。</p>
+    </div>
+  </div>
+
+  <!-- コリドール ルールモーダル -->
+  <div id="rule-quoridor" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-quoridor').classList.remove('show')">×</button>
+      <h2>🚧 コリドール ルール</h2>
+      <h3>目的</h3>
+      <p>自分のポーンを相手陣地の最奥列まで先に到達させた方の勝ち。</p>
+      <h3>手番の選択</h3>
+      <p>手番ごとに次の2つのどちらかを行う：</p>
+      <ul>
+        <li><b>ポーンを動かす</b>：上下左右の隣接マスへ1歩移動。相手ポーンがいるマスは飛び越えられる（一定条件下）。</li>
+        <li><b>壁を置く</b>：2マス分の壁を設置して相手の進路を塞ぐ。各プレイヤーは壁10枚（2人の場合）を持つ。</li>
+      </ul>
+      <h3>壁のルール</h3>
+      <ul>
+        <li>壁はポーンとポーンの間に横または縦に置く。</li>
+        <li><b>どのプレイヤーもゴールへの経路が必ず存在するように</b>置かなければならない（完全封鎖禁止）。</li>
+      </ul>
+      <h3>戦略</h3>
+      <ul>
+        <li>自分が前進しながら相手の最短ルートに壁を置くのが基本。</li>
+        <li>壁は限りがあるので使いどころが重要。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- はさみ将棋 ルールモーダル -->
+  <div id="rule-hasami" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-hasami').classList.remove('show')">×</button>
+      <h2>✂️ はさみ将棋 ルール</h2>
+      <h3>目的</h3>
+      <p>相手の駒を先に5枚取った方の勝ち。</p>
+      <h3>初期配置</h3>
+      <p>9×9の将棋盤。各プレイヤーが1段目（9枚の「歩」）を並べてスタート。</p>
+      <h3>駒の動き</h3>
+      <ul>
+        <li>将棋の「飛車」と同じく、縦または横に何マスでもまっすぐ移動できる。</li>
+        <li>他の駒は飛び越えられない。</li>
+      </ul>
+      <h3>取り方（はさむ）</h3>
+      <ul>
+        <li>相手の駒を縦または横から自分の駒2枚で挟むと、挟まれた駒を取れる。</li>
+        <li>移動した結果として挟んだ場合に取れる（静止中に挟まれても取られない）。</li>
+        <li>一度に複数枚挟んで取ることも可能。</li>
+      </ul>
+      <h3>角取り</h3>
+      <p>盤の角（コーナー）に追い込んで縦横から挟むと取れる。</p>
+    </div>
+  </div>
+
+  <!-- ソリティア ルールモーダル -->
+  <div id="rule-solitaire" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-solitaire').classList.remove('show')">×</button>
+      <h2>🃏 ソリティア（クロンダイク）ルール</h2>
+      <h3>目的</h3>
+      <p>4つの組札（ファウンデーション）にスート（マーク）ごとにA→Kの順で13枚ずつ積み上げてコンプリートする。</p>
+      <h3>盤面の構成</h3>
+      <ul>
+        <li><b>場札（タブロー）</b>：7列。左から1〜7枚。一番上だけ表向き。</li>
+        <li><b>山札（ストック）</b>：残りのカード。クリックで1〜3枚めくる。</li>
+        <li><b>組札（ファウンデーション）</b>：A→Kの順で積む目標の4列。</li>
+      </ul>
+      <h3>カードの移動ルール</h3>
+      <ul>
+        <li>場札へは<b>交互の色・1つ下の数字</b>のカードのみ重ねられる（例：赤7の上に黒6）。</li>
+        <li>表向きの連なりは一括で移動可能。</li>
+        <li>列が空になったらKのみ置ける。</li>
+        <li>組札へは同スートで昇順（A→2→3…→K）に積む。</li>
+      </ul>
+      <h3>山札の使い方</h3>
+      <p>山札をめくって使えるカードは積極的に活用。山札が尽きたら裏返して再使用できる。</p>
     </div>
   </div>
 
