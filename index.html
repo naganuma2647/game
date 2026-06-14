@@ -302,18 +302,18 @@
           <div class="desc">落ちるブロックを並べてラインを消す定番パズル。対戦は画面2分割でライン消去攻撃＆HOLD。</div>
           <div class="tagrow"><a class="tag" href="games/tetris.html">ひとり →</a><a class="tag" href="games/tetris-vs.html">🆚 対戦</a><a class="tag tag-online" href="games/tetris-vs.html?online=1">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-tetris').classList.add('show')">📖 ルール</button></div></div>
 
-        <a class="card" href="games/invader.html">
+        <div class="card">
           <div class="icon">👾</div>
           <div class="name">インベーダー</div>
           <div class="desc">攻めてくる編隊を撃ち落とす。シールドに隠れて反撃、UFOでボーナス。</div>
-          <span class="tag">プレイする →</span>
-        </a>
+          <div class="tagrow"><a class="tag" href="games/invader.html">プレイする →</a><button class="tag tag-rule" onclick="document.getElementById('rule-invader').classList.add('show')">📖 ルール</button></div>
+        </div>
 
         <div class="card">
           <div class="icon" style="width:42px;height:42px;background:#edc22e;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#776e65;font-weight:900;font-size:14px;box-shadow:0 2px 5px rgba(0,0,0,.4)">2048</div>
           <div class="name">2048</div>
           <div class="desc">同じ数字を合体して2048を目指すパズル。対戦はスコア対決（5分タイムアタック／10分一発勝負）。</div>
-          <div class="tagrow"><a class="tag" href="games/g2048.html">ひとり →</a><a class="tag" href="games/g2048-vs.html">🆚 対戦</a><a class="tag tag-online" href="games/g2048-vs.html?online=1">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/g2048.html">ひとり →</a><a class="tag" href="games/g2048-vs.html">🆚 対戦</a><a class="tag tag-online" href="games/g2048-vs.html?online=1">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-2048').classList.add('show')">📖 ルール</button></div></div>
 
         <div class="card">
           <div class="icon" style="display:inline-grid;grid-template-columns:1fr 1fr;gap:3px;width:38px;height:38px">
@@ -322,14 +322,14 @@
           </div>
           <div class="name">ヒットアンドブロー</div>
           <div class="desc">秘密の数字を当てる推理。1人／複数人の早解き対戦。</div>
-          <div class="tagrow"><a class="tag" href="games/hitblow.html">プレイする →</a><a class="tag tag-online" href="games/hitblow.html?online=1&_v=2">🌐 オンライン</a></div></div>
+          <div class="tagrow"><a class="tag" href="games/hitblow.html">プレイする →</a><a class="tag tag-online" href="games/hitblow.html?online=1&_v=2">🌐 オンライン</a><button class="tag tag-rule" onclick="document.getElementById('rule-hitblow').classList.add('show')">📖 ルール</button></div></div>
 
-        <a class="card" href="games/mines.html">
+        <div class="card">
           <div class="icon">💣</div>
           <div class="name">マインスイーパー</div>
           <div class="desc">数字を頼りに地雷を避けて開放。3段階。</div>
-          <span class="tag">プレイする →</span>
-        </a>
+          <div class="tagrow"><a class="tag" href="games/mines.html">プレイする →</a><button class="tag tag-rule" onclick="document.getElementById('rule-mines').classList.add('show')">📖 ルール</button></div>
+        </div>
 
         <div class="card">
           <div class="icon">🦅</div>
@@ -842,6 +842,114 @@
         <li>列を消すと「おじゃまブロック」が相手の画面下から追加される（2列消し以上）。</li>
         <li>相手がゲームオーバーになった方が勝ち。</li>
       </ul>
+    </div>
+  </div>
+
+  <!-- インベーダー ルールモーダル -->
+  <div id="rule-invader" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-invader').classList.remove('show')">×</button>
+      <h2>👾 インベーダー ルール</h2>
+      <h3>目的</h3>
+      <p>迫りくるエイリアン編隊をすべて撃ち落とし、地球を守る。</p>
+      <h3>基本操作</h3>
+      <ul>
+        <li>←→キー（またはタッチ）で砲台を左右に移動。</li>
+        <li>スペース（またはタップ）で弾を発射。画面に1発のみ。</li>
+        <li>シールドに隠れて敵の弾を防げるが、シールド自体も徐々に壊れる。</li>
+      </ul>
+      <h3>エイリアム編隊</h3>
+      <ul>
+        <li>複数列のエイリアムが左右に動きながら段々と降下してくる。</li>
+        <li>端に当たるたびに1段下がり、速度が上がる。</li>
+        <li>地上まで降りてきたらゲームオーバー。</li>
+      </ul>
+      <h3>UFO（ボーナス）</h3>
+      <ul>
+        <li>時折UFOが画面上部を横切る。撃墜すると高得点。</li>
+      </ul>
+      <h3>ライフ</h3>
+      <p>敵の弾に当たるとライフを1つ失う。全ライフを失うとゲームオーバー。</p>
+    </div>
+  </div>
+
+  <!-- 2048 ルールモーダル -->
+  <div id="rule-2048" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-2048').classList.remove('show')">×</button>
+      <h2>🔢 2048 ルール</h2>
+      <h3>目的</h3>
+      <p>4×4のボードでスワイプしてタイルを合体させ、2048のタイルを作る。</p>
+      <h3>基本操作</h3>
+      <ul>
+        <li>上下左右にスワイプ（またはキー操作）すると、全タイルが同方向に滑る。</li>
+        <li>同じ数字のタイルが衝突すると合体して2倍の数字になる。</li>
+        <li>移動後に空きマスにランダムで「2」か「4」が出現。</li>
+      </ul>
+      <h3>終了条件</h3>
+      <ul>
+        <li>2048のタイルが完成したらクリア（続行も可）。</li>
+        <li>動かせる場所がなくなったらゲームオーバー。</li>
+      </ul>
+      <h3>対戦モード</h3>
+      <ul>
+        <li>制限時間内のスコア対決（5分タイムアタック／10分一発勝負）。</li>
+        <li>合体させるたびにスコア加算。大きい数字ほど高得点。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ヒットアンドブロー ルールモーダル -->
+  <div id="rule-hitblow" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-hitblow').classList.remove('show')">×</button>
+      <h2>🔎 ヒットアンドブロー ルール</h2>
+      <h3>目的</h3>
+      <p>相手（またはCPU）が決めた4桁の秘密の数字を推理して当てる。</p>
+      <h3>基本ルール</h3>
+      <ul>
+        <li>各桁はすべて異なる数字（0〜9）で構成。</li>
+        <li>数字を予想して入力すると結果が返ってくる。</li>
+      </ul>
+      <h3>ヒット・ブロー</h3>
+      <ul>
+        <li><b>ヒット</b>：数字も位置も正解の桁の数。</li>
+        <li><b>ブロー</b>：数字は合っているが位置が違う桁の数。</li>
+        <li>例）正解「1234」、予想「1325」→ Hit:1（1の位置が合致）Blow:2（2と3は含まれるが位置違い）</li>
+      </ul>
+      <h3>対戦モード</h3>
+      <ul>
+        <li>お互いに秘密の数字を設定し合い、先に当てた方が勝ち。</li>
+        <li>複数人での早解き対戦も可能。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- マインスイーパー ルールモーダル -->
+  <div id="rule-mines" class="rule-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="rule-card">
+      <button class="rule-close" onclick="document.getElementById('rule-mines').classList.remove('show')">×</button>
+      <h2>💣 マインスイーパー ルール</h2>
+      <h3>目的</h3>
+      <p>地雷が隠れたマス以外をすべて開放する。</p>
+      <h3>基本操作</h3>
+      <ul>
+        <li>マスをクリック（タップ）で開放。</li>
+        <li>右クリック（長押し）で旗を立てて地雷の目印にできる。</li>
+      </ul>
+      <h3>数字の見方</h3>
+      <ul>
+        <li>開放されたマスに表示される数字＝その周囲8マスに潜む地雷の数。</li>
+        <li>数字を手がかりに地雷の場所を論理的に絞り込む。</li>
+        <li>何もない（0）マスは周囲が自動的に一斉開放される。</li>
+      </ul>
+      <h3>終了条件</h3>
+      <ul>
+        <li>地雷を踏んだらゲームオーバー（全地雷が表示される）。</li>
+        <li>地雷以外を全て開放したらクリア。</li>
+      </ul>
+      <h3>難易度</h3>
+      <p>初級・中級・上級の3段階（地雷数とボードサイズが変わる）。</p>
     </div>
   </div>
 
