@@ -130,7 +130,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
     <b>ルール：</b>各自の手札から中央2つの山に交互なしで同時にカードを出す。<br>
     出せるカード: 山のトップと<b>数字が1つ差</b>のカード。AはKの次またはKはAの前もOK（ラップアラウンド）。<br>
     手札が減ったら山札から補充（最大5枚）。<b>手札と山札が両方空になったら勝ち！</b><br>
-    行き詰まったら「スピード！」ボタンで各中央山に補充カードを1枚ずつ追加。<br>
+    行き詰まったら「スピード！」ボタンで各自の山札から中央に1枚ずつ追加。<br>
     <b>操作：</b>手札を<b>ドラッグ</b>して中央の山に落とす（PC）／<b>スワイプ</b>して山の上で指を離す（スマホ）。またはタップで選択→山をタップ。<br>
     <b>重ねあり時：</b>手札を別の手札カードの上に<b>ドラッグ</b>すると重ねられる。上のカードから順に出せる。
   </div>
@@ -151,7 +151,6 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
 
   <!-- Center -->
   <div class="center-area">
-    <div class="repl-pile" id="repl-left" title="補充山（左）">補充<br>左</div>
     <div class="center-piles">
       <div class="center-pile" id="center-left" onclick="clickCenter(0)">
         <span class="center-pile-label">左</span>
@@ -161,7 +160,6 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Hiragino Sans
         <span class="center-pile-label">右</span>
       </div>
     </div>
-    <div class="repl-pile" id="repl-right" title="補充山（右）">補充<br>右</div>
   </div>
 
   <div id="status-msg">カードをドラッグ or タップして中央に出そう</div>
@@ -287,13 +285,9 @@ function initGame(p0pile, p1pile, p0hand, p1hand, centerCards, replCards) {
     G.repl = [replCards[0], replCards[1]];
   } else {
     const deck = buildDeck();
-    let idx = 0;
-    G.piles = [deck.slice(idx, idx+20), deck.slice(idx+20, idx+40)];
-    idx += 40;
-    G.repl = [deck.slice(idx, idx+5), deck.slice(idx+5, idx+10)];
-    idx += 10;
-    G.center = [[deck[idx]], [deck[idx+1]]];
-    idx += 2;
+    G.piles = [deck.slice(0, 25), deck.slice(25, 50)];
+    G.repl = [[], []];
+    G.center = [[deck[50]], [deck[51]]];
     G.hands = [G.piles[0].splice(0, 5), G.piles[1].splice(0, 5)];
   }
   G.beneath = [G.hands[0].map(() => []), G.hands[1].map(() => [])];
@@ -325,14 +319,6 @@ function render() {
 }
 
 function renderCenter() {
-  const rl = document.getElementById('repl-left');
-  const rr = document.getElementById('repl-right');
-  const lc = G.repl[0].length, rc = G.repl[1].length;
-  rl.classList.toggle('has-cards', lc > 0);
-  rl.innerHTML = lc > 0 ? `<div style="font-size:11px;color:var(--dim)">${lc}</div>` : `補充<br>左`;
-  rr.classList.toggle('has-cards', rc > 0);
-  rr.innerHTML = rc > 0 ? `<div style="font-size:11px;color:var(--dim)">${rc}</div>` : `補充<br>右`;
-
   const myHand = G.hands[G.online ? G.mySeat : 0];
   const sel = G.selected >= 0 ? myHand[G.selected] : null;
 
@@ -483,9 +469,9 @@ function renderInfo() {
 
   const canAny = canAnyonePlay();
   const speedBtn = document.getElementById('speed-btn');
-  const replEmpty = G.repl[0].length === 0 && G.repl[1].length === 0;
-  speedBtn.disabled = canAny || (replEmpty && hand.length === 0);
-  speedBtn.textContent = replEmpty ? 'スピード！（手札から）' : 'スピード！';
+  const pilesEmpty = G.piles[0].length === 0 && G.piles[1].length === 0;
+  speedBtn.disabled = canAny || (pilesEmpty && hand.length === 0);
+  speedBtn.textContent = pilesEmpty ? 'スピード！（手札から）' : 'スピード！';
 }
 
 // ========== DRAG / TOUCH HELPERS ==========
@@ -589,8 +575,8 @@ function applyPlay(playerIdx, slot, pileIdx) {
 function doFlip() {
   if (G.won !== null) return;
   if (canAnyonePlay()) { setStatus('まだ出せるカードがあります'); return; }
-  const replEmpty = G.repl[0].length === 0 && G.repl[1].length === 0;
-  if (replEmpty) {
+  const pilesEmpty = G.piles[0].length === 0 && G.piles[1].length === 0;
+  if (pilesEmpty) {
     const myIdx = G.online ? G.mySeat : 0;
     if (G.hands[myIdx].length === 0) { setStatus('手札がありません'); return; }
     if (G.selected < 0) { setStatus('手札から1枚選んでスピード！'); return; }
@@ -635,11 +621,11 @@ function applyFlipWithHand(playerSlot, senderSeat) {
 }
 
 function applyFlip() {
-  if (G.repl[0].length > 0) G.center[0].push(G.repl[0].pop());
-  if (G.repl[1].length > 0) G.center[1].push(G.repl[1].pop());
+  if (G.piles[0].length > 0) G.center[0].push(G.piles[0].shift());
+  if (G.piles[1].length > 0) G.center[1].push(G.piles[1].shift());
   G.selected = -1;
   render();
-  setStatus('補充カードを追加しました');
+  setStatus('各自の山札から補充しました');
 }
 
 function stackCards(pi, fromSlot, toSlot) {
@@ -751,10 +737,10 @@ function scheduleStuckCheck() {
   G.stuckCheckTimer = setTimeout(() => {
     if (G.won !== null || G.online) return;
     if (!canAnyonePlay()) {
-      const replEmpty = G.repl[0].length === 0 && G.repl[1].length === 0;
-      setStatus(replEmpty
+      const pilesEmpty = G.piles[0].length === 0 && G.piles[1].length === 0;
+      setStatus(pilesEmpty
         ? '行き詰まり！手札から1枚選んで「スピード！」を押してください'
-        : '行き詰まり！「スピード！」で補充してください');
+        : '行き詰まり！「スピード！」で山札から補充してください');
       renderInfo();
     }
   }, 800);
@@ -821,18 +807,15 @@ OnlineRoom.init({
     document.getElementById('setup').style.display = 'none';
     if (seat === 0) {
       const deck = buildDeck();
-      let idx = 0;
-      const p0pile = deck.slice(idx, idx+20); idx += 20;
-      const p1pile = deck.slice(idx, idx+20); idx += 20;
-      const repl0 = deck.slice(idx, idx+5); idx += 5;
-      const repl1 = deck.slice(idx, idx+5); idx += 5;
-      const c0 = [deck[idx]]; idx++;
-      const c1 = [deck[idx]]; idx++;
+      const p0pile = deck.slice(0, 25);
+      const p1pile = deck.slice(25, 50);
+      const c0 = [deck[50]];
+      const c1 = [deck[51]];
       const p0hand = p0pile.splice(0, 5);
       const p1hand = p1pile.splice(0, 5);
       send({t:'init',
         p0pile, p1pile, p0hand, p1hand,
-        center:[c0, c1], repl:[repl0, repl1]
+        center:[c0, c1], repl:[[], []]
       });
     }
   },
