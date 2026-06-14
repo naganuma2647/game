@@ -64,6 +64,7 @@
   </style>
 </head>
 <body>
+<a href="../index.html" style="position:fixed;top:10px;left:10px;z-index:99999;background:rgba(0,0,0,0.55);color:#fff;text-decoration:none;font:600 13px/1 'Segoe UI',sans-serif;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,0.25)">← 一覧に戻る</a>
 <h1>💣 ボンバーマン</h1>
 
 <div class="drow">
@@ -411,19 +412,35 @@ function updPlayer(dt) {
   const spd = pl.spd * T * dt;
   const up=K['ArrowUp']||K['KeyW'], dn=K['ArrowDown']||K['KeyS'];
   const lt=K['ArrowLeft']||K['KeyA'], rt=K['ArrowRight']||K['KeyD'];
+  const SNAP = T * 0.45; // 広いスナップ幅で曲がりやすく
 
-  if (lt||rt) {
-    // 横移動時はY方向をグリッドに寄せる
-    const snap = Math.round(pl.py/T)*T;
-    if (Math.abs(pl.py-snap) < spd+1) pl.py = snap;
-    const nx = pl.px + (lt?-spd:spd);
-    if (canGo(pl, nx,pl.py)) { pl.px=nx; pl.dir=lt?3:1; }
+  let turned = false;
+
+  // 縦横同時押し: 縦方向への曲がりを優先して試みる
+  if ((up||dn) && (lt||rt)) {
+    const snapX = Math.round(pl.px/T)*T;
+    if (Math.abs(pl.px-snapX) < SNAP) {
+      const ny = pl.py + (up?-spd:spd);
+      if (canGo(pl, snapX, ny)) {
+        pl.px=snapX; pl.py=ny; pl.dir=up?0:2; turned=true;
+      }
+    }
   }
-  if (up||dn) {
-    const snap = Math.round(pl.px/T)*T;
-    if (Math.abs(pl.px-snap) < spd+1) pl.px = snap;
-    const ny = pl.py + (up?-spd:spd);
-    if (canGo(pl, pl.px,ny)) { pl.py=ny; pl.dir=up?0:2; }
+
+  if (!turned) {
+    let movedH = false;
+    if (lt||rt) {
+      const snap = Math.round(pl.py/T)*T;
+      if (Math.abs(pl.py-snap) < SNAP) pl.py = snap;
+      const nx = pl.px + (lt?-spd:spd);
+      if (canGo(pl, nx, pl.py)) { pl.px=nx; pl.dir=lt?3:1; movedH=true; }
+    }
+    if ((up||dn) && !movedH) {
+      const snap = Math.round(pl.px/T)*T;
+      if (Math.abs(pl.px-snap) < SNAP) pl.px = snap;
+      const ny = pl.py + (up?-spd:spd);
+      if (canGo(pl, pl.px, ny)) { pl.py=ny; pl.dir=up?0:2; }
+    }
   }
 
   // パワーアップ取得
@@ -444,17 +461,31 @@ function updP2(dt) {
   const spd = p2.spd * T * dt;
   const up=K2.up, dn=K2.dn, lt=K2.lt, rt=K2.rt;
 
-  if (lt||rt) {
-    const snap = Math.round(p2.py/T)*T;
-    if (Math.abs(p2.py-snap) < spd+1) p2.py = snap;
-    const nx = p2.px + (lt?-spd:spd);
-    if (canGo(p2, nx, p2.py)) { p2.px=nx; p2.dir=lt?3:1; }
+  const SNAP2 = T * 0.45;
+  let turned2 = false;
+  if ((up||dn) && (lt||rt)) {
+    const snapX = Math.round(p2.px/T)*T;
+    if (Math.abs(p2.px-snapX) < SNAP2) {
+      const ny = p2.py + (up?-spd:spd);
+      if (canGo(p2, snapX, ny)) {
+        p2.px=snapX; p2.py=ny; p2.dir=up?0:2; turned2=true;
+      }
+    }
   }
-  if (up||dn) {
-    const snap = Math.round(p2.px/T)*T;
-    if (Math.abs(p2.px-snap) < spd+1) p2.px = snap;
-    const ny = p2.py + (up?-spd:spd);
-    if (canGo(p2, p2.px, ny)) { p2.py=ny; p2.dir=up?0:2; }
+  if (!turned2) {
+    let movedH2 = false;
+    if (lt||rt) {
+      const snap = Math.round(p2.py/T)*T;
+      if (Math.abs(p2.py-snap) < SNAP2) p2.py = snap;
+      const nx = p2.px + (lt?-spd:spd);
+      if (canGo(p2, nx, p2.py)) { p2.px=nx; p2.dir=lt?3:1; movedH2=true; }
+    }
+    if ((up||dn) && !movedH2) {
+      const snap = Math.round(p2.px/T)*T;
+      if (Math.abs(p2.px-snap) < SNAP2) p2.px = snap;
+      const ny = p2.py + (up?-spd:spd);
+      if (canGo(p2, p2.px, ny)) { p2.py=ny; p2.dir=up?0:2; }
+    }
   }
 
   if (K2.bomb) { placeBomb(p2); K2.bomb=false; }
